@@ -40,14 +40,34 @@ fn main() {
                 SubCommand::with_name("app")
                     .about("create an app")
                     .arg(
-                        Arg::with_name("name")
+                        Arg::with_name("id")
                             .required(true)
-                            .help("The name for the app. This must be unique."),
+                            .help("The id for the app. This must be unique."),
                     )
             )
+        ).subcommand(
+                SubCommand::with_name("remove")
+                    .about("delete a resource in the drogue-cloud registry")
+                    .subcommand(
+                        SubCommand::with_name("device")
+                            .about("delete a device")
+                            .arg(
+                                Arg::with_name("id")
+                                    .required(true)
+                                    .help("The id of the device"),
+                            )
+                    )
+                    .subcommand(
+                        SubCommand::with_name("app")
+                            .about("delete an app")
+                            .arg(
+                                Arg::with_name("id")
+                                    .required(true)
+                                    .help("The id for the app."),
+                            )
+                    )
     ).get_matches();
 
-    println!("{:?}", matches.value_of("URL"));
     //TODO wrap the string url into a proper url type, and fail early if the url is incorrect.
     let url = matches.value_of("URL").unwrap();
 
@@ -60,7 +80,7 @@ fn main() {
                     match create_app(url, id) {
                         Ok(r) => {
                             match r.status() {
-                                reqwest::StatusCode::CREATED => println!("App {} deleted.", id),
+                                reqwest::StatusCode::CREATED => println!("App {} created.", id),
                                 r => println!("Error : {}", r),
                             }
                         },
@@ -73,7 +93,7 @@ fn main() {
                 _ => unreachable!(),
             }
         },
-        ("delete", Some(delete_matches)) => {
+        ("remove", Some(delete_matches)) => {
             match delete_matches.subcommand() {
                 ("app", Some(app_matches)) => {
                     let id = app_matches.value_of("id").unwrap();
@@ -103,18 +123,19 @@ fn main() {
 
 fn create_app(url: &str, app: &AppId) -> Result<Response, reqwest::Error> {
     let client = Client::new();
-    let url = url.to_owned() + "api/v1/apps";
+    let url = url.to_owned() + "/api/v1/apps";
     // todo use serdejson ?
-    let body = format!("metadata:=\'{{\"name\":\"{}\"}}\'", app);
+    let body = format!("{{\"metadata\":{{\"name\":\"{}\"}}}}", app);
 
     client.post(&url)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(body)
         .send()
 }
 
 fn delete_app(url: &str, app: &AppId) -> Result<Response, reqwest::Error> {
     let client = Client::new();
-    let url = format!("{}{}", url.to_owned()+"api/v1/apps/", app);
+    let url = format!("{}{}", url.to_owned()+"/api/v1/apps/", app);
 
 
    client.delete(&url)
