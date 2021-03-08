@@ -1,9 +1,11 @@
 mod arguments;
 
-use reqwest::blocking::{Client, Response};
-
 use arguments::{Parameters, Verbs, Resources};
+
+use reqwest::blocking::{Client, Response};
+use reqwest::Url;
 use std::str::FromStr;
+use serde_json::json;
 
 type AppId = str;
 type DeviceId = str;
@@ -11,8 +13,8 @@ type DeviceId = str;
 fn main() {
     let matches = arguments::parse_arguments();
 
-    //TODO wrap the string url into a proper url type, and fail early if the url is incorrect.
-    let url = matches.value_of(Parameters::url).unwrap();
+    //TODO : The error is not nice to read. 
+    let url = Url::parse(matches.value_of(Parameters::url).unwrap()).expect("Invalid URL.");
 
     let (cmd_name, cmd) = matches.subcommand();
     //deserialize the command into enum to take advantage of rust exhaustive match
@@ -25,19 +27,19 @@ fn main() {
         Verbs::create => {
             let data = sub_cmd.unwrap().value_of(Parameters::data);
             match resource {
-                Resources::app => create_app(url, id, data),
+                Resources::app => create_app(&url, id, data),
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    create_device(url, id, data, app_id)
+                    create_device(&url, id, data, app_id)
                 },
             }
         }
         Verbs::delete => {
             match resource {
-                Resources::app => delete_app(url, id),
+                Resources::app => delete_app(&url, id),
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    delete_device(url, app_id, id)
+                    delete_device(&url, app_id, id)
                 },
             }
         }
@@ -51,46 +53,58 @@ fn main() {
 }
 
 
-fn create_app(url: &str, app: &AppId, data: Option<&str>) {
+fn create_app(url: &Url, app: &AppId, data: Option<&str>) {
     let client = Client::new();
-    let url = url.to_owned() + "/api/v1/apps";
-    // todo use serdejson and append data.
-    let body = format!("{{\"metadata\":{{\"name\":\"{}\"}}}}", app);
+    let url = format!("{}api/v1/apps", url);
+    let body = json!({
+        "metadata": {
+            "name": app,
+        },
+        "spec": {
+            "data": data.unwrap_or(""),
+        }
+    });
 
     let res = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .body(body)
+        .body(body.to_string())
         .send();
 
     print_result(res, format!("App {}", app), Verbs::create)
 }
 
-    //TODO
-fn create_device(url: &str, id: &DeviceId, data: Option<&str>, app_id: &AppId) {
+fn create_device(url: &Url, id: &DeviceId, data: Option<&str>, app_id: &AppId) {
     let client = Client::new();
-    let url = format!("{}/api/v1/apps/{}/devices", url, app_id);
-    // todo use serdejson and append data.
-    let body = format!("{{\"metadata\":{{\"application\":\"{}\",\"name\":\"{}\"}}}}", app_id, id);
-
+    let url = format!("{}api/v1/apps/{}/devices", url, app_id);
+    println!("{}", url);
+    let body = json!({
+        "metadata": {
+            "name": id,
+            "application": app_id
+        },
+        "spec": {
+            "data": data.unwrap_or(""),
+        }
+    });
     let res = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .body(body)
+        .body(body.to_string())
         .send();
 
     print_result(res, format!("Device {}", id), Verbs::create)
 }
 
-fn delete_app(url: &str, app: &AppId) {
+fn delete_app(url: &Url, app: &AppId) {
     let client = Client::new();
-    let url = format!("{}/api/v1/apps/{}", url, app);
+    let url = format!("{}api/v1/apps/{}", url, app);
 
    let res = client.delete(&url).send();
    print_result(res, format!("App {}", app), Verbs::delete)
 }
 
-fn delete_device(url: &str, app: &AppId, device_id: &DeviceId) {
+fn delete_device(url: &Url, app: &AppId, device_id: &DeviceId) {
     let client = Client::new();
-    let url = format!("{}/api/v1/apps/{}/devices/{}", url, app, device_id);
+    let url = format!("{}api/v1/apps/{}/devices/{}", url, app, device_id);
 
     let res = client.delete(&url).send();
     print_result(res, format!("Device {}", device_id), Verbs::delete)

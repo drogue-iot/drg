@@ -46,6 +46,8 @@ let app_id_arg = Arg::with_name(Resources::app.as_ref())
 
 let data_arg = Arg::with_name(Parameters::data.as_ref())
     .short("d")
+    .long("data")
+    .takes_value(true)
     .help("The data for the resource.");
 
 
