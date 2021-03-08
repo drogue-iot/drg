@@ -1,143 +1,128 @@
-use clap::{Arg, App, SubCommand};
+mod arguments;
+
 use reqwest::blocking::{Client, Response};
 
+use arguments::{Parameters, Verbs, Resources};
+use std::str::FromStr;
 
 type AppId = str;
+type DeviceId = str;
 
 fn main() {
-    //TODO command names in enums
-    let matches = App::new("Drogue Command Line Tool")
-        .version("0.1")
-        .author("Jb Trystram <jbtrystram@redhat.com>")
-        .about("Allows to manage drogue apps and devices in a drogue-cloud instance")
-        .arg(Arg::with_name("URL")
-            .short("u")
-            .long("url")
-            .value_name("URL")
-            .help("The url of the registry endpoint")
-            .takes_value(true)
-            .required(true)
-        ).subcommand(
-        SubCommand::with_name("create")
-            .about("create a resource in the drogue-cloud registry")
-            .subcommand(
-                SubCommand::with_name("device")
-                    .about("create a device")
-                    .arg(
-                        Arg::with_name("id")
-                            .required(true)
-                            .help("The id of the device"),
-                    )
-                    .arg(
-                        Arg::with_name("data")
-                            .short("d")
-                            .long("data")
-                            .required(false)
-                            .help("The data for the device"),
-                    ),
-            )
-            .subcommand(
-                SubCommand::with_name("app")
-                    .about("create an app")
-                    .arg(
-                        Arg::with_name("id")
-                            .required(true)
-                            .help("The id for the app. This must be unique."),
-                    )
-            )
-        ).subcommand(
-                SubCommand::with_name("remove")
-                    .about("delete a resource in the drogue-cloud registry")
-                    .subcommand(
-                        SubCommand::with_name("device")
-                            .about("delete a device")
-                            .arg(
-                                Arg::with_name("id")
-                                    .required(true)
-                                    .help("The id of the device"),
-                            )
-                    )
-                    .subcommand(
-                        SubCommand::with_name("app")
-                            .about("delete an app")
-                            .arg(
-                                Arg::with_name("id")
-                                    .required(true)
-                                    .help("The id for the app."),
-                            )
-                    )
-    ).get_matches();
+    let matches = arguments::parse_arguments();
 
     //TODO wrap the string url into a proper url type, and fail early if the url is incorrect.
-    let url = matches.value_of("URL").unwrap();
+    let url = matches.value_of(Parameters::url).unwrap();
 
-    match matches.subcommand() {
-        ("create", Some(create_matches)) => {
-            match create_matches.subcommand() {
-                ("app", Some(app_matches)) => {
-                    let id = app_matches.value_of("id").unwrap();
+    let (cmd_name, cmd) = matches.subcommand();
+    //deserialize the command into enum to take advantage of rust exhaustive match
+    let verb = Verbs::from_str(cmd_name).unwrap();
+    let (sub_cmd_name, sub_cmd) = cmd.unwrap().subcommand();
+    let resource = Resources::from_str(sub_cmd_name).unwrap();
+    let id = sub_cmd.unwrap().value_of(Parameters::id).unwrap();
 
-                    match create_app(url, id) {
-                        Ok(r) => {
-                            match r.status() {
-                                reqwest::StatusCode::CREATED => println!("App {} created.", id),
-                                r => println!("Error : {}", r),
-                            }
-                        },
-                        Err(e) => println!("Error sending request : {}", e)
-                    }
+    match verb {
+        Verbs::create => {
+            let data = sub_cmd.unwrap().value_of(Parameters::data);
+            match resource {
+                Resources::app => create_app(url, id, data),
+                Resources::device => {
+                    let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
+                    create_device(url, id, data, app_id)
                 },
-                ("device", Some(dev_matches)) => {
-                    println!("creating device {} not yet implemented", dev_matches.value_of("id").unwrap());
-                }
-                _ => unreachable!(),
-            }
-        },
-        ("remove", Some(delete_matches)) => {
-            match delete_matches.subcommand() {
-                ("app", Some(app_matches)) => {
-                    let id = app_matches.value_of("id").unwrap();
-
-                    match delete_app(url, id) {
-                        Ok(r) => {
-                            match r.status() {
-                                reqwest::StatusCode::NO_CONTENT => println!("App {} deleted.", id),
-                                r => println!("Error : {}", r),
-                            }
-                        },
-                        Err(e) => println!("Error sending request : {}", e)
-                    }
-                },
-                ("device", Some(dev_matches)) => {
-                    println!("deleting device {} not yet implemented", dev_matches.value_of("id").unwrap());
-                }
-                _ => unreachable!(),
             }
         }
-        ("", None) => println!("No subcommand was used"),
-        _ => unreachable!(),
+        Verbs::delete => {
+            match resource {
+                Resources::app => delete_app(url, id),
+                Resources::device => {
+                    let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
+                    delete_device(url, app_id, id)
+                },
+            }
+        }
+        Verbs::edit => {
+            println!("uninmplemented")
+        }
+        Verbs::get => {
+            println!("uninmplemented")
+        }
     }
-
 }
 
 
-fn create_app(url: &str, app: &AppId) -> Result<Response, reqwest::Error> {
+fn create_app(url: &str, app: &AppId, data: Option<&str>) {
     let client = Client::new();
     let url = url.to_owned() + "/api/v1/apps";
-    // todo use serdejson ?
+    // todo use serdejson and append data.
     let body = format!("{{\"metadata\":{{\"name\":\"{}\"}}}}", app);
 
-    client.post(&url)
+    let res = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(body)
-        .send()
+        .send();
+
+    print_result(res, format!("App {}", app), Verbs::create)
 }
 
-fn delete_app(url: &str, app: &AppId) -> Result<Response, reqwest::Error> {
+    //TODO
+fn create_device(url: &str, id: &DeviceId, data: Option<&str>, app_id: &AppId) {
     let client = Client::new();
-    let url = format!("{}{}", url.to_owned()+"/api/v1/apps/", app);
+    let url = format!("{}/api/v1/apps/{}/devices", url, app_id);
+    // todo use serdejson and append data.
+    let body = format!("{{\"metadata\":{{\"application\":\"{}\",\"name\":\"{}\"}}}}", app_id, id);
 
+    let res = client.post(&url)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(body)
+        .send();
 
-   client.delete(&url)
-        .send()
+    print_result(res, format!("Device {}", id), Verbs::create)
+}
+
+fn delete_app(url: &str, app: &AppId) {
+    let client = Client::new();
+    let url = format!("{}/api/v1/apps/{}", url, app);
+
+   let res = client.delete(&url).send();
+   print_result(res, format!("App {}", app), Verbs::delete)
+}
+
+fn delete_device(url: &str, app: &AppId, device_id: &DeviceId) {
+    let client = Client::new();
+    let url = format!("{}/api/v1/apps/{}/devices/{}", url, app, device_id);
+
+    let res = client.delete(&url).send();
+    print_result(res, format!("Device {}", device_id), Verbs::delete)
+}
+
+fn print_result(res: Result<Response, reqwest::Error>, resource_name: String, op: Verbs) {
+    match res {
+        Ok(r) => {
+                match op {
+                    Verbs::create => {
+                        match r.status() {
+                            reqwest::StatusCode::CREATED => println!("{} created.", resource_name),
+                            r => println!("Error : {}", r),
+                        }
+                    }, Verbs::delete => {
+                        match r.status() {
+                            reqwest::StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
+                            r => println!("Error : {}", r),
+                        }
+                    }, Verbs::get => {
+                        match r.status() {
+                            reqwest::StatusCode::OK => println!("{}", r.text().expect("Empty response")),
+                            r => println!("Error : {}", r),
+                        }
+                    }, Verbs::edit => {
+                        match r.status() {
+                            reqwest::StatusCode::OK => println!("{} edited.", resource_name),
+                            r => println!("Error : {}", r),
+                        }
+                    }
+                }
+        },
+        Err(e) => println!("Error sending request : {}", e)
+    }
 }
