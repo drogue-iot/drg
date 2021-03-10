@@ -1,11 +1,12 @@
+mod apps;
 mod arguments;
+mod devices;
+mod util;
 
 use arguments::{Parameters, Verbs, Resources};
 
-use reqwest::blocking::{Client, Response};
 use reqwest::Url;
 use std::str::FromStr;
-use serde_json::json;
 
 type AppId = str;
 type DeviceId = str;
@@ -25,21 +26,22 @@ fn main() {
 
     match verb {
         Verbs::create => {
-            let data = json_parse(sub_cmd.unwrap().value_of(Parameters::data)).expect("Invalid Json in data args");
+            //TODO nicer panic message
+            let data = util::json_parse(sub_cmd.unwrap().value_of(Parameters::data)).expect("Invalid Json in data args");
             match resource {
-                Resources::app => create_app(&url, id, data),
+                Resources::app => apps::create(&url, id, data),
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    create_device(&url, id, data, app_id)
+                    devices::create(&url, id, data, app_id)
                 },
             }
         }
         Verbs::delete => {
             match resource {
-                Resources::app => delete_app(&url, id),
+                Resources::app => apps::delete(&url, id),
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    delete_device(&url, app_id, id)
+                    devices::delete(&url, app_id, id)
                 },
             }
         }
@@ -47,98 +49,13 @@ fn main() {
             println!("uninmplemented")
         }
         Verbs::get => {
-            println!("uninmplemented")
+            match resource {
+                Resources::app => apps::read(&url, id),
+                Resources::device => {
+                    let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
+                    devices::read(&url, app_id, id)
+                },
+            }
         }
-    }
-}
-
-
-fn create_app(url: &Url, app: &AppId, data: serde_json::Value) {
-    let client = Client::new();
-    let url = format!("{}api/v1/apps", url);
-    let body = json!({
-        "metadata": {
-            "name": app,
-        },
-        "spec": {
-            "data": data,
-        }
-    });
-
-    let res = client.post(&url)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .body(body.to_string())
-        .send();
-
-    print_result(res, format!("App {}", app), Verbs::create)
-}
-
-fn create_device(url: &Url, id: &DeviceId, data: serde_json::Value, app_id: &AppId) {
-    let client = Client::new();
-    let url = format!("{}api/v1/apps/{}/devices", url, app_id);
-    println!("{}", url);
-    let body = json!({
-        "metadata": {
-            "name": id,
-            "application": app_id
-        },
-        "spec": data
-    });
-    let res = client.post(&url)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .body(body.to_string())
-        .send();
-
-    print_result(res, format!("Device {}", id), Verbs::create)
-}
-
-fn delete_app(url: &Url, app: &AppId) {
-    let client = Client::new();
-    let url = format!("{}api/v1/apps/{}", url, app);
-
-   let res = client.delete(&url).send();
-   print_result(res, format!("App {}", app), Verbs::delete)
-}
-
-fn delete_device(url: &Url, app: &AppId, device_id: &DeviceId) {
-    let client = Client::new();
-    let url = format!("{}api/v1/apps/{}/devices/{}", url, app, device_id);
-
-    let res = client.delete(&url).send();
-    print_result(res, format!("Device {}", device_id), Verbs::delete)
-}
-
-fn json_parse(data: Option<&str>) -> Result<serde_json::Value, serde_json::Error> {
-    serde_json::from_str(data.unwrap_or("{}"))
-}
-
-fn print_result(res: Result<Response, reqwest::Error>, resource_name: String, op: Verbs) {
-    match res {
-        Ok(r) => {
-                match op {
-                    Verbs::create => {
-                        match r.status() {
-                            reqwest::StatusCode::CREATED => println!("{} created.", resource_name),
-                            r => println!("Error : {}", r),
-                        }
-                    }, Verbs::delete => {
-                        match r.status() {
-                            reqwest::StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
-                            r => println!("Error : {}", r),
-                        }
-                    }, Verbs::get => {
-                        match r.status() {
-                            reqwest::StatusCode::OK => println!("{}", r.text().expect("Empty response")),
-                            r => println!("Error : {}", r),
-                        }
-                    }, Verbs::edit => {
-                        match r.status() {
-                            reqwest::StatusCode::OK => println!("{} edited.", resource_name),
-                            r => println!("Error : {}", r),
-                        }
-                    }
-                }
-        },
-        Err(e) => println!("Error sending request : {}", e)
     }
 }
