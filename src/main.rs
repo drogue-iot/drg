@@ -25,7 +25,7 @@ fn main() {
 
     match verb {
         Verbs::create => {
-            let data = sub_cmd.unwrap().value_of(Parameters::data);
+            let data = json_parse(sub_cmd.unwrap().value_of(Parameters::data)).expect("Invalid Json in data args");
             match resource {
                 Resources::app => create_app(&url, id, data),
                 Resources::device => {
@@ -53,7 +53,7 @@ fn main() {
 }
 
 
-fn create_app(url: &Url, app: &AppId, data: Option<&str>) {
+fn create_app(url: &Url, app: &AppId, data: serde_json::Value) {
     let client = Client::new();
     let url = format!("{}api/v1/apps", url);
     let body = json!({
@@ -61,7 +61,7 @@ fn create_app(url: &Url, app: &AppId, data: Option<&str>) {
             "name": app,
         },
         "spec": {
-            "data": data.unwrap_or(""),
+            "data": data,
         }
     });
 
@@ -73,7 +73,7 @@ fn create_app(url: &Url, app: &AppId, data: Option<&str>) {
     print_result(res, format!("App {}", app), Verbs::create)
 }
 
-fn create_device(url: &Url, id: &DeviceId, data: Option<&str>, app_id: &AppId) {
+fn create_device(url: &Url, id: &DeviceId, data: serde_json::Value, app_id: &AppId) {
     let client = Client::new();
     let url = format!("{}api/v1/apps/{}/devices", url, app_id);
     println!("{}", url);
@@ -82,9 +82,7 @@ fn create_device(url: &Url, id: &DeviceId, data: Option<&str>, app_id: &AppId) {
             "name": id,
             "application": app_id
         },
-        "spec": {
-            "data": data.unwrap_or(""),
-        }
+        "spec": data
     });
     let res = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
@@ -108,6 +106,10 @@ fn delete_device(url: &Url, app: &AppId, device_id: &DeviceId) {
 
     let res = client.delete(&url).send();
     print_result(res, format!("Device {}", device_id), Verbs::delete)
+}
+
+fn json_parse(data: Option<&str>) -> Result<serde_json::Value, serde_json::Error> {
+    serde_json::from_str(data.unwrap_or("{}"))
 }
 
 fn print_result(res: Result<Response, reqwest::Error>, resource_name: String, op: Verbs) {
