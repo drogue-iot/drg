@@ -5,13 +5,14 @@ mod util;
 
 use arguments::{Parameters, Verbs, Resources};
 
+use anyhow::Result;
 use reqwest::Url;
 use std::str::FromStr;
 
 type AppId = str;
 type DeviceId = str;
 
-fn main() {
+fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
 
     //TODO : The error is not nice to read. 
@@ -46,7 +47,13 @@ fn main() {
             }
         }
         Verbs::edit => {
-            println!("uninmplemented")
+            match resource {
+                Resources::app => print!("unimplemented!"),//apps::edit(&url, id),
+                Resources::device => {
+                    let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
+                    devices::edit(&url, app_id, id)
+                },
+            }
         }
         Verbs::get => {
             match resource {
@@ -58,4 +65,6 @@ fn main() {
             }
         }
     }
+
+    Ok(())
 }
