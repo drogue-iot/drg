@@ -11,11 +11,10 @@ use std::str::FromStr;
 type AppId = str;
 type DeviceId = str;
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let matches = arguments::parse_arguments();
 
-    //TODO : The error is not nice to read. 
-    let url = Url::parse(matches.value_of(Parameters::url).unwrap()).expect("Invalid URL.");
+    let url = util::url_validation(matches.value_of(Parameters::url))?;
 
     let (cmd_name, cmd) = matches.subcommand();
     //deserialize the command into enum to take advantage of rust exhaustive match
@@ -26,22 +25,21 @@ fn main() {
 
     match verb {
         Verbs::create => {
-            //TODO nicer panic message
-            let data = util::json_parse(sub_cmd.unwrap().value_of(Parameters::data)).expect("Invalid Json in data args");
+            let data = util::json_parse(sub_cmd.unwrap().value_of(Parameters::data))?;
             match resource {
-                Resources::app => apps::create(&url, id, data),
+                Resources::app => apps::create(&url, id, data)?,
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    devices::create(&url, id, data, app_id)
+                    devices::create(&url, id, data, app_id)?
                 },
             }
         }
         Verbs::delete => {
             match resource {
-                Resources::app => apps::delete(&url, id),
+                Resources::app => apps::delete(&url, id)?,
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    devices::delete(&url, app_id, id)
+                    devices::delete(&url, app_id, id)?
                 },
             }
         }
@@ -50,12 +48,14 @@ fn main() {
         }
         Verbs::get => {
             match resource {
-                Resources::app => apps::read(&url, id),
+                Resources::app => apps::read(&url, id)?,
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    devices::read(&url, app_id, id)
+                    devices::read(&url, app_id, id)?
                 },
             }
         }
     }
+
+    Ok(())
 }
