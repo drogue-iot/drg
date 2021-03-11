@@ -48,7 +48,7 @@ fn main() -> Result<()> {
         }
         Verbs::edit => {
             match resource {
-                Resources::app => print!("unimplemented!"),//apps::edit(&url, id),
+                Resources::app => apps::edit(&url, id),
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
                     devices::edit(&url, app_id, id)
