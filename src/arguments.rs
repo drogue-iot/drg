@@ -1,3 +1,5 @@
+use crate::util;
+
 use clap::{Arg, App, SubCommand, ArgMatches};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
@@ -52,12 +54,12 @@ let data_arg = Arg::with_name(Parameters::data.as_ref())
 
 
 App::new("Drogue Command Line Tool")
-    .version("0.1")
+    .version(util::VERSION)
     .author("Jb Trystram <jbtrystram@redhat.com>")
     .about("Allows to manage drogue apps and devices in a drogue-cloud instance")
-    .arg(url_arg)
     .subcommand(SubCommand::with_name(Verbs::create.as_ref())
             .about("create a resource in the drogue-cloud registry")
+            .arg(url_arg.clone())
             .subcommand(
                 SubCommand::with_name(Resources::device.as_ref())
                     .about("create a device.")
@@ -72,6 +74,7 @@ App::new("Drogue Command Line Tool")
     ).subcommand(
         SubCommand::with_name(Verbs::delete.as_ref())
             .about("delete a resource in the drogue-cloud registry")
+            .arg(url_arg.clone())
             .subcommand(
                 SubCommand::with_name(Resources::device.as_ref())
                     .about("delete a device.")
@@ -84,6 +87,7 @@ App::new("Drogue Command Line Tool")
     ).subcommand(
     SubCommand::with_name(Verbs::get.as_ref())
         .about("Read a resource from the drogue-cloud registry")
+        .arg(url_arg.clone())
         .subcommand(
             SubCommand::with_name(Resources::device.as_ref())
                 .about("Retrieve a device data.")
@@ -96,6 +100,7 @@ App::new("Drogue Command Line Tool")
     ).subcommand(
     SubCommand::with_name(Verbs::edit.as_ref())
         .about("Edit a resource from the drogue-cloud registry")
+        .arg(url_arg.clone())
         .subcommand(
             SubCommand::with_name(Resources::device.as_ref())
                 .about("Edit a device data.")
@@ -105,5 +110,8 @@ App::new("Drogue Command Line Tool")
         .about("Edit an app data.")
         .arg(resource_id_arg.clone())
         )
+    ).subcommand(
+            SubCommand::with_name("version")
+                .about("Print version information.")
     ).get_matches()
 }
