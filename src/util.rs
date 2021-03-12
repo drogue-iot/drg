@@ -1,40 +1,72 @@
 use crate::{Verbs};
-use reqwest::{blocking::Response, Url};
-use serde_json::{Value, from_str};
 use anyhow::{Result, Context};
+use reqwest::blocking::Response;
+use reqwest::{StatusCode, Url};
+use serde_json::{Value, from_str};
+use std::{
+    env::var,
+    io::{Write, Read},
+    process::Command,
+};
+use tempfile::NamedTempFile;
 
 pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     match op {
         Verbs::create => {
             match r.status() {
-                reqwest::StatusCode::CREATED => println!("{} created.", resource_name),
+                StatusCode::CREATED => println!("{} created.", resource_name),
                 r => println!("Error : {}", r),
             }
         }, Verbs::delete => {
             match r.status() {
-                reqwest::StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
+                StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
                 r => println!("Error : {}", r),
             }
         }, Verbs::get => {
             match r.status() {
-                reqwest::StatusCode::OK => println!("{}", r.text().expect("Empty response")),
+                StatusCode::OK => println!("{}", r.text().expect("Empty response")),
                 r => println!("Error : {}", r),
             }
         }, Verbs::edit => {
             match r.status() {
-                reqwest::StatusCode::OK => println!("{} edited.", resource_name),
-                r => println!("Error: {}", r),
+                StatusCode::NO_CONTENT => println!("{} edited.", resource_name),
+                r => println!("Error : {}", r),
             }
         }
     }
+
+}
+
+
+
+pub fn url_validation(url: Option<&str>) -> Result<Url> {
+    Url::parse(url.unwrap()).with_context(|| format!("URL args: \'{}\' is not valid", url.unwrap()))
 }
 
 pub fn json_parse(data: Option<&str>) -> Result<Value> {
-    let parsed = from_str(data.unwrap_or("{}")).with_context(|| format!("Can't parse data args: \'{}\' into json", data.unwrap()))?;
-    Ok(parsed)
+    from_str(data.unwrap_or("{}")).with_context(|| format!("Can't parse data args: \'{}\' into json", data.unwrap()))
 }
 
-pub fn url_validation(url: Option<&str>) -> Result<Url> {
-    let parse = Url::parse(url.unwrap()).with_context(|| format!("URL args: \'{}\' is not valid", url.unwrap()))?;
-    Ok(parse)
+
+pub fn editor(original: String) -> Result<Value> {
+
+    //TODO : that would not work on windows !
+    let editor = var("EDITOR").unwrap_or("vi".to_string());
+    let file = NamedTempFile::new()?;
+    //the handler needs to be kept to reopen the file later.
+    let mut file2= file.reopen()?;
+
+    // Write the original data to the file.
+    file.as_file().write_all(original.as_bytes())?;
+
+    Command::new(editor)
+         .arg(file.path())
+         .status()
+         .expect("Could not open current data in editor.");
+
+    // Read the data using the second handle.
+    let mut buf = String::new();
+    file2.read_to_string(&mut buf)?;
+
+    from_str(buf.as_str()).with_context(|| "Invalid JSON data.")
 }

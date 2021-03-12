@@ -5,13 +5,14 @@ mod util;
 
 use arguments::{Parameters, Verbs, Resources};
 
+use anyhow::Result;
 use reqwest::Url;
 use std::str::FromStr;
 
 type AppId = str;
 type DeviceId = str;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
 
     let url = util::url_validation(matches.value_of(Parameters::url))?;
@@ -44,7 +45,13 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Verbs::edit => {
-            println!("uninmplemented")
+            match resource {
+                Resources::app => apps::edit(&url, id),
+                Resources::device => {
+                    let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
+                    devices::edit(&url, app_id, id)
+                },
+            }
         }
         Verbs::get => {
             match resource {
