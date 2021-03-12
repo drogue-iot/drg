@@ -1,6 +1,6 @@
-use crate::{Url, AppId, Verbs, DeviceId, util};
+use crate::{AppId, Verbs, DeviceId, util};
 use reqwest::blocking::Client;
-use reqwest::StatusCode;
+use reqwest::{StatusCode, Url};
 use serde_json::json;
 use reqwest::blocking::Response;
 use anyhow::{Result, Context};

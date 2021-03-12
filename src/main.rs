@@ -15,7 +15,9 @@ type DeviceId = str;
 fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
 
-    let url = util::url_validation(matches.value_of(Parameters::url))?;
+    if matches.is_present("version") {
+        util::print_version();
+    }
 
     let (cmd_name, cmd) = matches.subcommand();
     //deserialize the command into enum to take advantage of rust exhaustive match
@@ -23,6 +25,9 @@ fn main() -> Result<()> {
     let (sub_cmd_name, sub_cmd) = cmd.unwrap().subcommand();
     let resource = Resources::from_str(sub_cmd_name).unwrap();
     let id = sub_cmd.unwrap().value_of(Parameters::id).unwrap();
+
+    //TODO : The error is not nice to read.
+    let url = Url::parse(matches.value_of(Parameters::url).unwrap()).expect("Invalid URL.");
 
     match verb {
         Verbs::create => {

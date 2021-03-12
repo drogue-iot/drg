@@ -9,6 +9,10 @@ use std::{
     process::Command,
 };
 use tempfile::NamedTempFile;
+use std::process::exit;
+
+pub const VERSION: &str = "0.1";
+pub const COMPATIBLE_DROGUE_VERSION: &str = "0.3.0";
 
 pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     match op {
@@ -69,4 +73,14 @@ pub fn editor(original: String) -> Result<Value> {
     file2.read_to_string(&mut buf)?;
 
     from_str(buf.as_str()).with_context(|| "Invalid JSON data.")
+}
+
+pub fn print_version() {
+   //todo add git hash and build date to version output ?
+
+    println!("Client Version: {}", VERSION);
+    println!("Compatible Server Version: {}", COMPATIBLE_DROGUE_VERSION);
+    //todo connect to server and retrieve version.
+
+    exit(0);
 }
