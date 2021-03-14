@@ -17,7 +17,7 @@ pub fn load_config_file(path: Option<&str>) -> Result<Config> {
     let path = match path {
         Some(p) => p.to_string(),
         None => {
-            var("DRGCFG").unwrap_or(format!("{}/.drgconfig", var("HOME")?))
+            var("DRGCFG").unwrap_or(format!("{}/.drgconfig.json", var("HOME")?))
         }
     };
     //todo verbose option
