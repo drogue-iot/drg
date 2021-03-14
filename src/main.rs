@@ -1,11 +1,12 @@
 mod apps;
 mod arguments;
+mod config;
 mod devices;
 mod util;
 
 use arguments::{Parameters, Verbs, Resources};
 
-use anyhow::Result;
+use anyhow::{Result, Context};
 use reqwest::Url;
 use std::str::FromStr;
 
@@ -19,6 +20,7 @@ fn main() -> Result<()> {
         util::print_version();
     }
 
+    // TODO : unsafe unwraps !!!!
     let (cmd_name, cmd) = matches.subcommand();
     //deserialize the command into enum to take advantage of rust exhaustive match
     let verb = Verbs::from_str(cmd_name).unwrap();
@@ -27,7 +29,19 @@ fn main() -> Result<()> {
     let id = sub_cmd.unwrap().value_of(Parameters::id).unwrap();
 
     //TODO : The error is not nice to read.
-    let url = Url::parse(matches.value_of(Parameters::url).unwrap()).expect("Invalid URL.");
+    let url;
+    //todo default app is not used
+    let _default_app: Option<String>;
+    // url arg preempts config file.
+    if matches.is_present(Parameters::url) {
+        url = Url::parse(matches.value_of(Parameters::url).unwrap()).expect("Invalid URL.");
+        _default_app = None;
+    } else {
+        let conf = config::load_config_file(matches.value_of(Parameters::config))
+            .context("No URL arg provided, DRGCTL config file not found.")?;
+        url = Url::parse(conf.drogue_cloud_url.as_str()).expect("Invalid URL.");
+        _default_app = conf.default_app;
+    }
 
     match verb {
         Verbs::create => {
