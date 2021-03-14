@@ -1,9 +1,8 @@
 use crate::{Verbs};
-
 use anyhow::{Result, Context};
 use reqwest::blocking::Response;
-use reqwest::StatusCode;
-use serde_json::{Value, Error, from_str};
+use reqwest::{StatusCode, Url};
+use serde_json::{Value, from_str};
 use std::{
     env::var,
     io::{Write, Read},
@@ -15,39 +14,41 @@ use std::process::exit;
 pub const VERSION: &str = "0.1";
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.3.0";
 
-pub fn print_result(res: Result<Response, reqwest::Error>, resource_name: String, op: Verbs) {
-    match res {
-        Ok(r) => {
-            match op {
-                Verbs::create => {
-                    match r.status() {
-                        StatusCode::CREATED => println!("{} created.", resource_name),
-                        r => println!("Error : {}", r),
-                    }
-                }, Verbs::delete => {
-                    match r.status() {
-                        StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
-                        r => println!("Error : {}", r),
-                    }
-                }, Verbs::get => {
-                    match r.status() {
-                        StatusCode::OK => println!("{}", r.text().expect("Empty response")),
-                        r => println!("Error : {}", r),
-                    }
-                }, Verbs::edit => {
-                    match r.status() {
-                        StatusCode::NO_CONTENT => println!("{} edited.", resource_name),
-                        r => println!("Error : {}", r),
-                    }
-                }
+pub fn print_result(r: Response, resource_name: String, op: Verbs) {
+    match op {
+        Verbs::create => {
+            match r.status() {
+                StatusCode::CREATED => println!("{} created.", resource_name),
+                r => println!("Error : {}", r),
             }
-        },
-        Err(e) => println!("Error sending request : {}", e)
+        }, Verbs::delete => {
+            match r.status() {
+                StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
+                r => println!("Error : {}", r),
+            }
+        }, Verbs::get => {
+            match r.status() {
+                StatusCode::OK => println!("{}", r.text().expect("Empty response")),
+                r => println!("Error : {}", r),
+            }
+        }, Verbs::edit => {
+            match r.status() {
+                StatusCode::NO_CONTENT => println!("{} edited.", resource_name),
+                r => println!("Error : {}", r),
+            }
+        }
     }
+
 }
 
-pub fn json_parse(data: Option<&str>) -> Result<Value, Error> {
-    from_str(data.unwrap_or("{}"))
+
+
+pub fn url_validation(url: Option<&str>) -> Result<Url> {
+    Url::parse(url.unwrap()).with_context(|| format!("URL args: \'{}\' is not valid", url.unwrap()))
+}
+
+pub fn json_parse(data: Option<&str>) -> Result<Value> {
+    from_str(data.unwrap_or("{}")).with_context(|| format!("Can't parse data args: \'{}\' into json", data.unwrap()))
 }
 
 

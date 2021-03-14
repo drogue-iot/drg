@@ -2,8 +2,9 @@ use crate::{AppId, Verbs, util};
 use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
 use serde_json::json;
+use anyhow::{Context, Result};
 
-pub fn create(url: &Url, app: &AppId, data: serde_json::Value) {
+pub fn create(url: &Url, app: &AppId, data: serde_json::Value) -> Result<()> {
     let client = Client::new();
     let url = format!("{}api/v1/apps", url);
     let body = json!({
@@ -18,22 +19,25 @@ pub fn create(url: &Url, app: &AppId, data: serde_json::Value) {
     let res = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(body.to_string())
-        .send();
+        .send().with_context(|| format!("Can't create app "))?;
 
-    util::print_result(res, format!("App {}", app), Verbs::create)
+    util::print_result(res, format!("App {}", app), Verbs::create);
+    Ok(())
 }
 
-pub fn read(url: &Url, app: &AppId) {
-    let res = get(url, app);
-    util::print_result(res, app.to_string(), Verbs::get)
+pub fn read(url: &Url, app: &AppId) -> Result<()> {
+    let res = get(url, app)?;
+    util::print_result(res, app.to_string(), Verbs::get);
+    Ok(())
 }
 
-pub fn delete(url: &Url, app: &AppId) {
+pub fn delete(url: &Url, app: &AppId) -> Result<()> {
     let client = Client::new();
     let url = format!("{}api/v1/apps/{}", url, app);
 
-    let res = client.delete(&url).send();
-    util::print_result(res, format!("App {}", app), Verbs::delete)
+    let res = client.delete(&url).send().with_context(|| format!("Can't get app "))?;
+    util::print_result(res, format!("App {}", app), Verbs::delete);
+    Ok(())
 }
 
 pub fn edit(url: &Url, app: &AppId) {
@@ -45,7 +49,7 @@ pub fn edit(url: &Url, app: &AppId) {
                 StatusCode::OK => {
                     let body = r.text().unwrap_or("{}".to_string());
                     let insert = util::editor(body).unwrap();
-                    util::print_result(put(url, app, insert), format!("App {}", app), Verbs::edit)
+                    util::print_result(put(url, app, insert).unwrap(), format!("App {}", app), Verbs::edit)
                 },
                 e => println!("Error : could not retrieve app: {}", e)
             }
@@ -53,11 +57,11 @@ pub fn edit(url: &Url, app: &AppId) {
     }
 }
 
-fn get(url: &Url, app: &AppId) -> Result<Response, reqwest::Error> {
+
+fn get(url: &Url, app: &AppId) -> Result<Response> {
     let client = Client::new();
     let url = format!("{}api/v1/apps/{}", url, app);
-
-    client.get(&url).send()
+    client.get(&url).send().with_context(|| format!("Can't get app "))
 }
 
 fn put(url: &Url, app: &AppId, data: serde_json::Value) -> Result<Response, reqwest::Error> {

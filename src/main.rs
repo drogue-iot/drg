@@ -31,22 +31,21 @@ fn main() -> Result<()> {
 
     match verb {
         Verbs::create => {
-            //TODO nicer panic message
-            let data = util::json_parse(sub_cmd.unwrap().value_of(Parameters::data)).expect("Invalid Json in data args");
+            let data = util::json_parse(sub_cmd.unwrap().value_of(Parameters::data))?;
             match resource {
-                Resources::app => apps::create(&url, id, data),
+                Resources::app => apps::create(&url, id, data)?,
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    devices::create(&url, id, data, app_id)
+                    devices::create(&url, id, data, app_id)?
                 },
             }
         }
         Verbs::delete => {
             match resource {
-                Resources::app => apps::delete(&url, id),
+                Resources::app => apps::delete(&url, id)?,
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    devices::delete(&url, app_id, id)
+                    devices::delete(&url, app_id, id)?
                 },
             }
         }
@@ -61,10 +60,10 @@ fn main() -> Result<()> {
         }
         Verbs::get => {
             match resource {
-                Resources::app => apps::read(&url, id),
+                Resources::app => apps::read(&url, id)?,
                 Resources::device => {
                     let app_id = sub_cmd.unwrap().value_of(Resources::app).unwrap();
-                    devices::read(&url, app_id, id)
+                    devices::read(&url, app_id, id)?
                 },
             }
         }
