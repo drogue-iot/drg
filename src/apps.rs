@@ -19,7 +19,7 @@ pub fn create(url: &Url, app: &AppId, data: serde_json::Value) -> Result<()> {
     let res = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(body.to_string())
-        .send().with_context(|| format!("Can't create app "))?;
+        .send().context("Can't create app.")?;
 
     util::print_result(res, format!("App {}", app), Verbs::create);
     Ok(())
@@ -35,7 +35,7 @@ pub fn delete(url: &Url, app: &AppId) -> Result<()> {
     let client = Client::new();
     let url = format!("{}api/v1/apps/{}", url, app);
 
-    let res = client.delete(&url).send().with_context(|| format!("Can't get app "))?;
+    let res = client.delete(&url).send().context("Can't get app.")?;
     util::print_result(res, format!("App {}", app), Verbs::delete);
     Ok(())
 }
@@ -61,7 +61,7 @@ pub fn edit(url: &Url, app: &AppId) {
 fn get(url: &Url, app: &AppId) -> Result<Response> {
     let client = Client::new();
     let url = format!("{}api/v1/apps/{}", url, app);
-    client.get(&url).send().with_context(|| format!("Can't get app "))
+    client.get(&url).send().context("Can't retrieve app data.")
 }
 
 fn put(url: &Url, app: &AppId, data: serde_json::Value) -> Result<Response, reqwest::Error> {

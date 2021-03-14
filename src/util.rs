@@ -44,11 +44,11 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
 
 
 pub fn url_validation(url: Option<&str>) -> Result<Url> {
-    Url::parse(url.unwrap()).with_context(|| format!("URL args: \'{}\' is not valid", url.unwrap()))
+    Url::parse(url.unwrap()).context(format!("URL args: \'{}\' is not valid", url.unwrap()))
 }
 
 pub fn json_parse(data: Option<&str>) -> Result<Value> {
-    from_str(data.unwrap_or("{}")).with_context(|| format!("Can't parse data args: \'{}\' into json", data.unwrap()))
+    from_str(data.unwrap_or("{}")).context(format!("Can't parse data args: \'{}\' into json", data.unwrap()))
 }
 
 
@@ -72,7 +72,7 @@ pub fn editor(original: String) -> Result<Value> {
     let mut buf = String::new();
     file2.read_to_string(&mut buf)?;
 
-    from_str(buf.as_str()).with_context(|| "Invalid JSON data.")
+    from_str(buf.as_str()).context("Invalid JSON data.")
 }
 
 pub fn print_version() {

@@ -7,7 +7,6 @@ mod util;
 use arguments::{Parameters, Verbs, Resources};
 
 use anyhow::{Result, Context};
-use reqwest::Url;
 use std::str::FromStr;
 
 type AppId = str;
@@ -28,18 +27,17 @@ fn main() -> Result<()> {
     let resource = Resources::from_str(sub_cmd_name).unwrap();
     let id = sub_cmd.unwrap().value_of(Parameters::id).unwrap();
 
-    //TODO : The error is not nice to read.
     let url;
     //todo default app is not used
     let _default_app: Option<String>;
     // url arg preempts config file.
     if matches.is_present(Parameters::url) {
-        url = Url::parse(matches.value_of(Parameters::url).unwrap()).expect("Invalid URL.");
+        url = util::url_validation(matches.value_of(Parameters::url))?;
         _default_app = None;
     } else {
         let conf = config::load_config_file(matches.value_of(Parameters::config))
             .context("No URL arg provided, DRGCTL config file not found.")?;
-        url = Url::parse(conf.drogue_cloud_url.as_str()).expect("Invalid URL.");
+        url = util::url_validation(Some(conf.drogue_cloud_url.as_str()))?;
         _default_app = conf.default_app;
     }
 

@@ -11,7 +11,7 @@ pub fn delete(url: &Url, app: &AppId, device_id: &DeviceId) -> Result<()> {
     let client = Client::new();
     let url = format!("{}{}/{}/devices/{}", url, API_BASE, app, device_id);
 
-    let res = client.delete(&url).send().with_context(|| format!("Can't delete device "))?;
+    let res = client.delete(&url).send().context("Can't delete device.")?;
     util::print_result(res, format!("Device {}", device_id), Verbs::delete);
     Ok(())
 }
@@ -36,7 +36,7 @@ pub fn create(url: &Url, id: &DeviceId, data: serde_json::Value, app_id: &AppId)
     let res = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(body.to_string())
-        .send().with_context(|| format!("Can't create device "))?;
+        .send().context("Can't create device.")?;
 
     util::print_result(res, format!("Device {}", id), Verbs::create);
     Ok(())
@@ -63,7 +63,7 @@ fn get(url: &Url, app: &AppId, device_id: &DeviceId) -> Result<Response> {
     let client = Client::new();
     let url = format!("{}{}/{}/devices/{}", url, API_BASE, app, device_id);
 
-    client.get(&url).send().with_context(|| format!("Can't get device "))   
+    client.get(&url).send().context("Can't get device.")
 }
 
 fn put(url: &Url, app: &AppId, device_id: &DeviceId, data: serde_json::Value) -> Result<Response, reqwest::Error> {
