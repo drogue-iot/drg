@@ -11,7 +11,7 @@ use std::{
 use tempfile::NamedTempFile;
 use std::process::exit;
 
-pub const VERSION: &str = "0.1";
+pub const VERSION: &str = "0.1-beta1";
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.3.0";
 
 pub fn print_result(r: Response, resource_name: String, op: Verbs) {

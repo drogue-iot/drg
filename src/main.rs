@@ -36,7 +36,7 @@ fn main() -> Result<()> {
         _default_app = None;
     } else {
         let conf = config::load_config_file(matches.value_of(Parameters::config))
-            .context("No URL arg provided, DRGCTL config file not found.")?;
+            .context("No URL arg provided and DRGCTL config file was not found.")?;
         url = util::url_validation(Some(conf.drogue_cloud_url.as_str()))?;
         _default_app = conf.default_app;
     }
