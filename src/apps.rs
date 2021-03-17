@@ -1,8 +1,8 @@
-use crate::{AppId, Verbs, util};
+use crate::{util, AppId, Verbs};
+use anyhow::{Context, Result};
 use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
 use serde_json::json;
-use anyhow::{Context, Result};
 
 pub fn create(url: &Url, app: &AppId, data: serde_json::Value) -> Result<()> {
     let client = Client::new();
@@ -16,10 +16,12 @@ pub fn create(url: &Url, app: &AppId, data: serde_json::Value) -> Result<()> {
         }
     });
 
-    let res = client.post(&url)
+    let res = client
+        .post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(body.to_string())
-        .send().context("Can't create app.")?;
+        .send()
+        .context("Can't create app.")?;
 
     util::print_result(res, format!("App {}", app), Verbs::create);
     Ok(())
@@ -44,19 +46,21 @@ pub fn edit(url: &Url, app: &AppId) {
     //read app data
     let res = get(url, app);
     match res {
-        Ok(r) => {
-            match r.status() {
-                StatusCode::OK => {
-                    let body = r.text().unwrap_or("{}".to_string());
-                    let insert = util::editor(body).unwrap();
-                    util::print_result(put(url, app, insert).unwrap(), format!("App {}", app), Verbs::edit)
-                },
-                e => println!("Error : could not retrieve app: {}", e)
+        Ok(r) => match r.status() {
+            StatusCode::OK => {
+                let body = r.text().unwrap_or("{}".to_string());
+                let insert = util::editor(body).unwrap();
+                util::print_result(
+                    put(url, app, insert).unwrap(),
+                    format!("App {}", app),
+                    Verbs::edit,
+                )
             }
-        }, Err(e) => println!("Error : could not retrieve app: {}", e)
+            e => println!("Error : could not retrieve app: {}", e),
+        },
+        Err(e) => println!("Error : could not retrieve app: {}", e),
     }
 }
-
 
 fn get(url: &Url, app: &AppId) -> Result<Response> {
     let client = Client::new();
@@ -68,7 +72,8 @@ fn put(url: &Url, app: &AppId, data: serde_json::Value) -> Result<Response, reqw
     let client = Client::new();
     let url = format!("{}api/v1/apps/{}", url, app);
 
-    client.put(&url)
+    client
+        .put(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(data.to_string())
         .send()
