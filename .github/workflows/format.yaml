@@ -17,5 +17,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
+      
       - name: Run Rustfmt
-          run: cargo fmt -- --check
+        run : cargo fmt -- --check
+                 
