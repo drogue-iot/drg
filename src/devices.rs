@@ -1,9 +1,9 @@
-use crate::{AppId, Verbs, DeviceId, util};
+use crate::{util, AppId, DeviceId, Verbs};
+use anyhow::{Context, Result};
 use reqwest::blocking::Client;
+use reqwest::blocking::Response;
 use reqwest::{StatusCode, Url};
 use serde_json::json;
-use reqwest::blocking::Response;
-use anyhow::{Result, Context};
 
 const API_BASE: &str = "api/v1/apps";
 
@@ -33,10 +33,12 @@ pub fn create(url: &Url, id: &DeviceId, data: serde_json::Value, app_id: &AppId)
         },
         "spec": data
     });
-    let res = client.post(&url)
+    let res = client
+        .post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(body.to_string())
-        .send().context("Can't create device.")?;
+        .send()
+        .context("Can't create device.")?;
 
     util::print_result(res, format!("Device {}", id), Verbs::create);
     Ok(())
@@ -46,16 +48,19 @@ pub fn edit(url: &Url, app: &AppId, device_id: &DeviceId) {
     //read device data
     let res = get(url, app, device_id);
     match res {
-        Ok(r) => {
-            match r.status() {
-                StatusCode::OK => {
-                    let body = r.text().unwrap_or("{}".to_string());
-                    let insert = util::editor(body).unwrap();
-                    util::print_result(put(url, app, device_id, insert).unwrap(), format!("Device {}", device_id), Verbs::edit)
-                },
-                e => println!("Error : could not retrieve device: {}", e)
+        Ok(r) => match r.status() {
+            StatusCode::OK => {
+                let body = r.text().unwrap_or("{}".to_string());
+                let insert = util::editor(body).unwrap();
+                util::print_result(
+                    put(url, app, device_id, insert).unwrap(),
+                    format!("Device {}", device_id),
+                    Verbs::edit,
+                )
             }
-        }, Err(e) => println!("Error : could not retrieve device: {}", e)
+            e => println!("Error : could not retrieve device: {}", e),
+        },
+        Err(e) => println!("Error : could not retrieve device: {}", e),
     }
 }
 
@@ -66,11 +71,17 @@ fn get(url: &Url, app: &AppId, device_id: &DeviceId) -> Result<Response> {
     client.get(&url).send().context("Can't get device.")
 }
 
-fn put(url: &Url, app: &AppId, device_id: &DeviceId, data: serde_json::Value) -> Result<Response, reqwest::Error> {
+fn put(
+    url: &Url,
+    app: &AppId,
+    device_id: &DeviceId,
+    data: serde_json::Value,
+) -> Result<Response, reqwest::Error> {
     let client = Client::new();
     let url = format!("{}{}/{}/devices/{}", url, API_BASE, app, device_id);
 
-    client.put(&url)
+    client
+        .put(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(data.to_string())
         .send()

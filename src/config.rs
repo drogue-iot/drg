@@ -1,10 +1,6 @@
-use anyhow::{Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{
-    env::var,
-    fs::File,
-};
-
+use std::{env::var, fs::File};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
@@ -13,12 +9,9 @@ pub struct Config {
 }
 
 pub fn load_config_file(path: Option<&str>) -> Result<Config> {
-
     let path = match path {
         Some(p) => p.to_string(),
-        None => {
-            var("DRGCFG").unwrap_or(format!("{}/.drgconfig.json", var("HOME")?))
-        }
+        None => var("DRGCFG").unwrap_or(format!("{}/.drgconfig.json", var("HOME")?)),
     };
     //todo verbose option
     println!("Loading config file: {}", path);
