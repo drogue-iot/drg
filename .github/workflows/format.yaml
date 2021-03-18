@@ -1,0 +1,21 @@
+name: Code formating
+
+on:
+  push:
+    # Run on the main branch
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  clippy_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+      - name: Run Rustfmt
+          run: cargo fmt -- --check
