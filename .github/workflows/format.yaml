@@ -20,4 +20,6 @@ jobs:
       
       - name: Run Rustfmt
         run : cargo fmt -- --check
+      - name: Cargo build
+          run: cargo build
                  
