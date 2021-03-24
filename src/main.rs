@@ -3,6 +3,7 @@ mod arguments;
 mod config;
 mod devices;
 mod util;
+mod openid;
 
 use arguments::{Parameters, Resources, Verbs};
 
