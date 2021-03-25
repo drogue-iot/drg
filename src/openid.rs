@@ -6,57 +6,59 @@ use oauth2::{
     PkceCodeChallenge,
     RedirectUrl,
     Scope,
-    TokenUrl
+    TokenUrl,
 };
-use oauth2::basic::BasicClient;
+use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::reqwest::http_client;
 
 use anyhow::Result;
 
-use tiny_http::Server;
+use tiny_http::{Server, Response};
 
 use qstring::QString;
+use reqwest::{Url};
+
+use crate::util;
 
 const CLIENT_ID: &str = "drogue";
 const SERVER_PORT: u16 = 8080;
 const REDIRECT_URL: &str = "http://localhost:8080";
 
-// see https://sso.sandbox.drogue.cloud/auth/realms/drogue/.well-known/openid-configuration for those
-const AUTH_URL: &str = "https://keycloak-drogue-dev.apps.wonderful.iot-playground.org/auth/realms/drogue/protocol/openid-connect/auth";
-const TOKEN_URL: &str = "https://keycloak-drogue-dev.apps.wonderful.iot-playground.org/auth/realms/drogue/protocol/openid-connect/token";
+pub fn login(api_endpoint: Url) -> Result<BasicTokenResponse> {
 
+    println!("Starting authentication process with {}", api_endpoint);
 
-// Create an OAuth2 client by specifying the client ID, authorization URL and token URL.
+    let sso_url = util::get_sso_endpoint(api_endpoint)?;
 
-fn get_token() -> Result<()>{
+    let (auth, token) = util::get_auth_and_tokens_endpoints(sso_url)?;
+
+    get_token(auth, token)
+}
+
+fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse>{
     let client =
         BasicClient::new(
             ClientId::new(CLIENT_ID.to_string()),
-            //Some(ClientSecret::new("616a4e1e-a3cb-401f-86d4-3539a3f31a9b".to_string())),
             None,
-            AuthUrl::new(AUTH_URL.to_string())?,
-            Some(TokenUrl::new(TOKEN_URL.to_string())?)
+            AuthUrl::new(auth_url.to_string())?,
+            Some(TokenUrl::new(token_url.to_string())?)
         )
-// Set the URL the user will be redirected to after the authorization process.
+            // Where the user will be redirected to after the authorization process.
             .set_redirect_url(RedirectUrl::new(REDIRECT_URL.to_string())?);
 
-// Generate a PKCE challenge.
+    // Generate a PKCE challenge. As this is a client app a PKCE challenge this is needed to assure confidentiality.
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
 // Generate the full authorization URL.
     let (final_auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
-// Set the desired scopes.
-        //todo : get an offline token
-//        .add_scope(Scope::new("read".to_string()))
-//        .add_scope(Scope::new("write".to_string()))
-// Set the PKCE code challenge.
+        .add_scope(Scope::new("offline_access".to_string()))
         .set_pkce_challenge(pkce_challenge)
         .url();
 
-// This is the URL you should redirect the user to, in order to trigger the authorization
-// process.
-    println!("Browse to: {}", final_auth_url);
+    // The URL the user should browse to, in order to trigger the authorization process.
+    // todo : open a browser automagically.
+    println!("\nTo authenticate with drogue cloud please browse to: \n{}", final_auth_url);
 
     let bind = format!("0.0.0.0:{}", SERVER_PORT);
     //start a local server
@@ -68,12 +70,12 @@ fn get_token() -> Result<()>{
     let state = querry.get("state").unwrap();
     let code = querry.get("code").unwrap();
 
-// Once the user has been redirected to the redirect URL, you'll have access to the
-// authorization code. For security reasons, your code should verify that the `state`
-// parameter returned by the server matches `csrf_state`.
+    let _ = request.respond(Response::from_string("Authentication code retrieved. This browser can be closed."));
+
+// For security reasons, verify that the `state` parameter returned by the server matches `csrf_state`.
     assert_eq!(csrf_token.secret().as_str(), state);
 
-// Now you can trade it for an access token.
+// Now trade it for an access token.
     let token_result = client
         .exchange_code(AuthorizationCode::new(code.to_string()))
 // Set the PKCE code verifier.
@@ -81,6 +83,5 @@ fn get_token() -> Result<()>{
         .request(http_client);
 
 // Unwrapping token_result will either produce a Token or a RequestTokenError.
-    println!("{:?}", token_result.unwrap());
-    token_result
+    token_result.map_err(|_| anyhow::Error::msg("error retrieving the authentication token"))
 }

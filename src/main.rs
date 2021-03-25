@@ -9,15 +9,31 @@ use arguments::{Parameters, Resources, Verbs};
 
 use anyhow::{Context, Result};
 use std::str::FromStr;
+use std::process::exit;
 
 type AppId = str;
 type DeviceId = str;
 
 fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
+    let token;
 
     if matches.is_present("version") {
         util::print_version();
+    } else if matches.is_present("login") {
+        //todo make url optional and reuse the one existing in a previous config
+        let (_, submatches) = matches.subcommand();
+        let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
+        token = openid::login(url.clone())?;
+
+        println!("\nSuccessfully authenticated to drogue cloud : {}", url);
+        let config = config::Config {
+            drogue_cloud_url: url.to_string(),
+            default_app: None,
+            token: Some(token),
+        };
+        config::save_config(config)?;
+        exit(0);
     }
 
     let url;
@@ -25,12 +41,12 @@ fn main() -> Result<()> {
     let _default_app: Option<String>;
     // url arg preempts config file.
     if matches.is_present(Parameters::url) {
-        url = util::url_validation(matches.value_of(Parameters::url))?;
+        url = util::url_validation(matches.value_of(Parameters::url).unwrap())?;
         _default_app = None;
     } else {
-        let conf = config::load_config_file(matches.value_of(Parameters::config))
+        let conf = config::load_config(matches.value_of(Parameters::config))
             .context("No URL arg provided and DRGCTL config file was not found.")?;
-        url = util::url_validation(Some(conf.drogue_cloud_url.as_str()))?;
+        url = util::url_validation(conf.drogue_cloud_url.as_str())?;
         _default_app = conf.default_app;
     }
 

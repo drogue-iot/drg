@@ -62,7 +62,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .author("Jb Trystram <jbtrystram@redhat.com>")
         .about("Allows to manage drogue apps and devices in a drogue-cloud instance")
         .arg(config_file_arg)
-        .arg(url_arg)
+        .arg(url_arg.clone())
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name(Verbs::create.as_ref())
@@ -133,5 +133,9 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 ),
         )
         .subcommand(SubCommand::with_name("version").about("Print version information."))
+        .subcommand(SubCommand::with_name("login")
+            .about("Log into a drogue cloud installation.")
+            .arg(url_arg.clone().required(true))
+        )
         .get_matches()
 }

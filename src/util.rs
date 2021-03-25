@@ -1,6 +1,6 @@
 use crate::Verbs;
 use anyhow::{Context, Result};
-use reqwest::blocking::Response;
+use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
 use serde_json::{from_str, Value};
 use std::process::exit;
@@ -35,8 +35,10 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     }
 }
 
-pub fn url_validation(url: Option<&str>) -> Result<Url> {
-    Url::parse(url.unwrap()).context(format!("URL args: \'{}\' is not valid", url.unwrap()))
+// todo : assume https as the default scheme
+// Or get rid of this.
+pub fn url_validation(url: &str) -> Result<Url> {
+    Url::parse(url).context(format!("URL args: \'{}\' is not valid", url))
 }
 
 pub fn json_parse(data: Option<&str>) -> Result<Value> {
@@ -47,7 +49,7 @@ pub fn json_parse(data: Option<&str>) -> Result<Value> {
 }
 
 pub fn editor(original: String) -> Result<Value> {
-    //TODO : that would not work on windows !
+    // todo cross platform support
     let editor = var("EDITOR").unwrap_or("vi".to_string());
     let file = NamedTempFile::new()?;
     //the handler needs to be kept to reopen the file later.
@@ -69,11 +71,49 @@ pub fn editor(original: String) -> Result<Value> {
 }
 
 pub fn print_version() {
-    //todo add git hash and build date to version output ?
 
     println!("Client Version: {}", VERSION);
     println!("Compatible Server Version: {}", COMPATIBLE_DROGUE_VERSION);
     //todo connect to server and retrieve version.
 
     exit(0);
+}
+
+// use keycloak's well known endpoint to retrieve endpoints.
+pub fn get_sso_endpoint(url: Url) -> Result<Url> {
+    let client = Client::new();
+
+    let url = url.join(".well-known/drogue-endpoints")?;
+
+
+    let res = client.get(url)
+        .send()
+        .context("Can't retrieve drogue endpoints details")?;
+
+    let endpoints: Value = res.json().context("Cannot deserialize drogue endpoints details")?;
+
+    let issuer = endpoints["issuer_url"].as_str().context("Missing `issuer_url` in drogue endpoint details")?;
+    // a trailing / is needed to append the rest of the path.
+    url_validation(format!("{}/", issuer).as_str())
+}
+
+
+// use keycloak's well known endpoint to retrieve endpoints.
+// http://keycloakhost:keycloakport/auth/realms/{realm}/.well-known/openid-configuration
+pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
+    let client = Client::new();
+
+    let url = issuer_url.join(".well-known/openid-configuration")?;
+    let res = client.get(url)
+        .send()
+        .context("Can't retrieve openid-connect endpoints details")?;
+
+    let endpoints: Value = res.json().context("Cannot deserialize openid-connect endpoints details")?;
+
+    let auth = endpoints["authorization_endpoint"].as_str().context("Missing `authorization_endpoint` in drogue openid-connect configuration")?;
+    let auth_endpoint = url_validation(auth);
+    let token = endpoints["token_endpoint"].as_str().context("Missing `token_endpoint` in drogue openid-connect configuration")?;
+    let token_endpoint = url_validation(token);
+
+    Ok((auth_endpoint?, token_endpoint?))
 }

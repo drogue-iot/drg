@@ -25,7 +25,6 @@ pub fn read(url: &Url, app: &AppId, device_id: &DeviceId) -> Result<()> {
 pub fn create(url: &Url, id: &DeviceId, data: serde_json::Value, app_id: &AppId) -> Result<()> {
     let client = Client::new();
     let url = format!("{}{}/{}/devices", url, API_BASE, app_id);
-    println!("{}", url);
     let body = json!({
         "metadata": {
             "name": id,
