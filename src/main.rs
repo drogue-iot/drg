@@ -32,6 +32,7 @@ fn main() -> Result<()> {
             default_app: None,
             token: Some(token),
         };
+        // todo allow the -config argument to save the file to a provided path.
         config::save_config(config)?;
         exit(0);
     }
