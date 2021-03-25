@@ -2,14 +2,14 @@ mod apps;
 mod arguments;
 mod config;
 mod devices;
-mod util;
 mod openid;
+mod util;
 
 use arguments::{Parameters, Resources, Verbs};
 
 use anyhow::{Context, Result};
-use std::str::FromStr;
 use std::process::exit;
+use std::str::FromStr;
 
 type AppId = str;
 type DeviceId = str;

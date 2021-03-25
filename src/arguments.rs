@@ -133,9 +133,10 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 ),
         )
         .subcommand(SubCommand::with_name("version").about("Print version information."))
-        .subcommand(SubCommand::with_name("login")
-            .about("Log into a drogue cloud installation.")
-            .arg(url_arg.clone().required(true))
+        .subcommand(
+            SubCommand::with_name("login")
+                .about("Log into a drogue cloud installation.")
+                .arg(url_arg.clone().required(true)),
         )
         .get_matches()
 }

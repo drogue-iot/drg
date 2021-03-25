@@ -71,7 +71,6 @@ pub fn editor(original: String) -> Result<Value> {
 }
 
 pub fn print_version() {
-
     println!("Client Version: {}", VERSION);
     println!("Compatible Server Version: {}", COMPATIBLE_DROGUE_VERSION);
     //todo connect to server and retrieve version.
@@ -85,18 +84,21 @@ pub fn get_sso_endpoint(url: Url) -> Result<Url> {
 
     let url = url.join(".well-known/drogue-endpoints")?;
 
-
-    let res = client.get(url)
+    let res = client
+        .get(url)
         .send()
         .context("Can't retrieve drogue endpoints details")?;
 
-    let endpoints: Value = res.json().context("Cannot deserialize drogue endpoints details")?;
+    let endpoints: Value = res
+        .json()
+        .context("Cannot deserialize drogue endpoints details")?;
 
-    let issuer = endpoints["issuer_url"].as_str().context("Missing `issuer_url` in drogue endpoint details")?;
+    let issuer = endpoints["issuer_url"]
+        .as_str()
+        .context("Missing `issuer_url` in drogue endpoint details")?;
     // a trailing / is needed to append the rest of the path.
     url_validation(format!("{}/", issuer).as_str())
 }
-
 
 // use keycloak's well known endpoint to retrieve endpoints.
 // http://keycloakhost:keycloakport/auth/realms/{realm}/.well-known/openid-configuration
@@ -104,15 +106,22 @@ pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
     let client = Client::new();
 
     let url = issuer_url.join(".well-known/openid-configuration")?;
-    let res = client.get(url)
+    let res = client
+        .get(url)
         .send()
         .context("Can't retrieve openid-connect endpoints details")?;
 
-    let endpoints: Value = res.json().context("Cannot deserialize openid-connect endpoints details")?;
+    let endpoints: Value = res
+        .json()
+        .context("Cannot deserialize openid-connect endpoints details")?;
 
-    let auth = endpoints["authorization_endpoint"].as_str().context("Missing `authorization_endpoint` in drogue openid-connect configuration")?;
+    let auth = endpoints["authorization_endpoint"]
+        .as_str()
+        .context("Missing `authorization_endpoint` in drogue openid-connect configuration")?;
     let auth_endpoint = url_validation(auth);
-    let token = endpoints["token_endpoint"].as_str().context("Missing `token_endpoint` in drogue openid-connect configuration")?;
+    let token = endpoints["token_endpoint"]
+        .as_str()
+        .context("Missing `token_endpoint` in drogue openid-connect configuration")?;
     let token_endpoint = url_validation(token);
 
     Ok((auth_endpoint?, token_endpoint?))

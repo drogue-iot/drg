@@ -1,5 +1,5 @@
 [package]
-name = "cli"
+name = "drg"
 version = "0.1.1"
 authors = ["Jean-Baptiste Trystram <jbtrystram@redhat.com>"]
 edition = "2018"

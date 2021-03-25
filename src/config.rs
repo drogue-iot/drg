@@ -1,6 +1,6 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::{env, fs::File, fs::write};
+use std::{env, fs::write, fs::File};
 
 use oauth2::basic::BasicTokenResponse;
 
@@ -27,7 +27,8 @@ pub fn save_config(config: Config) -> Result<()> {
     //todo verbose option
     println!("Saving config file: {}", path);
 
-    write(&path, serde_json::to_string_pretty(&config)?).context(format!("Unable to write config file :{}", path))
+    write(&path, serde_json::to_string_pretty(&config)?)
+        .context(format!("Unable to write config file :{}", path))
 }
 
 // use the provided config path or `$DRGCFG` value if set
@@ -37,12 +38,10 @@ pub fn save_config(config: Config) -> Result<()> {
 fn eval_config_path(path: Option<&str>) -> String {
     match path {
         Some(p) => p.to_string(),
-        None => {
-            env::var("DRGCFG").unwrap_or_else(|_| {
-                let xdg = env::var("XDG_CONFIG_HOME")
-                                    .unwrap_or(format!("{}/.config", env::var("HOME").unwrap()));
-                format!("{}/drg_config.json", xdg)
-            })
-        },
+        None => env::var("DRGCFG").unwrap_or_else(|_| {
+            let xdg = env::var("XDG_CONFIG_HOME")
+                .unwrap_or(format!("{}/.config", env::var("HOME").unwrap()));
+            format!("{}/drg_config.json", xdg)
+        }),
     }
 }
