@@ -23,3 +23,6 @@ tempfile = "3.2.0"
 
 tiny_http = "0.8.0"
 qstring = "0.7.2"
+
+url = { version = "2.2.1",  features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"]}

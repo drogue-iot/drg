@@ -2,9 +2,10 @@ use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::reqwest::http_client;
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope,
-    TokenUrl,
+    TokenResponse, TokenUrl,
 };
 
+use anyhow::Error;
 use anyhow::Result;
 
 use tiny_http::{Response, Server};
@@ -12,20 +13,34 @@ use tiny_http::{Response, Server};
 use qstring::QString;
 use reqwest::Url;
 
+use crate::config::{save_config, Config};
 use crate::util;
+use chrono::{DateTime, Duration, Utc};
 
 const CLIENT_ID: &str = "drogue";
 const SERVER_PORT: u16 = 8080;
 const REDIRECT_URL: &str = "http://localhost:8080";
 
-pub fn login(api_endpoint: Url) -> Result<BasicTokenResponse> {
+pub fn login(api_endpoint: Url) -> Result<Config> {
     println!("Starting authentication process with {}", api_endpoint);
 
-    let sso_url = util::get_sso_endpoint(api_endpoint)?;
+    let (sso_url, registry_url) = util::get_drogue_services_endpoint(api_endpoint.clone())?;
+    let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
 
-    let (auth, token) = util::get_auth_and_tokens_endpoints(sso_url)?;
+    let token = get_token(auth_url.clone(), token_url.clone())?;
+    let token_exp_date = calculate_tokent_expiration_date(&token)?;
 
-    get_token(auth, token)
+    let config = Config {
+        drogue_cloud_url: api_endpoint,
+        default_app: None,
+        token,
+        token_url,
+        auth_url,
+        registry_url,
+        token_exp_date,
+    };
+
+    Ok(config)
 }
 
 fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
@@ -80,5 +95,58 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
         .request(http_client);
 
     // Unwrapping token_result will either produce a Token or a RequestTokenError.
-    token_result.map_err(|_| anyhow::Error::msg("error retrieving the authentication token"))
+    token_result.map_err(|_| Error::msg("error retrieving the authentication token"))
+}
+
+pub fn verify_token_validity(config: Config) -> Result<Config> {
+    // 30 seconds should be enough
+    if config.token_exp_date - Utc::now() > Duration::seconds(30) {
+        Ok(config)
+    } else {
+        // todo verbose
+        println!("Token is expired or will be soon, refreshing...");
+        refresh_token(config)
+    }
+}
+
+fn refresh_token(mut config: Config) -> Result<Config> {
+    let auth_url = AuthUrl::new(config.auth_url.to_string())?;
+    let token_url = TokenUrl::new(config.token_url.to_string())?;
+    let client = BasicClient::new(
+        ClientId::new(CLIENT_ID.to_string()),
+        None,
+        auth_url,
+        Some(token_url),
+    );
+
+    let new_token = client
+        .exchange_refresh_token(
+            config
+                .token
+                .refresh_token()
+                .ok_or(Error::msg("Error loading refresh token from config"))?,
+        )
+        .request(http_client)
+        .map_err(|_| Error::msg("Error when fetching a refresh token"))?;
+
+    config.token_exp_date = calculate_tokent_expiration_date(&new_token)?;
+    config.token = new_token;
+
+    // todo verbose
+    println!("Token successfully refreshed.");
+    save_config(&config)?;
+
+    Ok(config)
+}
+
+fn calculate_tokent_expiration_date(token: &BasicTokenResponse) -> Result<DateTime<Utc>> {
+    let now = Utc::now();
+    let expiration = token
+        .expires_in()
+        .ok_or(anyhow::Error::msg("Missing expiration time on token"))?;
+
+    now.checked_add_signed(Duration::from_std(expiration)?)
+        .ok_or(anyhow::Error::msg(
+            "Error calculating token expiration date",
+        ))
 }

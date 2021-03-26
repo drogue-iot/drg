@@ -1,7 +1,7 @@
 use crate::Verbs;
 use anyhow::{Context, Result};
 use reqwest::blocking::{Client, Response};
-use reqwest::{StatusCode, Url};
+use reqwest::StatusCode;
 use serde_json::{from_str, Value};
 use std::process::exit;
 use std::{
@@ -10,6 +10,7 @@ use std::{
     process::Command,
 };
 use tempfile::NamedTempFile;
+use url::Url;
 
 pub const VERSION: &str = "0.1-beta1";
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.3.0";
@@ -29,7 +30,7 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
             r => println!("Error : {}", r),
         },
         Verbs::edit => match r.status() {
-            StatusCode::NO_CONTENT => println!("{} edited.", resource_name),
+            StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
             r => println!("Error : {}", r),
         },
     }
@@ -78,8 +79,8 @@ pub fn print_version() {
     exit(0);
 }
 
-// use keycloak's well known endpoint to retrieve endpoints.
-pub fn get_sso_endpoint(url: Url) -> Result<Url> {
+// use drogue's well known endpoint to retrieve endpoints.
+pub fn get_drogue_services_endpoint(url: Url) -> Result<(Url, Url)> {
     let client = Client::new();
 
     let url = url.join(".well-known/drogue-endpoints")?;
@@ -93,11 +94,18 @@ pub fn get_sso_endpoint(url: Url) -> Result<Url> {
         .json()
         .context("Cannot deserialize drogue endpoints details")?;
 
-    let issuer = endpoints["issuer_url"]
+    let sso = endpoints["issuer_url"]
         .as_str()
         .context("Missing `issuer_url` in drogue endpoint details")?;
+    let registry = endpoints["registry"]["url"]
+        .as_str()
+        .context("Missing `registry` in drogue endpoint details")?;
+
     // a trailing / is needed to append the rest of the path.
-    url_validation(format!("{}/", issuer).as_str())
+    Ok((
+        url_validation(format!("{}/", sso).as_str())?,
+        url_validation(format!("{}/", registry).as_str())?,
+    ))
 }
 
 // use keycloak's well known endpoint to retrieve endpoints.
