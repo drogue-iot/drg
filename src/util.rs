@@ -11,6 +11,8 @@ use std::{
 };
 use tempfile::NamedTempFile;
 use url::Url;
+use colored_json::write_colored_json;
+use std::io::stdout;
 
 pub const VERSION: &str = "0.1-beta1";
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.3.0";
@@ -26,13 +28,25 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
             r => println!("Error : {}", r),
         },
         Verbs::get => match r.status() {
-            StatusCode::OK => println!("{}", r.text().expect("Empty response")),
+            StatusCode::OK => show_json(r.text().expect("Empty response")),
             r => println!("Error : {}", r),
         },
         Verbs::edit => match r.status() {
             StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
             r => println!("Error : {}", r),
         },
+    }
+}
+
+fn show_json<S:Into<String>>(payload: S) {
+    let payload = payload.into();
+    match serde_json::from_str(&payload) {
+        // show as JSON
+        Ok(json) => {
+            write_colored_json(&json, &mut stdout().lock()).ok();
+        },
+        // fall back to plain text output
+        Err(_) => println!("{}", payload)
     }
 }
 
