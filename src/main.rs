@@ -2,11 +2,13 @@ mod apps;
 mod arguments;
 mod config;
 mod devices;
+mod openid;
 mod util;
 
 use arguments::{Parameters, Resources, Verbs};
 
 use anyhow::{Context, Result};
+use std::process::exit;
 use std::str::FromStr;
 
 type AppId = str;
@@ -14,24 +16,27 @@ type DeviceId = str;
 
 fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
+    let mut config;
 
     if matches.is_present("version") {
         util::print_version();
+    } else if matches.is_present("login") {
+        let (_, submatches) = matches.subcommand();
+        let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
+
+        config = openid::login(url.clone())?;
+
+        println!("\nSuccessfully authenticated to drogue cloud : {}", url);
+        config::save_config(&config)?;
+        exit(0);
     }
 
-    let url;
-    //todo default app is not used
-    let _default_app: Option<String>;
-    // url arg preempts config file.
-    if matches.is_present(Parameters::url) {
-        url = util::url_validation(matches.value_of(Parameters::url))?;
-        _default_app = None;
-    } else {
-        let conf = config::load_config_file(matches.value_of(Parameters::config))
-            .context("No URL arg provided and DRGCTL config file was not found.")?;
-        url = util::url_validation(Some(conf.drogue_cloud_url.as_str()))?;
-        _default_app = conf.default_app;
-    }
+    // try to load the config file
+    config = config::load_config(matches.value_of(Parameters::config)).context(
+        "Error opening the configuration file. Did you log into a drogue cloud cluster ?",
+    )?;
+
+    config = openid::verify_token_validity(config)?;
 
     match matches.subcommand() {
         (cmd_name, sub_cmd) => {
@@ -47,10 +52,10 @@ fn main() -> Result<()> {
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::create(&url, id, data)?,
+                            Resources::app => apps::create(&config, id, data)?,
                             Resources::device => {
                                 let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::create(&url, id, data, app_id)?
+                                devices::create(&config, id, data, app_id)?
                             }
                         }
                     }
@@ -61,10 +66,10 @@ fn main() -> Result<()> {
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::delete(&url, id)?,
+                            Resources::app => apps::delete(&config, id)?,
                             Resources::device => {
                                 let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::delete(&url, app_id, id)?
+                                devices::delete(&config, app_id, id)?
                             }
                         }
                     }
@@ -76,10 +81,10 @@ fn main() -> Result<()> {
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::edit(&url, id),
+                            Resources::app => apps::edit(&config, id)?,
                             Resources::device => {
                                 let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::edit(&url, app_id, id)
+                                devices::edit(&config, app_id, id)?
                             }
                         }
                     }
@@ -91,10 +96,10 @@ fn main() -> Result<()> {
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::read(&url, id)?,
+                            Resources::app => apps::read(&config, id)?,
                             Resources::device => {
                                 let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::read(&url, app_id, id)?
+                                devices::read(&config, app_id, id)?
                             }
                         }
                     }

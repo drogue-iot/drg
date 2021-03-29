@@ -35,9 +35,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .help("The unique id of the resource.");
 
     let url_arg = Arg::with_name(Parameters::url.as_ref())
-        .long(Parameters::url.as_ref())
-        .takes_value(true)
-        .help("The url of the registry endpoint");
+        .required(true)
+        .help("The url of the drogue cloud api endpoint");
 
     let app_id_arg = Arg::with_name(Resources::app.as_ref())
         .required(true)
@@ -62,7 +61,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .author("Jb Trystram <jbtrystram@redhat.com>")
         .about("Allows to manage drogue apps and devices in a drogue-cloud instance")
         .arg(config_file_arg)
-        .arg(url_arg)
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name(Verbs::create.as_ref())
@@ -133,5 +131,10 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 ),
         )
         .subcommand(SubCommand::with_name("version").about("Print version information."))
+        .subcommand(
+            SubCommand::with_name("login")
+                .about("Log into a drogue cloud installation.")
+                .arg(url_arg.clone()),
+        )
         .get_matches()
 }
