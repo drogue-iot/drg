@@ -31,7 +31,7 @@ pub fn load_config(path: Option<&str>) -> Result<Config> {
 pub fn save_config(config: &Config) -> Result<()> {
     let path = eval_config_path(None);
     //todo verbose option
-    println!("Saving config file: {}", path);
+    //println!("Saving config file: {}", path);
 
     write(&path, serde_json::to_string_pretty(&config)?)
         .context(format!("Unable to write config file :{}", path))
