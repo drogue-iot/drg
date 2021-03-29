@@ -29,6 +29,14 @@ pub enum Parameters {
     config,
 }
 
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Other_commands {
+    login,
+    token,
+    version,
+}
+
 pub fn parse_arguments() -> ArgMatches<'static> {
     let resource_id_arg = Arg::with_name(Parameters::id.as_ref())
         .required(true)
@@ -131,11 +139,15 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(resource_id_arg.clone()),
                 ),
         )
-        .subcommand(SubCommand::with_name("version").about("Print version information."))
+        .subcommand(SubCommand::with_name(Other_commands::version.as_ref()).about("Print version information."))
         .subcommand(
-            SubCommand::with_name("login")
+            SubCommand::with_name(Other_commands::login.as_ref())
                 .about("Log into a drogue cloud installation.")
                 .arg(url_arg.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name(Other_commands::token.as_ref())
+                .about("Print a valid bearer token for the drogue cloud instance.")
         )
         .get_matches()
 }

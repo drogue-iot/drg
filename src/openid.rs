@@ -104,7 +104,7 @@ pub fn verify_token_validity(config: Config) -> Result<Config> {
         Ok(config)
     } else {
         // todo verbose
-        println!("Token is expired or will be soon, refreshing...");
+        // println!("Token is expired or will be soon, refreshing...");
         refresh_token(config)
     }
 }
@@ -133,7 +133,7 @@ fn refresh_token(mut config: Config) -> Result<Config> {
     config.token = new_token;
 
     // todo verbose
-    println!("Token successfully refreshed.");
+    // println!("Token successfully refreshed.");
     save_config(&config)?;
 
     Ok(config)
@@ -149,4 +149,8 @@ fn calculate_tokent_expiration_date(token: &BasicTokenResponse) -> Result<DateTi
         .ok_or(anyhow::Error::msg(
             "Error calculating token expiration date",
         ))
+}
+
+pub fn print_token(config: &Config) {
+    println!("{}", config.token.access_token().secret());
 }

@@ -5,7 +5,7 @@ mod devices;
 mod openid;
 mod util;
 
-use arguments::{Parameters, Resources, Verbs};
+use arguments::{Parameters, Resources, Verbs, Other_commands};
 
 use anyhow::{Context, Result};
 use std::process::exit;
@@ -18,9 +18,9 @@ fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
     let mut config;
 
-    if matches.is_present("version") {
+    if matches.is_present(Other_commands::version) {
         util::print_version();
-    } else if matches.is_present("login") {
+    } else if matches.is_present(Other_commands::login) {
         let (_, submatches) = matches.subcommand();
         let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
 
@@ -37,6 +37,11 @@ fn main() -> Result<()> {
     )?;
 
     config = openid::verify_token_validity(config)?;
+
+    if matches.is_present(Other_commands::token) {
+        openid::print_token(&config);
+        exit(0);
+    }
 
     match matches.subcommand() {
         (cmd_name, sub_cmd) => {
