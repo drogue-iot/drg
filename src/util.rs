@@ -64,7 +64,7 @@ pub fn json_parse(data: Option<&str>) -> Result<Value> {
 }
 
 pub fn editor(original: String) -> Result<Value> {
-    let data = serde_json::from_str(original.as_str())?;
+    let data: Value = serde_json::from_str(original.as_str())?;
 
     // todo cross platform support
     let editor = var("EDITOR").unwrap_or("vi".to_string());
@@ -73,7 +73,8 @@ pub fn editor(original: String) -> Result<Value> {
     let mut file2 = file.reopen()?;
 
     // Write the original data to the file.
-    file.as_file().write_all(serde_json::to_string_pretty(&data)?.as_bytes())?;
+    file.as_file()
+        .write_all(serde_json::to_string_pretty(&data)?.as_bytes())?;
 
     Command::new(editor)
         .arg(file.path())

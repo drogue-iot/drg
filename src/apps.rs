@@ -60,12 +60,12 @@ pub fn edit(config: &Config, app: &AppId) -> Result<()> {
         Ok(r) => match r.status() {
             StatusCode::OK => {
                 let body = r.text().unwrap_or("{}".to_string());
-                let insert = util::editor(body).unwrap();
+                let insert = util::editor(body)?;
                 util::print_result(
                     put(config, app, insert)?,
                     format!("App {}", app),
                     Verbs::edit,
-                );
+                )
             }
             e => println!("Error : could not retrieve app: {}", e),
         },

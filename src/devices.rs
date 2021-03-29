@@ -69,7 +69,7 @@ pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
                     put(&config, app, device_id, insert).unwrap(),
                     format!("Device {}", device_id),
                     Verbs::edit,
-                )
+                );
             }
             e => println!("Error : could not retrieve device: {}", e),
         },
