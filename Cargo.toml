@@ -20,6 +20,9 @@ clap = "2.33.3"
 
 oauth2 = "3.0"
 
+simple_logger = "1.11.0"
+log = "0.4.14"
+
 strum = "0.20"
 strum_macros = "0.20"
 

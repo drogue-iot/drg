@@ -13,6 +13,8 @@ use tempfile::NamedTempFile;
 use url::Url;
 use colored_json::write_colored_json;
 use std::io::stdout;
+use clap::ArgMatches;
+use log::LevelFilter;
 
 pub const VERSION: &str = "0.1-beta1";
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.4.0";
@@ -150,4 +152,13 @@ pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
     let token_endpoint = url_validation(token);
 
     Ok((auth_endpoint?, token_endpoint?))
+}
+
+pub fn log_level(matches: &ArgMatches) -> LevelFilter {
+    match matches.occurrences_of("verbose") {
+        0 => LevelFilter::Error,
+        1 => LevelFilter::Warn,
+        2 => LevelFilter::Info,
+        _ => LevelFilter::Debug,
+    }
 }

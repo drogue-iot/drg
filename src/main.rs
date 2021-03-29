@@ -18,6 +18,16 @@ fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
     let mut config;
 
+    simple_logger::SimpleLogger::new()
+        .with_level(util::log_level(&matches))
+        .init()
+        .unwrap();
+
+    log::error!("error");
+    log::warn!("warning");
+    log::info!("info");
+    log::debug!("debug");
+
     if matches.is_present(Other_commands::version) {
         util::print_version();
     } else if matches.is_present(Other_commands::login) {
