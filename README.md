@@ -4,15 +4,10 @@ A Command line tool for managing apps and devices in a drogue cloud instance.
 
 # Installation 
 
-Install via crates.io : 
-``` 
+Download the latest release from the github release page and place it somewhere in your `$PATH`.
+Or build from source via crates.io: 
+```
 cargo install drg
-```
-
-Or build from source : 
-```
-cargo build --release
-cargo install --path <path/to/destination>
 ```
 
 
@@ -54,15 +49,15 @@ drg delete app <appId>
 
 ```
 # Create a device
-drg create device <deviceId> --app <appId>
+drg create device <deviceId> --app <appId>    # --app and -a are interchangeable
 # Add some data
-drg create device <deviceId> --app <appId> -d `{"foo":"bar"}`
+drg create device <deviceId> -a <appId> -d `{"foo":"bar"}`
 
 # Edit a device data 
 drg edit device <deviceId> --app <appId>
 
 # Delete a device 
-drg delete device <deviceId> --app <appId>
+drg delete device <deviceId> - <appId>
 ```
 
 ## Configuration fie
