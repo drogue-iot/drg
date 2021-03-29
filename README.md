@@ -2,7 +2,7 @@
 
 A Command line tool for managing apps and devices in a drogue cloud instance. 
 
-## Installation 
+# Installation 
 
 Install via crates.io : 
 ``` 
@@ -16,9 +16,9 @@ cargo install --path <path/to/destination>
 ```
 
 
-## Usage
+# Usage
 
-### Log in to a drogue cloud instance
+## Log in to a drogue cloud instance
 
 In order to use `drg` to manage resources in drogue cloud you first need to authenticate : 
 ```
@@ -26,7 +26,7 @@ drg login https://drogue-cloud-registry-endpoint
 ```
 Then follow the steps to authenticate. drg will generate a config file to save your configuration.
 
-### Managing resources 
+## Managing resources 
 
 `drg` interacts with resources existing in drogue-cloud, currently `apps` and  `devices` operations are supported. 
 The following operations are handled :
@@ -35,7 +35,7 @@ The following operations are handled :
 * edit
 * get
 
-### Apps operation
+## Apps operations
 
 ```
 # Create an app 
@@ -50,15 +50,15 @@ drg edit app <appId>
 drg delete app <appId>
 ```
 
-### Apps operation
+## Devices operations
 
 ```
-#Create a device
+# Create a device
 drg create device <deviceId> --app <appId>
-# adding data
+# Add some data
 drg create device <deviceId> --app <appId> -d `{"foo":"bar"}`
 
-#edit a device data 
+# Edit a device data 
 drg edit device <deviceId> --app <appId>
 
 # Delete a device 
@@ -76,7 +76,7 @@ drg --config path/to/config create device <deviceId> --app <appId>
 
 To get a working config file, run see [login to a drogue cloud instance](#Log-in-to-a-drogue-cloud-instance)
 
-## Roadmap
+# Roadmap
 
 In no particular order here are the following things that we would like to add to `drg` :
  * List resources

@@ -40,6 +40,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
 
     let app_id_arg = Arg::with_name(Resources::app.as_ref())
         .required(true)
+        .short("a")
         .long(Resources::app.as_ref())
         .takes_value(true)
         .help("The app owning the device.");
@@ -54,7 +55,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .long(Parameters::config.as_ref())
         .takes_value(true)
         .conflicts_with(Parameters::url.as_ref())
-        .help("Path to the drgconfig file. Defaults to ~/.drgconfig");
+        .help("Path to the drgconfig file. If not specified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)

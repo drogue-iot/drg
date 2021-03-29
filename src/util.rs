@@ -15,7 +15,7 @@ use colored_json::write_colored_json;
 use std::io::stdout;
 
 pub const VERSION: &str = "0.1-beta1";
-pub const COMPATIBLE_DROGUE_VERSION: &str = "0.3.0";
+pub const COMPATIBLE_DROGUE_VERSION: &str = "0.4.0";
 
 pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     match op {
@@ -64,6 +64,8 @@ pub fn json_parse(data: Option<&str>) -> Result<Value> {
 }
 
 pub fn editor(original: String) -> Result<Value> {
+    let data = serde_json::from_str(original.as_str())?;
+
     // todo cross platform support
     let editor = var("EDITOR").unwrap_or("vi".to_string());
     let file = NamedTempFile::new()?;
@@ -71,7 +73,7 @@ pub fn editor(original: String) -> Result<Value> {
     let mut file2 = file.reopen()?;
 
     // Write the original data to the file.
-    file.as_file().write_all(original.as_bytes())?;
+    file.as_file().write_all(serde_json::to_string_pretty(&data)?.as_bytes())?;
 
     Command::new(editor)
         .arg(file.path())
