@@ -3,7 +3,18 @@
 A Command line tool for managing apps and devices in a drogue cloud instance. 
 
 ## Installation 
-Todo (download from releases)
+
+Install via crates.io : 
+``` 
+cargo install drg
+```
+
+Or build from source : 
+```
+cargo build --release
+cargo install --path <path/to/destination>
+```
+
 
 ## Usage
 
