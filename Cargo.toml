@@ -1,10 +1,16 @@
 [package]
 name = "drg"
-version = "0.1.1"
+version = "0.2.1"
 authors = ["Jean-Baptiste Trystram <jbtrystram@redhat.com>"]
 edition = "2018"
+liscense-file = "LICENSE"
+readme = "README.md"
+description = "A command line tool to interact with a drogue-cloud instance."
+repository = "https://github.com/drogue-iot/drg/"
+homepage = "https://drogue.io/"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+categories = ["command-line-utilities"]
 
 [dependencies]
 
