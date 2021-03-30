@@ -147,15 +147,18 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(resource_id_arg.clone()),
                 ),
         )
-        .subcommand(SubCommand::with_name(Other_commands::version.as_ref()).about("Print version information."))
+        .subcommand(
+            SubCommand::with_name(Other_commands::version.as_ref())
+                .about("Print version information."),
+        )
         .subcommand(
             SubCommand::with_name(Other_commands::login.as_ref())
                 .about("Log into a drogue cloud installation.")
-                .arg(url_arg.clone())
+                .arg(url_arg.clone()),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::token.as_ref())
-                .about("Print a valid bearer token for the drogue cloud instance.")
+                .about("Print a valid bearer token for the drogue cloud instance."),
         )
         .get_matches()
 }

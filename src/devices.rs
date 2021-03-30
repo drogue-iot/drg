@@ -71,9 +71,9 @@ pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
                     Verbs::edit,
                 );
             }
-            e => println!("Error : could not retrieve device: {}", e),
+            e => log::error!("Error : could not retrieve device: {}", e),
         },
-        Err(e) => println!("Error : could not retrieve device: {}", e),
+        Err(e) => log::error!("Error : could not retrieve device: {}", e),
     }
     Ok(())
 }

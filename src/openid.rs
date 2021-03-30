@@ -22,7 +22,7 @@ const SERVER_PORT: u16 = 8080;
 const REDIRECT_URL: &str = "http://localhost:8080";
 
 pub fn login(api_endpoint: Url) -> Result<Config> {
-    println!("Starting authentication process with {}", api_endpoint);
+    log::info!("Starting authentication process with {}", api_endpoint);
 
     let (sso_url, registry_url) = util::get_drogue_services_endpoint(api_endpoint.clone())?;
     let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
@@ -103,8 +103,7 @@ pub fn verify_token_validity(config: Config) -> Result<Config> {
     if config.token_exp_date - Utc::now() > Duration::seconds(30) {
         Ok(config)
     } else {
-        // todo verbose
-        // println!("Token is expired or will be soon, refreshing...");
+        log::info!("Token is expired or will be soon, refreshing...");
         refresh_token(config)
     }
 }
@@ -132,8 +131,7 @@ fn refresh_token(mut config: Config) -> Result<Config> {
     config.token_exp_date = calculate_tokent_expiration_date(&new_token)?;
     config.token = new_token;
 
-    // todo verbose
-    // println!("Token successfully refreshed.");
+    log::info!("Token successfully refreshed.");
     save_config(&config)?;
 
     Ok(config)

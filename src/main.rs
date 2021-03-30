@@ -5,7 +5,7 @@ mod devices;
 mod openid;
 mod util;
 
-use arguments::{Parameters, Resources, Verbs, Other_commands};
+use arguments::{Other_commands, Parameters, Resources, Verbs};
 
 use anyhow::{Context, Result};
 use std::process::exit;
@@ -22,11 +22,6 @@ fn main() -> Result<()> {
         .with_level(util::log_level(&matches))
         .init()
         .unwrap();
-
-    log::error!("error");
-    log::warn!("warning");
-    log::info!("info");
-    log::debug!("debug");
 
     if matches.is_present(Other_commands::version) {
         util::print_version();
