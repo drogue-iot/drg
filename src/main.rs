@@ -10,7 +10,6 @@ use arguments::{Other_commands, Parameters, Resources, Verbs};
 use anyhow::{Context, Result};
 use std::process::exit;
 use std::str::FromStr;
-
 type AppId = str;
 type DeviceId = str;
 
@@ -66,10 +65,20 @@ fn main() -> Result<()> {
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::create(&config, id, data)?,
+                            Resources::app => apps::create(&config, id, data)
+                                .map_err(|e| {
+                                    log::error!("{:?}", e);
+                                    exit(3)
+                                })
+                                .unwrap(),
                             Resources::device => {
                                 let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::create(&config, id, data, app_id)?
+                                devices::create(&config, id, data, app_id)
+                                    .map_err(|e| {
+                                        log::error!("{:?}", e);
+                                        exit(3)
+                                    })
+                                    .unwrap();
                             }
                         }
                     }
@@ -80,10 +89,20 @@ fn main() -> Result<()> {
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::delete(&config, id)?,
+                            Resources::app => apps::delete(&config, id)
+                                .map_err(|e| {
+                                    log::error!("{:?}", e);
+                                    exit(3)
+                                })
+                                .unwrap(),
                             Resources::device => {
                                 let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::delete(&config, app_id, id)?
+                                devices::delete(&config, app_id, id)
+                                    .map_err(|e| {
+                                        log::error!("{:?}", e);
+                                        exit(3)
+                                    })
+                                    .unwrap()
                             }
                         }
                     }
@@ -95,10 +114,20 @@ fn main() -> Result<()> {
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::edit(&config, id)?,
+                            Resources::app => apps::edit(&config, id)
+                                .map_err(|e| {
+                                    log::error!("{:?}", e);
+                                    exit(3)
+                                })
+                                .unwrap(),
                             Resources::device => {
                                 let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::edit(&config, app_id, id)?
+                                devices::edit(&config, app_id, id)
+                                    .map_err(|e| {
+                                        log::error!("{:?}", e);
+                                        exit(3)
+                                    })
+                                    .unwrap()
                             }
                         }
                     }
@@ -110,10 +139,20 @@ fn main() -> Result<()> {
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::read(&config, id)?,
+                            Resources::app => apps::read(&config, id)
+                                .map_err(|e| {
+                                    log::error!("{:?}", e);
+                                    exit(3)
+                                })
+                                .unwrap(),
                             Resources::device => {
                                 let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::read(&config, app_id, id)?
+                                devices::read(&config, app_id, id)
+                                    .map_err(|e| {
+                                        log::error!("{:?}", e);
+                                        exit(3)
+                                    })
+                                    .unwrap()
                             }
                         }
                     }
