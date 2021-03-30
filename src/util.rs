@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::Verbs;
 use anyhow::{Context, Result};
 use clap::crate_version;
@@ -91,10 +92,21 @@ pub fn editor(original: String) -> Result<Value> {
     from_str(buf.as_str()).context("Invalid JSON data.")
 }
 
-pub fn print_version() {
+pub fn print_version(config: &Result<Config>) {
     println!("Client Version: {}", VERSION);
-    println!("Compatible Server Version: {}", COMPATIBLE_DROGUE_VERSION);
-    //todo connect to server and retrieve version.
+
+    match config {
+        Ok(c) => {
+            let cloud_version = get_drogue_services_version(&c.drogue_cloud_url).unwrap();
+            println!("Connected drogue-cloud service: v{}", cloud_version);
+        }
+        Err(_) => {
+            println!(
+                "Not connected to a drogue-cloud service. Compatible with v{}",
+                COMPATIBLE_DROGUE_VERSION
+            );
+        }
+    }
 
     exit(0);
 }
@@ -162,4 +174,26 @@ pub fn log_level(matches: &ArgMatches) -> LevelFilter {
         2 => LevelFilter::Info,
         _ => LevelFilter::Debug,
     }
+}
+
+// use drogue's well known endpoint to retrieve version.
+fn get_drogue_services_version(url: &Url) -> Result<String> {
+    let client = Client::new();
+
+    let url = url.join(".well-known/drogue-version")?;
+
+    let res = client
+        .get(url)
+        .send()
+        .context("Can't retrieve drogue version")?;
+
+    let payload: Value = res
+        .json()
+        .context("Cannot deserialize drogue version payload")?;
+
+    let version = payload["version"]
+        .as_str()
+        .context("Missing `version` in drogue version payload")?;
+
+    Ok(version.to_string())
 }

@@ -23,9 +23,7 @@ fn main() -> Result<()> {
         .init()
         .unwrap();
 
-    if matches.is_present(Other_commands::version) {
-        util::print_version();
-    } else if matches.is_present(Other_commands::login) {
+    if matches.is_present(Other_commands::login) {
         let (_, submatches) = matches.subcommand();
         let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
 
@@ -36,8 +34,14 @@ fn main() -> Result<()> {
         exit(0);
     }
 
-    // try to load the config file
-    config = config::load_config(matches.value_of(Parameters::config)).context(
+    // load the config file
+    let rst_config = config::load_config(matches.value_of(Parameters::config));
+
+    if matches.is_present(Other_commands::version) {
+        util::print_version(&rst_config);
+    }
+
+    config = rst_config.context(
         "Error opening the configuration file. Did you log into a drogue cloud cluster ?",
     )?;
 
