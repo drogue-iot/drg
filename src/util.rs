@@ -1,8 +1,13 @@
 use crate::Verbs;
 use anyhow::{Context, Result};
+use clap::crate_version;
+use clap::ArgMatches;
+use colored_json::write_colored_json;
+use log::LevelFilter;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
 use serde_json::{from_str, Value};
+use std::io::stdout;
 use std::process::exit;
 use std::{
     env::var,
@@ -11,42 +16,40 @@ use std::{
 };
 use tempfile::NamedTempFile;
 use url::Url;
-use colored_json::write_colored_json;
-use std::io::stdout;
 
-pub const VERSION: &str = "0.1-beta1";
+pub const VERSION: &str = crate_version!();
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.4.0";
 
 pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     match op {
         Verbs::create => match r.status() {
             StatusCode::CREATED => println!("{} created.", resource_name),
-            r => println!("Error : {}", r),
+            r => log::error!("Error : {}", r),
         },
         Verbs::delete => match r.status() {
             StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
-            r => println!("Error : {}", r),
+            r => log::error!("Error : {}", r),
         },
         Verbs::get => match r.status() {
             StatusCode::OK => show_json(r.text().expect("Empty response")),
-            r => println!("Error : {}", r),
+            r => log::error!("Error : {}", r),
         },
         Verbs::edit => match r.status() {
             StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
-            r => println!("Error : {}", r),
+            r => log::error!("Error : {}", r),
         },
     }
 }
 
-fn show_json<S:Into<String>>(payload: S) {
+fn show_json<S: Into<String>>(payload: S) {
     let payload = payload.into();
     match serde_json::from_str(&payload) {
         // show as JSON
         Ok(json) => {
             write_colored_json(&json, &mut stdout().lock()).ok();
-        },
+        }
         // fall back to plain text output
-        Err(_) => println!("{}", payload)
+        Err(_) => println!("{}", payload),
     }
 }
 
@@ -150,4 +153,13 @@ pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
     let token_endpoint = url_validation(token);
 
     Ok((auth_endpoint?, token_endpoint?))
+}
+
+pub fn log_level(matches: &ArgMatches) -> LevelFilter {
+    match matches.occurrences_of("verbose") {
+        0 => LevelFilter::Error,
+        1 => LevelFilter::Warn,
+        2 => LevelFilter::Info,
+        _ => LevelFilter::Debug,
+    }
 }

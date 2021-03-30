@@ -5,7 +5,7 @@ mod devices;
 mod openid;
 mod util;
 
-use arguments::{Parameters, Resources, Verbs, Other_commands};
+use arguments::{Other_commands, Parameters, Resources, Verbs};
 
 use anyhow::{Context, Result};
 use std::process::exit;
@@ -17,6 +17,11 @@ type DeviceId = str;
 fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
     let mut config;
+
+    simple_logger::SimpleLogger::new()
+        .with_level(util::log_level(&matches))
+        .init()
+        .unwrap();
 
     if matches.is_present(Other_commands::version) {
         util::print_version();

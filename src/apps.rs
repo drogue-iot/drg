@@ -67,9 +67,9 @@ pub fn edit(config: &Config, app: &AppId) -> Result<()> {
                     Verbs::edit,
                 )
             }
-            e => println!("Error : could not retrieve app: {}", e),
+            e => log::error!("Error : could not retrieve app: {}", e),
         },
-        Err(e) => println!("Error : could not retrieve app: {}", e),
+        Err(e) => log::error!("Error : could not retrieve app: {}", e),
     }
     Ok(())
 }

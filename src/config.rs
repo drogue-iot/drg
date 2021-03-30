@@ -19,9 +19,7 @@ pub struct Config {
 
 pub fn load_config(path: Option<&str>) -> Result<Config> {
     let path = eval_config_path(path);
-
-    //todo verbose option
-    //println!("Loading configuration file: {}", path);
+    log::info!("Loading configuration file: {}", path);
 
     let file = File::open(path).context("Unable to open configuration file.")?;
     let config: Config = serde_json::from_reader(file).context("Invalid configuration file.")?;
@@ -30,8 +28,7 @@ pub fn load_config(path: Option<&str>) -> Result<Config> {
 
 pub fn save_config(config: &Config) -> Result<()> {
     let path = eval_config_path(None);
-    //todo verbose option
-    //println!("Saving config file: {}", path);
+    log::info!("Saving config file: {}", path);
 
     write(&path, serde_json::to_string_pretty(&config)?)
         .context(format!("Unable to write config file :{}", path))

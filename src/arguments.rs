@@ -65,11 +65,19 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .conflicts_with(Parameters::url.as_ref())
         .help("Path to the drgconfig file. If not specified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
 
+    let verbose = Arg::with_name("verbose")
+        .short("v")
+        .takes_value(false)
+        .multiple(true)
+        .global(true)
+        .help("Enable verbose output. Multiple occurences increase verbosity.");
+
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
         .author("Jb Trystram <jbtrystram@redhat.com>")
         .about("Allows to manage drogue apps and devices in a drogue-cloud instance")
         .arg(config_file_arg)
+        .arg(verbose)
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name(Verbs::create.as_ref())
@@ -139,7 +147,10 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(resource_id_arg.clone()),
                 ),
         )
-        .subcommand(SubCommand::with_name(Other_commands::version.as_ref()).about("Print version information."))
+        .subcommand(
+            SubCommand::with_name(Other_commands::version.as_ref())
+                .about("Print version information."),
+        )
         .subcommand(
             SubCommand::with_name(Other_commands::login.as_ref())
                 .about("Log into a drogue cloud installation.")
@@ -147,7 +158,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Other_commands::token.as_ref())
-                .about("Print a valid bearer token for the drogue cloud instance.")
+                .about("Print a valid bearer token for the drogue cloud instance."),
         )
         .get_matches()
 }

@@ -22,13 +22,13 @@ const SERVER_PORT: u16 = 8080;
 const REDIRECT_URL: &str = "http://localhost:8080";
 
 pub fn login(api_endpoint: Url) -> Result<Config> {
-    println!("Starting authentication process with {}", api_endpoint);
+    log::info!("Starting authentication process with {}", api_endpoint);
 
     let (sso_url, registry_url) = util::get_drogue_services_endpoint(api_endpoint.clone())?;
     let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
 
     let token = get_token(auth_url.clone(), token_url.clone())?;
-    let token_exp_date = calculate_tokent_expiration_date(&token)?;
+    let token_exp_date = calculate_token_expiration_date(&token)?;
 
     let config = Config {
         drogue_cloud_url: api_endpoint,
@@ -44,6 +44,7 @@ pub fn login(api_endpoint: Url) -> Result<Config> {
 }
 
 fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
+    log::debug!("Using auth url : {}", auth_url);
     let client = BasicClient::new(
         ClientId::new(CLIENT_ID.to_string()),
         None,
@@ -83,6 +84,8 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
     let _ = request.respond(Response::from_string(
         "Authentication code retrieved. This browser can be closed.",
     ));
+    log::info!("Authentication code retrieved.");
+    log::debug!("Trading auth code with token using url : {}", token_url);
 
     // For security reasons, verify that the `state` parameter returned by the server matches `csrf_state`.
     assert_eq!(csrf_token.secret().as_str(), state);
@@ -99,12 +102,12 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
 }
 
 pub fn verify_token_validity(config: Config) -> Result<Config> {
+    log::debug!("Token expires at : {}", config.token_exp_date);
     // 30 seconds should be enough
     if config.token_exp_date - Utc::now() > Duration::seconds(30) {
         Ok(config)
     } else {
-        // todo verbose
-        // println!("Token is expired or will be soon, refreshing...");
+        log::info!("Token is expired or will be soon, refreshing...");
         refresh_token(config)
     }
 }
@@ -116,8 +119,10 @@ fn refresh_token(mut config: Config) -> Result<Config> {
         ClientId::new(CLIENT_ID.to_string()),
         None,
         auth_url,
-        Some(token_url),
+        Some(token_url.clone()),
     );
+
+    log::debug!("Refreshing token using url : {}", &token_url.url());
 
     let new_token = client
         .exchange_refresh_token(
@@ -129,17 +134,17 @@ fn refresh_token(mut config: Config) -> Result<Config> {
         .request(http_client)
         .map_err(|_| Error::msg("Error when fetching a refresh token"))?;
 
-    config.token_exp_date = calculate_tokent_expiration_date(&new_token)?;
+    config.token_exp_date = calculate_token_expiration_date(&new_token)?;
     config.token = new_token;
 
-    // todo verbose
-    // println!("Token successfully refreshed.");
+    log::info!("New token will expire at {}", config.token_exp_date);
+    log::info!("Token successfully refreshed.");
     save_config(&config)?;
 
     Ok(config)
 }
 
-fn calculate_tokent_expiration_date(token: &BasicTokenResponse) -> Result<DateTime<Utc>> {
+fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTime<Utc>> {
     let now = Utc::now();
     let expiration = token
         .expires_in()
