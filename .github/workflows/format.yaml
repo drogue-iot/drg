@@ -19,7 +19,7 @@ jobs:
           args: --all-features
       
       - name: Run Rustfmt
-        run : cargo fmt -- --check
+        run: cargo fmt -- --check
       - name: Cargo build
-          run: cargo build
+        run: cargo build
                  

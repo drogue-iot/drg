@@ -5,6 +5,7 @@ use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
 use serde_json::json;
+use std::process::exit;
 
 fn craft_url(base: &Url, app_id: &AppId) -> String {
     format!("{}api/v1/apps/{}", base, app_id)
@@ -22,35 +23,30 @@ pub fn create(config: &Config, app: &AppId, data: serde_json::Value) -> Result<(
         }
     });
 
-    let res = client
+    client
         .post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .body(body.to_string())
         .bearer_auth(&config.token.access_token().secret())
         .send()
-        .context("Can't create app.")?;
-
-    util::print_result(res, format!("App {}", app), Verbs::create);
-    Ok(())
+        .context("Can't create app.")
+        .map(|res| util::print_result(res, format!("App {}", app), Verbs::create))
 }
 
 pub fn read(config: &Config, app: &AppId) -> Result<()> {
-    let res = get(config, app)?;
-    util::print_result(res, app.to_string(), Verbs::get);
-    Ok(())
+    get(config, app).map(|res| util::print_result(res, app.to_string(), Verbs::get))
 }
 
 pub fn delete(config: &Config, app: &AppId) -> Result<()> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app);
 
-    let res = client
+    client
         .delete(&url)
         .bearer_auth(&config.token.access_token().secret())
         .send()
-        .context("Can't get app.")?;
-    util::print_result(res, format!("App {}", app), Verbs::delete);
-    Ok(())
+        .context("Can't get app.")
+        .map(|res| util::print_result(res, format!("App {}", app), Verbs::delete))
 }
 
 pub fn edit(config: &Config, app: &AppId) -> Result<()> {
@@ -65,13 +61,19 @@ pub fn edit(config: &Config, app: &AppId) -> Result<()> {
                     put(config, app, insert)?,
                     format!("App {}", app),
                     Verbs::edit,
-                )
+                );
+                Ok(())
             }
-            e => log::error!("Error : could not retrieve app: {}", e),
+            e => {
+                log::error!("Error : could not retrieve app: {}", e);
+                exit(2);
+            }
         },
-        Err(e) => log::error!("Error : could not retrieve app: {}", e),
+        Err(e) => {
+            log::error!("Error : could not retrieve app: {}", e);
+            exit(2);
+        }
     }
-    Ok(())
 }
 
 fn get(config: &Config, app: &AppId) -> Result<Response> {

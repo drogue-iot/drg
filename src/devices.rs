@@ -6,6 +6,7 @@ use reqwest::blocking::Client;
 use reqwest::blocking::Response;
 use reqwest::{StatusCode, Url};
 use serde_json::json;
+use std::process::exit;
 
 fn craft_url(base: &Url, app_id: &AppId, device_id: &DeviceId) -> String {
     format!("{}api/v1/apps/{}/devices/{}", base, app_id, device_id)
@@ -15,19 +16,17 @@ pub fn delete(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> 
     let client = Client::new();
     let url = craft_url(&config.registry_url, app, device_id);
 
-    let res = client
+    client
         .delete(&url)
         .bearer_auth(&config.token.access_token().secret())
         .send()
-        .context("Can't delete device.")?;
-    util::print_result(res, format!("Device {}", device_id), Verbs::delete);
-    Ok(())
+        .context("Can't delete device.")
+        .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::delete))
 }
 
 pub fn read(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
-    let res = get(&config, app, device_id)?;
-    util::print_result(res, device_id.to_string(), Verbs::get);
-    Ok(())
+    get(&config, app, device_id)
+        .map(|res| util::print_result(res, device_id.to_string(), Verbs::get))
 }
 
 pub fn create(
@@ -45,16 +44,15 @@ pub fn create(
         },
         "spec": data
     });
-    let res = client
+
+    client
         .post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .bearer_auth(&config.token.access_token().secret())
         .body(body.to_string())
         .send()
-        .context("Can't create device.")?;
-
-    util::print_result(res, format!("Device {}", device_id), Verbs::create);
-    Ok(())
+        .context("Can't create device.")
+        .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::create))
 }
 
 pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
@@ -70,12 +68,18 @@ pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
                     format!("Device {}", device_id),
                     Verbs::edit,
                 );
+                Ok(())
             }
-            e => log::error!("Error : could not retrieve device: {}", e),
+            e => {
+                log::error!("Error : could not retrieve device: {}", e);
+                exit(2);
+            }
         },
-        Err(e) => log::error!("Error : could not retrieve device: {}", e),
+        Err(e) => {
+            log::error!("Error : could not retrieve device: {}", e);
+            exit(2)
+        }
     }
-    Ok(())
 }
 
 fn get(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<Response> {
