@@ -25,7 +25,7 @@ pub enum Resources {
 pub enum Parameters {
     url,
     id,
-    data,
+    spec,
     config,
 }
 
@@ -33,7 +33,7 @@ pub enum Parameters {
 #[allow(non_camel_case_types)]
 pub enum Other_commands {
     login,
-    token,
+    whoami,
     version,
 }
 
@@ -53,11 +53,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .help("The app owning the device.");
 
-    let data_arg = Arg::with_name(Parameters::data.as_ref())
-        .short("d")
-        .long(Parameters::data.as_ref())
+    let spec_arg = Arg::with_name(Parameters::spec.as_ref())
+        .short("s")
+        .long(Parameters::spec.as_ref())
         .takes_value(true)
-        .help("The data for the resource.");
+        .help("The spec for the resource.");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
@@ -89,13 +89,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .about("create a device.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone())
-                        .arg(data_arg.clone()),
+                        .arg(spec_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("create an app.")
                         .arg(resource_id_arg.clone())
-                        .arg(data_arg.clone()),
+                        .arg(spec_arg.clone()),
                 ),
         )
         .subcommand(
@@ -121,13 +121,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
-                        .about("Retrieve a device data.")
+                        .about("Retrieve a device spec.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
-                        .about("retrieve an app data.")
+                        .about("retrieve an app spec.")
                         .arg(resource_id_arg.clone()),
                 ),
         )
@@ -137,13 +137,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
-                        .about("Edit a device data.")
+                        .about("Edit a device spec.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
-                        .about("Edit an app data.")
+                        .about("Edit an app spec.")
                         .arg(resource_id_arg.clone()),
                 ),
         )
@@ -157,8 +157,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .arg(url_arg.clone()),
         )
         .subcommand(
-            SubCommand::with_name(Other_commands::token.as_ref())
-                .about("Print a valid bearer token for the drogue cloud instance."),
+            SubCommand::with_name(Other_commands::whoami.as_ref())
+                .about("whoami gives valid bearer token for the drogue cloud instance."),
         )
         .get_matches()
 }

@@ -16,7 +16,6 @@ type DeviceId = str;
 fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
     let mut config;
-
     simple_logger::SimpleLogger::new()
         .with_level(util::log_level(&matches))
         .init()
@@ -46,7 +45,7 @@ fn main() -> Result<()> {
 
     config = openid::verify_token_validity(config)?;
 
-    if matches.is_present(Other_commands::token) {
+    if matches.is_present(Other_commands::whoami) {
         openid::print_token(&config);
         exit(0);
     }
@@ -59,7 +58,7 @@ fn main() -> Result<()> {
             match verb? {
                 Verbs::create => match cmd.subcommand() {
                     (res, command) => {
-                        let data = util::json_parse(command.unwrap().value_of(Parameters::data))?;
+                        let data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
                         let id = command.unwrap().value_of(Parameters::id).unwrap();
 
                         let resource = Resources::from_str(res);
