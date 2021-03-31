@@ -72,7 +72,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::create(&config, id, data, app_id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
@@ -96,7 +96,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::delete(&config, app_id, id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
@@ -121,7 +121,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::edit(&config, app_id, id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
@@ -146,7 +146,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::read(&config, app_id, id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);

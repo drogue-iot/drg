@@ -1,5 +1,7 @@
-use crate::util;
+use crate::{util, AppId};
 
+use crate::config::Config;
+use anyhow::{anyhow, Result};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
@@ -47,7 +49,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .help("The url of the drogue cloud api endpoint");
 
     let app_id_arg = Arg::with_name(Resources::app.as_ref())
-        .required(true)
         .short("a")
         .long(Resources::app.as_ref())
         .takes_value(true)
@@ -161,4 +162,20 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .about("Print a valid bearer token for the drogue cloud instance."),
         )
         .get_matches()
+}
+
+pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Config) -> Result<&'a AppId> {
+    match matches.value_of(Resources::app) {
+        Some(a) => Ok(a),
+        None => config
+            .default_app
+            .as_ref()
+            .map(|v| {
+                println!("Using default app \"{}\".", &v);
+                v.as_str()
+            })
+            .ok_or(anyhow!(
+                "Missing app argument and no default app specified in config file."
+            )),
+    }
 }
