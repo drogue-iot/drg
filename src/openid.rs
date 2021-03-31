@@ -65,11 +65,17 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
         .url();
 
     // The URL the user should browse to, in order to trigger the authorization process.
-    // todo : open a browser automagically.
-    println!(
-        "\nTo authenticate with drogue cloud please browse to: \n{}",
-        final_auth_url
-    );
+    log::info!("Opening browser.");
+    match webbrowser::open(final_auth_url.as_str()) {
+        Err(_) => {
+            log::warn!("Failed to open browser.");
+            println!(
+                "\nTo authenticate with drogue cloud please browse to: \n{}",
+                final_auth_url
+            )
+        }
+        _ => (),
+    };
 
     let bind = format!("0.0.0.0:{}", SERVER_PORT);
     //start a local server
