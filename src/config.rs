@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::{env, fs::write, fs::File};
+use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path};
 
 use chrono::{DateTime, Utc};
 use oauth2::basic::BasicTokenResponse;
@@ -29,6 +29,10 @@ pub fn load_config(path: Option<&str>) -> Result<Config> {
 pub fn save_config(config: &Config) -> Result<()> {
     let path = eval_config_path(None);
     log::info!("Saving config file: {}", path);
+
+    if let Some(parent) = Path::new(&path).parent() {
+        create_dir_all(parent).context("Failed to create parent directory of configuration")?;
+    }
 
     write(&path, serde_json::to_string_pretty(&config)?)
         .context(format!("Unable to write config file :{}", path))
