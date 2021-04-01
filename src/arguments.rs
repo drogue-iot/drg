@@ -11,6 +11,7 @@ pub enum Verbs {
     delete,
     edit,
     get,
+    
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -25,22 +26,43 @@ pub enum Resources {
 pub enum Parameters {
     url,
     id,
-    spec,
+    data,
     config,
+    app_id,
+    device_id,
+    command,
+    payload,
 }
 
 #[derive(AsRefStr, EnumString)]
 #[allow(non_camel_case_types)]
 pub enum Other_commands {
     login,
-    whoami,
+    token,
     version,
+    sendcommand,
 }
 
 pub fn parse_arguments() -> ArgMatches<'static> {
     let resource_id_arg = Arg::with_name(Parameters::id.as_ref())
         .required(true)
         .help("The unique id of the resource.");
+        
+    let _app_id_arg = Arg::with_name(Parameters::app_id.as_ref())
+        .required(true)
+        .help("The app id");
+        
+    let device_id_arg = Arg::with_name(Parameters::device_id.as_ref())
+        .required(true)
+        .help("The device id");
+        
+    let command_arg = Arg::with_name(Parameters::command.as_ref())
+        .required(true)
+        .help("The command");
+        
+    let payload_arg = Arg::with_name(Parameters::payload.as_ref())
+        .required(true)
+        .help("The payload");
 
     let url_arg = Arg::with_name(Parameters::url.as_ref())
         .required(true)
@@ -53,17 +75,17 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .help("The app owning the device.");
 
-    let spec_arg = Arg::with_name(Parameters::spec.as_ref())
+    let data_arg = Arg::with_name(Parameters::data.as_ref())
         .short("s")
-        .long(Parameters::spec.as_ref())
+        .long(Parameters::data.as_ref())
         .takes_value(true)
-        .help("The spec for the resource.");
+        .help("The data for the resource.");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
         .takes_value(true)
         .conflicts_with(Parameters::url.as_ref())
-        .help("Path to the drgconfig file. If not specified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
+        .help("Path to the drgconfig file. If not dataified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
 
     let verbose = Arg::with_name("verbose")
         .short("v")
@@ -89,13 +111,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .about("create a device.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone())
-                        .arg(spec_arg.clone()),
+                        .arg(data_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("create an app.")
                         .arg(resource_id_arg.clone())
-                        .arg(spec_arg.clone()),
+                        .arg(data_arg.clone()),
                 ),
         )
         .subcommand(
@@ -121,13 +143,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
-                        .about("Retrieve a device spec.")
+                        .about("Retrieve a device data.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
-                        .about("retrieve an app spec.")
+                        .about("retrieve an app data.")
                         .arg(resource_id_arg.clone()),
                 ),
         )
@@ -137,15 +159,23 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
-                        .about("Edit a device spec.")
+                        .about("Edit a device data.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
-                        .about("Edit an app spec.")
+                        .about("Edit an app data.")
                         .arg(resource_id_arg.clone()),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name(Other_commands::sendcommand.as_ref())
+                .about("send command to the drogue-cloud url")
+                .arg(_app_id_arg.clone())
+                .arg(device_id_arg.clone())
+                .arg(command_arg.clone())
+                .arg(payload_arg.clone())
         )
         .subcommand(
             SubCommand::with_name(Other_commands::version.as_ref())
@@ -157,8 +187,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .arg(url_arg.clone()),
         )
         .subcommand(
-            SubCommand::with_name(Other_commands::whoami.as_ref())
-                .about("whoami gives valid bearer token for the drogue cloud instance."),
+            SubCommand::with_name(Other_commands::token.as_ref())
+                .about("Print a valid bearer token for the drogue cloud instance."),
         )
         .get_matches()
 }
