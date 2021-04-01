@@ -85,7 +85,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .long(Parameters::config.as_ref())
         .takes_value(true)
         .conflicts_with(Parameters::url.as_ref())
-        .help("Path to the drgconfig file. If not dataified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
+        .help("Path to the drgconfig file. If not specified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
 
     let verbose = Arg::with_name("verbose")
         .short("v")
