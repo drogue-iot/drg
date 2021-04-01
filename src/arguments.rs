@@ -76,7 +76,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .help("The app owning the device.");
 
     let data_arg = Arg::with_name(Parameters::data.as_ref())
-        .short("s")
+        .short("d")
         .long(Parameters::data.as_ref())
         .takes_value(true)
         .help("The data for the resource.");
