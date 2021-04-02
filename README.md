@@ -38,8 +38,11 @@ drg create app <appId>
 # adding data
 drg create app <appId> -d `{"foo":"bar"}`
 
-#edit an app 
+# edit an app - this will open an editor. 
 drg edit app <appId>
+
+# update an app providing the data
+drg update app <appId> -f </path/to/json>
 
 # Delete an app 
 drg delete app <appId>
@@ -53,8 +56,11 @@ drg create device <deviceId> --app <appId>    # --app and -a are interchangeable
 # Add some data
 drg create device <deviceId> -a <appId> -d `{"foo":"bar"}`
 
-# Edit a device data 
+# Edit a device data - this will open an editor
 drg edit device <deviceId> --app <appId>
+
+# update a device providing the data
+drg update device <deviceId> -a <appId> -f </path/to/json>
 
 # Delete a device 
 drg delete device <deviceId> - <appId>
