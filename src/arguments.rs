@@ -11,7 +11,6 @@ pub enum Verbs {
     delete,
     edit,
     get,
-    
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -28,10 +27,6 @@ pub enum Parameters {
     id,
     data,
     config,
-    app_id,
-    device_id,
-    command,
-    payload,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -40,29 +35,12 @@ pub enum Other_commands {
     login,
     token,
     version,
-    sendcommand,
 }
 
 pub fn parse_arguments() -> ArgMatches<'static> {
     let resource_id_arg = Arg::with_name(Parameters::id.as_ref())
         .required(true)
         .help("The unique id of the resource.");
-        
-    let _app_id_arg = Arg::with_name(Parameters::app_id.as_ref())
-        .required(true)
-        .help("The app id");
-        
-    let device_id_arg = Arg::with_name(Parameters::device_id.as_ref())
-        .required(true)
-        .help("The device id");
-        
-    let command_arg = Arg::with_name(Parameters::command.as_ref())
-        .required(true)
-        .help("The command");
-        
-    let payload_arg = Arg::with_name(Parameters::payload.as_ref())
-        .required(true)
-        .help("The payload");
 
     let url_arg = Arg::with_name(Parameters::url.as_ref())
         .required(true)
@@ -168,14 +146,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .about("Edit an app data.")
                         .arg(resource_id_arg.clone()),
                 ),
-        )
-        .subcommand(
-            SubCommand::with_name(Other_commands::sendcommand.as_ref())
-                .about("send command to the drogue-cloud url")
-                .arg(_app_id_arg.clone())
-                .arg(device_id_arg.clone())
-                .arg(command_arg.clone())
-                .arg(payload_arg.clone())
         )
         .subcommand(
             SubCommand::with_name(Other_commands::version.as_ref())
