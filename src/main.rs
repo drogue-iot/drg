@@ -108,11 +108,11 @@ fn main() -> Result<()> {
                 Verbs::edit => match cmd.subcommand() {
                     (res, command) => {
                         let id = command.unwrap().value_of(Parameters::id).unwrap();
-
+                        let file = command.unwrap().value_of(Parameters::filename);
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::edit(&config, id)
+                            Resources::app => apps::edit(&config, id, file)
                                 .map_err(|e| {
                                     log::error!("{:?}", e);
                                     exit(3)
@@ -120,32 +120,7 @@ fn main() -> Result<()> {
                                 .unwrap(),
                             Resources::device => {
                                 let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
-                                devices::edit(&config, app_id, id)
-                                    .map_err(|e| {
-                                        log::error!("{:?}", e);
-                                        exit(3)
-                                    })
-                                    .unwrap()
-                            }
-                        }
-                    }
-                },
-                Verbs::update => match cmd.subcommand() {
-                    (res, command) => {
-                        let id = command.unwrap().value_of(Parameters::id).unwrap();
-                        let resource = Resources::from_str(res);
-                        let file = command.unwrap().value_of(Parameters::filename).unwrap();
-
-                        match resource? {
-                            Resources::app => apps::update(&config, id, file.to_string())
-                                .map_err(|e| {
-                                    log::error!("{:?}", e);
-                                    exit(3)
-                                })
-                                .unwrap(),
-                            Resources::device => {
-                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
-                                devices::update(&config, app_id, id, file.to_string())
+                                devices::edit(&config, app_id, id, file)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
                                         exit(3)

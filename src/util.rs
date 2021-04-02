@@ -36,7 +36,7 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
             StatusCode::OK => show_json(r.text().expect("Empty response")),
             r => exit_with_code(r),
         },
-        Verbs::edit | Verbs::update => match r.status() {
+        Verbs::edit => match r.status() {
             StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
             r => exit_with_code(r),
         },
@@ -207,7 +207,7 @@ fn get_drogue_services_version(url: &Url) -> Result<String> {
     Ok(version.to_string())
 }
 
-pub fn get_data_from_file(path: String) -> Result<Value> {
+pub fn get_data_from_file(path: &str) -> Result<Value> {
     let contents = fs::read_to_string(path).context("Something went wrong reading the file")?;
 
     serde_json::from_str(contents.as_str()).context("Invalid JSON in file")

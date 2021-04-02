@@ -13,7 +13,6 @@ pub enum Verbs {
     delete,
     edit,
     get,
-    update,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -66,7 +65,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .short("f")
         .long(Parameters::filename.as_ref())
         .takes_value(true)
-        .required(true)
         .help("file that contains the data to update the resource with.");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
@@ -143,23 +141,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Verbs::edit.as_ref())
-                .about("Edit a resource from the drogue-cloud registry")
-                .setting(AppSettings::ArgRequiredElseHelp)
-                .subcommand(
-                    SubCommand::with_name(Resources::device.as_ref())
-                        .about("Edit a device data.")
-                        .arg(resource_id_arg.clone())
-                        .arg(app_id_arg.clone()),
-                )
-                .subcommand(
-                    SubCommand::with_name(Resources::app.as_ref())
-                        .about("Edit an app data.")
-                        .arg(resource_id_arg.clone()),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name(Verbs::update.as_ref())
-                .about("Update resource data")
+                .alias("update")
+                .about("Update a resource from the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
