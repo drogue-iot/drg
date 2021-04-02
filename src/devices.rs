@@ -55,29 +55,36 @@ pub fn create(
         .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::create))
 }
 
-pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
-    //read device data
-    let res = get(&config, app, device_id);
-    match res {
-        Ok(r) => match r.status() {
-            StatusCode::OK => {
-                let body = r.text().unwrap_or("{}".to_string());
-                let insert = util::editor(body)?;
-                util::print_result(
-                    put(&config, app, device_id, insert).unwrap(),
-                    format!("Device {}", device_id),
-                    Verbs::edit,
-                );
-                Ok(())
+pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId, file: Option<&str>) -> Result<()> {
+    match file {
+        Some(f) => {
+            let data = util::get_data_from_file(f)?;
+
+            put(&config, app, device_id, data)
+                .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::edit))
+        }
+        None => {
+            //read device data
+            let res = get(&config, app, device_id);
+            match res {
+                Ok(r) => match r.status() {
+                    StatusCode::OK => {
+                        let body = r.text().unwrap_or("{}".to_string());
+                        let insert = util::editor(body)?;
+                        put(&config, app, device_id, insert).map(|p| {
+                            util::print_result(p, format!("Device {}", device_id), Verbs::edit)
+                        })
+                    }
+                    e => {
+                        log::error!("Error : could not retrieve device: {}", e);
+                        exit(2);
+                    }
+                },
+                Err(e) => {
+                    log::error!("Error : could not retrieve device: {}", e);
+                    exit(2)
+                }
             }
-            e => {
-                log::error!("Error : could not retrieve device: {}", e);
-                exit(2);
-            }
-        },
-        Err(e) => {
-            log::error!("Error : could not retrieve device: {}", e);
-            exit(2)
         }
     }
 }

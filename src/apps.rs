@@ -49,29 +49,36 @@ pub fn delete(config: &Config, app: &AppId) -> Result<()> {
         .map(|res| util::print_result(res, format!("App {}", app), Verbs::delete))
 }
 
-pub fn edit(config: &Config, app: &AppId) -> Result<()> {
-    //read app data
-    let res = get(config, app);
-    match res {
-        Ok(r) => match r.status() {
-            StatusCode::OK => {
-                let body = r.text().unwrap_or("{}".to_string());
-                let insert = util::editor(body)?;
-                util::print_result(
-                    put(config, app, insert)?,
-                    format!("App {}", app),
-                    Verbs::edit,
-                );
-                Ok(())
+pub fn edit(config: &Config, app: &AppId, file: Option<&str>) -> Result<()> {
+    match file {
+        Some(f) => {
+            let data = util::get_data_from_file(f)?;
+
+            put(&config, app, data)
+                .map(|res| util::print_result(res, format!("App {}", app), Verbs::edit))
+        }
+        None => {
+            //read app data
+            let res = get(config, app);
+            match res {
+                Ok(r) => match r.status() {
+                    StatusCode::OK => {
+                        let body = r.text().unwrap_or("{}".to_string());
+                        let insert = util::editor(body)?;
+
+                        put(config, app, insert)
+                            .map(|p| util::print_result(p, format!("App {}", app), Verbs::edit))
+                    }
+                    e => {
+                        log::error!("Error : could not retrieve app: {}", e);
+                        exit(2);
+                    }
+                },
+                Err(e) => {
+                    log::error!("Error : could not retrieve app: {}", e);
+                    exit(2);
+                }
             }
-            e => {
-                log::error!("Error : could not retrieve app: {}", e);
-                exit(2);
-            }
-        },
-        Err(e) => {
-            log::error!("Error : could not retrieve app: {}", e);
-            exit(2);
         }
     }
 }
