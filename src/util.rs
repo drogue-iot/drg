@@ -8,6 +8,7 @@ use log::LevelFilter;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
 use serde_json::{from_str, Value};
+use std::fs;
 use std::io::stdout;
 use std::process::exit;
 use std::{
@@ -204,4 +205,10 @@ fn get_drogue_services_version(url: &Url) -> Result<String> {
         .context("Missing `version` in drogue version payload")?;
 
     Ok(version.to_string())
+}
+
+pub fn get_data_from_file(path: &str) -> Result<Value> {
+    let contents = fs::read_to_string(path).context("Something went wrong reading the file")?;
+
+    serde_json::from_str(contents.as_str()).context("Invalid JSON in file")
 }

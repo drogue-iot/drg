@@ -7,7 +7,7 @@ mod util;
 
 use arguments::{Other_commands, Parameters, Resources, Verbs};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::process::exit;
 use std::str::FromStr;
 type AppId = str;
@@ -40,9 +40,7 @@ fn main() -> Result<()> {
         util::print_version(&rst_config);
     }
 
-    config = rst_config.context(
-        "Error opening the configuration file. Did you log into a drogue cloud cluster ?",
-    )?;
+    config = rst_config?;
 
     config = openid::verify_token_validity(config)?;
 
@@ -72,7 +70,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::create(&config, id, data, app_id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
@@ -96,7 +94,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::delete(&config, app_id, id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
@@ -110,19 +108,19 @@ fn main() -> Result<()> {
                 Verbs::edit => match cmd.subcommand() {
                     (res, command) => {
                         let id = command.unwrap().value_of(Parameters::id).unwrap();
-
+                        let file = command.unwrap().value_of(Parameters::filename);
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::edit(&config, id)
+                            Resources::app => apps::edit(&config, id, file)
                                 .map_err(|e| {
                                     log::error!("{:?}", e);
                                     exit(3)
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
-                                devices::edit(&config, app_id, id)
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
+                                devices::edit(&config, app_id, id, file)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
                                         exit(3)
@@ -146,7 +144,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::read(&config, app_id, id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);

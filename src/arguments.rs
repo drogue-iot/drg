@@ -1,5 +1,7 @@
-use crate::util;
+use crate::{util, AppId};
 
+use crate::config::Config;
+use anyhow::{anyhow, Result};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
@@ -27,6 +29,7 @@ pub enum Parameters {
     id,
     spec,
     config,
+    filename,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -47,7 +50,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .help("The url of the drogue cloud api endpoint");
 
     let app_id_arg = Arg::with_name(Resources::app.as_ref())
-        .required(true)
         .short("a")
         .long(Resources::app.as_ref())
         .takes_value(true)
@@ -59,6 +61,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .long(Parameters::spec.as_ref())
         .takes_value(true)
         .help("The spec for the resource. --data is deprecated");
+
+    let file_arg = Arg::with_name(Parameters::filename.as_ref())
+        .short("f")
+        .long(Parameters::filename.as_ref())
+        .takes_value(true)
+        .help("file that contains the data to update the resource with.");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
@@ -134,18 +142,21 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Verbs::edit.as_ref())
-                .about("Edit a resource from the drogue-cloud registry")
+                .alias("update")
+                .about("Update a resource from the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
                         .about("Edit a device spec.")
                         .arg(resource_id_arg.clone())
-                        .arg(app_id_arg.clone()),
+                        .arg(app_id_arg.clone())
+                        .arg(file_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("Edit an app spec.")
                         .arg(resource_id_arg.clone()),
+                        .arg(file_arg.clone()),
                 ),
         )
         .subcommand(
@@ -162,4 +173,20 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .about("Print a valid bearer token for the drogue cloud instance."),
         )
         .get_matches()
+}
+
+pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Config) -> Result<&'a AppId> {
+    match matches.value_of(Resources::app) {
+        Some(a) => Ok(a),
+        None => config
+            .default_app
+            .as_ref()
+            .map(|v| {
+                println!("Using default app \"{}\".", &v);
+                v.as_str()
+            })
+            .ok_or(anyhow!(
+                "Missing app argument and no default app specified in config file."
+            )),
+    }
 }

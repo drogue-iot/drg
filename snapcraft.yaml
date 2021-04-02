@@ -1,0 +1,26 @@
+name: drogue-cli
+version: git
+summary: The Drogue IoT command line tool
+license: Apache-2.0
+description: |
+  drg is a tool to managed applications and devices
+  in a Drogue IoT Cloud instance.
+
+base: core18
+confinement: strict
+
+build-packages:
+ - pkg-config
+ - libssl-dev
+
+parts:
+  drogue-cli:
+    plugin: rust
+    source: .
+
+apps:
+  drogue-cli:
+    command: bin/drg
+    plugs:
+      - network
+      - network-bind
