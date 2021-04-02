@@ -7,7 +7,7 @@ mod util;
 
 use arguments::{Other_commands, Parameters, Resources, Verbs};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::process::exit;
 use std::str::FromStr;
 type AppId = str;
@@ -40,7 +40,9 @@ fn main() -> Result<()> {
         util::print_version(&rst_config);
     }
 
-    config = rst_config?;
+    config = rst_config.context(
+        "Error opening the configuration file. Did you log into a drogue cloud cluster ?",
+    )?;
 
     config = openid::verify_token_validity(config)?;
 
@@ -57,7 +59,7 @@ fn main() -> Result<()> {
             match verb? {
                 Verbs::create => match cmd.subcommand() {
                     (res, command) => {
-                        let data = util::json_parse(command.unwrap().value_of(Parameters::data))?;
+                        let data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
                         let id = command.unwrap().value_of(Parameters::id).unwrap();
 
                         let resource = Resources::from_str(res);
@@ -70,7 +72,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
+                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
                                 devices::create(&config, id, data, app_id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
@@ -94,7 +96,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
+                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
                                 devices::delete(&config, app_id, id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
@@ -108,19 +110,19 @@ fn main() -> Result<()> {
                 Verbs::edit => match cmd.subcommand() {
                     (res, command) => {
                         let id = command.unwrap().value_of(Parameters::id).unwrap();
-                        let file = command.unwrap().value_of(Parameters::filename);
+
                         let resource = Resources::from_str(res);
 
                         match resource? {
-                            Resources::app => apps::edit(&config, id, file)
+                            Resources::app => apps::edit(&config, id)
                                 .map_err(|e| {
                                     log::error!("{:?}", e);
                                     exit(3)
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
-                                devices::edit(&config, app_id, id, file)
+                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
+                                devices::edit(&config, app_id, id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
                                         exit(3)
@@ -144,7 +146,7 @@ fn main() -> Result<()> {
                                 })
                                 .unwrap(),
                             Resources::device => {
-                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
+                                let app_id = command.unwrap().value_of(Resources::app).unwrap();
                                 devices::read(&config, app_id, id)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
