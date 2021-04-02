@@ -7,7 +7,7 @@ mod util;
 
 use arguments::{Other_commands, Parameters, Resources, Verbs};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::process::exit;
 use std::str::FromStr;
 type AppId = str;
@@ -40,9 +40,7 @@ fn main() -> Result<()> {
         util::print_version(&rst_config);
     }
 
-    config = rst_config.context(
-        "Error opening the configuration file. Did you log into a drogue cloud cluster ?",
-    )?;
+    config = rst_config?;
 
     config = openid::verify_token_validity(config)?;
 
@@ -123,6 +121,31 @@ fn main() -> Result<()> {
                             Resources::device => {
                                 let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::edit(&config, app_id, id)
+                                    .map_err(|e| {
+                                        log::error!("{:?}", e);
+                                        exit(3)
+                                    })
+                                    .unwrap()
+                            }
+                        }
+                    }
+                },
+                Verbs::update => match cmd.subcommand() {
+                    (res, command) => {
+                        let id = command.unwrap().value_of(Parameters::id).unwrap();
+                        let resource = Resources::from_str(res);
+                        let file = command.unwrap().value_of(Parameters::filename).unwrap();
+
+                        match resource? {
+                            Resources::app => apps::update(&config, id, file.to_string())
+                                .map_err(|e| {
+                                    log::error!("{:?}", e);
+                                    exit(3)
+                                })
+                                .unwrap(),
+                            Resources::device => {
+                                let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
+                                devices::update(&config, app_id, id, file.to_string())
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
                                         exit(3)

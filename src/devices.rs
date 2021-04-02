@@ -82,6 +82,14 @@ pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
     }
 }
 
+pub fn update(config: &Config, app: &AppId, device_id: &DeviceId, path: String) -> Result<()> {
+    let data = util::get_data_from_file(path)?;
+
+    let res = put(&config, app, device_id, data)?;
+    util::print_result(res, format!("Device {}", device_id), Verbs::update);
+    Ok(())
+}
+
 fn get(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app, device_id);

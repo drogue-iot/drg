@@ -21,7 +21,8 @@ pub fn load_config(path: Option<&str>) -> Result<Config> {
     let path = eval_config_path(path);
     log::info!("Loading configuration file: {}", path);
 
-    let file = File::open(path).context("Unable to open configuration file.")?;
+    let file = File::open(path)
+        .context("Unable to open configuration file. Did you log into a drogue cloud cluster ?")?;
     let config: Config = serde_json::from_reader(file).context("Invalid configuration file.")?;
     Ok(config)
 }
