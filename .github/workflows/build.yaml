@@ -1,4 +1,4 @@
-name: Code formating
+name: Formating and build
 
 on:
   push:
