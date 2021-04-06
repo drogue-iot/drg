@@ -12,3 +12,6 @@
 
 #Intellij files
 .idea
+
+# RPMs
+*.rpm
