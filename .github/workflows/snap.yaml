@@ -2,12 +2,8 @@ name: Oh Snap
 
 on:
   push:
-    # Run on the main branch
-    branches:
-      - main
     tags:
       - '*'
-  pull_request:
 
 jobs:
   build:
