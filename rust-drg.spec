@@ -33,7 +33,7 @@ Summary:        %{summary}
 %{_bindir}/drg
 
 %prep
-%autosetup -p1 -n drg-0.3.0
+%autosetup -p1 -n %{crate}-%{version}
 %cargo_prep
 
 %generate_buildrequires
