@@ -1,6 +1,6 @@
-use crate::config::Config;
+use crate::config::Context;
 use crate::{util, AppId, DeviceId, Verbs};
-use anyhow::{Context, Result};
+use anyhow::{Context as AnyhowContext, Result};
 use oauth2::TokenResponse;
 use reqwest::blocking::Client;
 use reqwest::blocking::Response;
@@ -12,9 +12,9 @@ fn craft_url(base: &Url, app_id: &AppId, device_id: &DeviceId) -> String {
     format!("{}api/v1/apps/{}/devices/{}", base, app_id, device_id)
 }
 
-pub fn delete(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
+pub fn delete(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, app, device_id);
+    let url = craft_url(&config.registry_url, &app, &device_id);
 
     client
         .delete(&url)
@@ -24,16 +24,16 @@ pub fn delete(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> 
         .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::delete))
 }
 
-pub fn read(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
-    get(&config, app, device_id)
+pub fn read(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
+    get(&config, &app, &device_id)
         .map(|res| util::print_result(res, device_id.to_string(), Verbs::get))
 }
 
 pub fn create(
-    config: &Config,
-    device_id: &DeviceId,
+    config: &Context,
+    device_id: DeviceId,
     data: serde_json::Value,
-    app_id: &AppId,
+    app_id: AppId,
 ) -> Result<()> {
     let client = Client::new();
     let url = format!("{}api/v1/apps/{}/devices", &config.registry_url, app_id);
@@ -55,23 +55,23 @@ pub fn create(
         .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::create))
 }
 
-pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId, file: Option<&str>) -> Result<()> {
+pub fn edit(config: &Context, app: AppId, device_id: DeviceId, file: Option<&str>) -> Result<()> {
     match file {
         Some(f) => {
             let data = util::get_data_from_file(f)?;
 
-            put(&config, app, device_id, data)
+            put(&config, &app, &device_id, data)
                 .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::edit))
         }
         None => {
             //read device data
-            let res = get(&config, app, device_id);
+            let res = get(&config, &app, &device_id);
             match res {
                 Ok(r) => match r.status() {
                     StatusCode::OK => {
                         let body = r.text().unwrap_or("{}".to_string());
                         let insert = util::editor(body)?;
-                        put(&config, app, device_id, insert).map(|p| {
+                        put(&config, &app, &device_id, insert).map(|p| {
                             util::print_result(p, format!("Device {}", device_id), Verbs::edit)
                         })
                     }
@@ -89,7 +89,7 @@ pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId, file: Option<&st
     }
 }
 
-fn get(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<Response> {
+fn get(config: &Context, app: &AppId, device_id: &DeviceId) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app, device_id);
 
@@ -101,7 +101,7 @@ fn get(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<Response> {
 }
 
 fn put(
-    config: &Config,
+    config: &Context,
     app: &AppId,
     device_id: &DeviceId,
     data: serde_json::Value,
