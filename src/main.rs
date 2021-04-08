@@ -57,7 +57,7 @@ fn main() -> Result<()> {
             match verb? {
                 Verbs::create => match cmd.subcommand() {
                     (res, command) => {
-                        let data = util::json_parse(command.unwrap().value_of(Parameters::data))?;
+                        let data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
                         let id = command.unwrap().value_of(Parameters::id).unwrap();
 
                         let resource = Resources::from_str(res);

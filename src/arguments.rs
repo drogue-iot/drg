@@ -27,7 +27,7 @@ pub enum Resources {
 pub enum Parameters {
     url,
     id,
-    data,
+    spec,
     config,
     filename,
 }
@@ -55,17 +55,18 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .help("The app owning the device.");
 
-    let data_arg = Arg::with_name(Parameters::data.as_ref())
-        .short("d")
-        .long(Parameters::data.as_ref())
+    let spec_arg = Arg::with_name(Parameters::spec.as_ref())
+        .short("s")
+        .long(Parameters::spec.as_ref())
+        .alias("data")
         .takes_value(true)
-        .help("The data for the resource.");
+        .help("The spec for the resource. --data is deprecated");
 
     let file_arg = Arg::with_name(Parameters::filename.as_ref())
         .short("f")
         .long(Parameters::filename.as_ref())
         .takes_value(true)
-        .help("file that contains the data to update the resource with.");
+        .help("file that contains the spec to update the resource with.");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
@@ -97,13 +98,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .about("create a device.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone())
-                        .arg(data_arg.clone()),
+                        .arg(spec_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("create an app.")
                         .arg(resource_id_arg.clone())
-                        .arg(data_arg.clone()),
+                        .arg(spec_arg.clone()),
                 ),
         )
         .subcommand(
@@ -129,13 +130,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
-                        .about("Retrieve a device data.")
+                        .about("Retrieve a device spec.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
-                        .about("retrieve an app data.")
+                        .about("retrieve an app spec.")
                         .arg(resource_id_arg.clone()),
                 ),
         )
@@ -146,14 +147,14 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
-                        .about("Edit a device data.")
+                        .about("Edit a device spec.")
                         .arg(resource_id_arg.clone())
                         .arg(app_id_arg.clone())
                         .arg(file_arg.clone()),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
-                        .about("Edit an app data.")
+                        .about("Edit an app spec.")
                         .arg(resource_id_arg.clone())
                         .arg(file_arg.clone()),
                 ),
