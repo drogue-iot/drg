@@ -48,6 +48,13 @@ fn main() -> Result<()> {
         openid::print_token(&config);
         exit(0);
     }
+    
+    if matches.is_present(Other_commands::whoami) {
+        println!("cluster adress : {}", config.drogue_cloud_url);
+        util::print_version_config(&config);
+        println!("default app : {}", config.default_app.unwrap_or("No default app set".to_owned()));
+        exit(0);
+    }
 
     match matches.subcommand() {
         (cmd_name, sub_cmd) => {

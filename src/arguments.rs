@@ -38,6 +38,7 @@ pub enum Other_commands {
     login,
     token,
     version,
+    whoami,
 }
 
 pub fn parse_arguments() -> ArgMatches<'static> {
@@ -171,6 +172,10 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .subcommand(
             SubCommand::with_name(Other_commands::token.as_ref())
                 .about("Print a valid bearer token for the drogue cloud instance."),
+        )
+        .subcommand(
+            SubCommand::with_name(Other_commands::whoami.as_ref())
+                .about("Print cluster adress, version and default app(if any)"),
         )
         .get_matches()
 }

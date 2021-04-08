@@ -120,6 +120,12 @@ pub fn print_version(config: &Result<Config>) {
     exit(0);
 }
 
+pub fn print_version_config(config:&Config) {
+    println!("Client Version: {}", VERSION);
+    let cloud_version = get_drogue_services_version(&config.drogue_cloud_url).unwrap();
+    println!("Connected drogue-cloud service: v{}", cloud_version);
+}
+
 // use drogue's well known endpoint to retrieve endpoints.
 pub fn get_drogue_services_endpoint(url: Url) -> Result<(Url, Url)> {
     let client = Client::new();
