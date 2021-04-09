@@ -38,6 +38,7 @@ fn main() -> Result<()> {
 
     if matches.is_present(Other_commands::version) {
         util::print_version(&rst_config);
+        exit(0);
     }
 
     config = rst_config?;
