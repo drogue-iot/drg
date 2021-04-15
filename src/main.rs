@@ -13,7 +13,8 @@ use std::str::FromStr;
 type AppId = str;
 type DeviceId = str;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
     let mut config;
 
@@ -122,6 +123,7 @@ fn main() -> Result<()> {
                             Resources::device => {
                                 let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::edit(&config, app_id, id, file)
+                                    .await
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
                                         exit(3)
@@ -147,6 +149,7 @@ fn main() -> Result<()> {
                             Resources::device => {
                                 let app_id = arguments::get_app_id(&command.unwrap(), &config)?;
                                 devices::read(&config, app_id, id)
+                                    .await
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
                                         exit(3)

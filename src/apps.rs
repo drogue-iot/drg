@@ -64,7 +64,7 @@ pub fn edit(config: &Config, app: &AppId, file: Option<&str>) -> Result<()> {
                 Ok(r) => match r.status() {
                     StatusCode::OK => {
                         let body = r.text().unwrap_or("{}".to_string());
-                        let insert = util::editor(body)?;
+                        let insert = util::editor_str(body)?;
 
                         put(config, app, insert)
                             .map(|p| util::print_result(p, format!("App {}", app), Verbs::edit))

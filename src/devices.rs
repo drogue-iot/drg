@@ -1,12 +1,13 @@
 use crate::config::Config;
+use crate::util::ExitReason;
 use crate::{util, AppId, DeviceId, Verbs};
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
+use drogue_client::error::ClientError;
+use drogue_client::{registry, Context};
 use oauth2::TokenResponse;
 use reqwest::blocking::Client;
-use reqwest::blocking::Response;
-use reqwest::{StatusCode, Url};
+use reqwest::Url;
 use serde_json::json;
-use std::process::exit;
 
 fn craft_url(base: &Url, app_id: &AppId, device_id: &DeviceId) -> String {
     format!("{}api/v1/apps/{}/devices/{}", base, app_id, device_id)
@@ -24,9 +25,13 @@ pub fn delete(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> 
         .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::delete))
 }
 
-pub fn read(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
-    get(&config, app, device_id)
-        .map(|res| util::print_result(res, device_id.to_string(), Verbs::get))
+pub async fn read(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<()> {
+    Ok(util::print_resource(
+        get(&config, app, device_id).await,
+        "device",
+        device_id,
+        Some(app),
+    )?)
 }
 
 pub fn create(
@@ -55,69 +60,81 @@ pub fn create(
         .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::create))
 }
 
-pub fn edit(config: &Config, app: &AppId, device_id: &DeviceId, file: Option<&str>) -> Result<()> {
+pub async fn edit(
+    config: &Config,
+    app: &AppId,
+    device_id: &DeviceId,
+    file: Option<&str>,
+) -> Result<()> {
     match file {
         Some(f) => {
             let data = util::get_data_from_file(f)?;
 
-            put(&config, app, device_id, data)
-                .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::edit))
+            let res = put(&config, app, device_id, data).await?;
+            util::print_result_async(res, format!("Device {}", device_id), Verbs::edit).await;
+            Ok(())
         }
         None => {
             //read device data
-            let res = get(&config, app, device_id);
+            let res = get(&config, app, device_id).await;
             match res {
-                Ok(r) => match r.status() {
-                    StatusCode::OK => {
-                        let body = r.text().unwrap_or("{}".to_string());
-                        let insert = util::editor(body)?;
-                        put(&config, app, device_id, insert).map(|p| {
-                            util::print_result(p, format!("Device {}", device_id), Verbs::edit)
-                        })
-                    }
-                    e => {
-                        log::error!("Error : could not retrieve device: {}", e);
-                        exit(2);
-                    }
-                },
+                Ok(Some(device)) => {
+                    let insert = util::editor(device)?;
+                    let res = put(&config, app, device_id, insert).await?;
+                    util::print_result_async(res, format!("Device {}", device_id), Verbs::edit)
+                        .await;
+                    Ok(())
+                }
+                Ok(None) => {
+                    log::error!("Device not found");
+                    util::exit_with(ExitReason::NotFound);
+                }
                 Err(e) => {
-                    log::error!("Error : could not retrieve device: {}", e);
-                    exit(2)
+                    util::exit_with_err(e);
                 }
             }
         }
     }
 }
 
-fn get(config: &Config, app: &AppId, device_id: &DeviceId) -> Result<Response> {
-    let client = Client::new();
-    let url = craft_url(&config.registry_url, app, device_id);
+async fn get(
+    config: &Config,
+    app: &AppId,
+    device_id: &DeviceId,
+) -> std::result::Result<Option<registry::v1::Device>, ClientError<reqwest::Error>> {
+    let client =
+        registry::v1::Client::new(reqwest::Client::new(), config.registry_url.clone(), None);
 
     client
-        .get(&url)
-        .bearer_auth(&config.token.access_token().secret())
-        .send()
-        .context("Can't get device.")
+        .get_device(
+            app,
+            device_id,
+            Context {
+                provided_token: Some(config.token.access_token().secret().clone()),
+            },
+        )
+        .await
 }
 
-fn put(
+async fn put(
     config: &Config,
     app: &AppId,
     device_id: &DeviceId,
     data: serde_json::Value,
-) -> Result<Response> {
-    let client = Client::new();
+) -> Result<reqwest::Response> {
+    let client = reqwest::Client::new();
     let url = craft_url(&config.registry_url, app, device_id);
     let token = &config.token.access_token().secret();
 
-    client
+    Ok(client
         .put(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/json")
         .bearer_auth(token)
         .body(data.to_string())
         .send()
+        .await
         .context(format!(
             "Error while updating device data for {}",
             device_id
-        ))
+        ))?)
 }

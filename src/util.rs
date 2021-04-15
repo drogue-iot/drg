@@ -4,9 +4,11 @@ use anyhow::{Context, Result};
 use clap::crate_version;
 use clap::ArgMatches;
 use colored_json::write_colored_json;
+use drogue_client::error::ClientError;
 use log::LevelFilter;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
+use serde::Serialize;
 use serde_json::{from_str, Value};
 use std::fs;
 use std::io::stdout;
@@ -43,6 +45,75 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     }
 }
 
+pub async fn print_result_async(r: reqwest::Response, resource_name: String, op: Verbs) {
+    match op {
+        Verbs::create => match r.status() {
+            StatusCode::CREATED => println!("{} created.", resource_name),
+            r => exit_with_code(r),
+        },
+        Verbs::delete => match r.status() {
+            StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
+            r => exit_with_code(r),
+        },
+        Verbs::get => match r.status() {
+            StatusCode::OK => show_json(r.text().await.expect("Empty response")),
+            r => exit_with_code(r),
+        },
+        Verbs::edit => match r.status() {
+            StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
+            r => exit_with_code(r),
+        },
+    }
+}
+
+pub fn print_resource<R, S1, S2, S3>(
+    resource: Result<Option<R>, ClientError<reqwest::Error>>,
+    resource_type: S1,
+    resource_name: S2,
+    app_name: Option<S3>,
+) -> anyhow::Result<()>
+where
+    R: Serialize,
+    S1: AsRef<str>,
+    S2: AsRef<str>,
+    S3: AsRef<str>,
+{
+    match resource {
+        Ok(Some(resource)) => {
+            show_resource(resource)?;
+        }
+        Ok(None) => {
+            match app_name {
+                Some(app_name) => eprintln!(
+                    "Error: Resource {}/{} not found in application {}",
+                    resource_type.as_ref(),
+                    resource_name.as_ref(),
+                    app_name.as_ref(),
+                ),
+                None => eprintln!(
+                    "Error: Resource {}/{} not found",
+                    resource_type.as_ref(),
+                    resource_name.as_ref()
+                ),
+            }
+            exit_with(ExitReason::NotFound);
+        }
+        Err(err) => exit_with_err(err),
+    }
+
+    Ok(())
+}
+
+pub fn show_resource<R>(resource: R) -> anyhow::Result<()>
+where
+    R: Serialize,
+{
+    let json = serde_json::to_value(resource)?;
+    write_colored_json(&json, &mut stdout().lock())?;
+
+    Ok(())
+}
+
 fn show_json<S: Into<String>>(payload: S) {
     let payload = payload.into();
     match serde_json::from_str(&payload) {
@@ -55,12 +126,47 @@ fn show_json<S: Into<String>>(payload: S) {
     }
 }
 
-fn exit_with_code(r: reqwest::StatusCode) {
+fn exit_with_code(r: reqwest::StatusCode) -> ! {
     log::error!("Error : {}", r);
     if r.as_u16() == 403 {
-        exit(4)
+        exit_with(ExitReason::AccessDenied)
     }
-    exit(2)
+    exit_with(ExitReason::Unknown)
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ExitReason {
+    AccessDenied,
+    NotFound,
+    Unknown,
+}
+
+impl ExitReason {
+    pub fn code(&self) -> i32 {
+        match self {
+            Self::Unknown => 2,
+            Self::NotFound => 2,
+            Self::AccessDenied => 4,
+        }
+    }
+}
+
+pub fn exit_with(reason: ExitReason) -> ! {
+    log::debug!("Exit with: {:?}", reason);
+    exit(reason.code());
+}
+
+pub fn exit_with_err(err: ClientError<reqwest::Error>) -> ! {
+    log::debug!("Exit with error: {}", err);
+
+    match err {
+        ClientError::Service(info) => {
+            eprintln!("Error from server ({}): {}", info.error, info.message);
+        }
+        _ => {}
+    }
+
+    exit_with(ExitReason::Unknown);
 }
 
 // todo : assume https as the default scheme
@@ -76,9 +182,7 @@ pub fn json_parse(data: Option<&str>) -> Result<Value> {
     ))
 }
 
-pub fn editor(original: String) -> Result<Value> {
-    let data: Value = serde_json::from_str(original.as_str())?;
-
+pub fn editor<R: Serialize>(data: R) -> Result<Value> {
     // todo cross platform support
     let editor = var("EDITOR").unwrap_or("vi".to_string());
     let file = NamedTempFile::new()?;
@@ -99,6 +203,10 @@ pub fn editor(original: String) -> Result<Value> {
     file2.read_to_string(&mut buf)?;
 
     from_str(buf.as_str()).context("Invalid JSON data.")
+}
+
+pub fn editor_str(original: String) -> Result<Value> {
+    editor(serde_json::from_str(original.as_str())?)
 }
 
 pub fn print_version(config: &Result<Config>) {
@@ -181,7 +289,8 @@ pub fn log_level(matches: &ArgMatches) -> LevelFilter {
         0 => LevelFilter::Error,
         1 => LevelFilter::Warn,
         2 => LevelFilter::Info,
-        _ => LevelFilter::Debug,
+        3 => LevelFilter::Debug,
+        _ => LevelFilter::Trace,
     }
 }
 
