@@ -607,7 +607,9 @@ dependencies = [
 
 [[package]]
 name = "drogue-client"
-version = "0.5.0"
+version = "0.5.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa9bad2a60e0edb4c06b6eea3c93e9eab14a6ba86c1bead2be6b25eb10874783"
 dependencies = [
  "async-std",
  "async-trait",
@@ -1503,7 +1505,9 @@ checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 
 [[package]]
 name = "openid"
-version = "0.9.0"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9944c925d2e03d094a6affb343df270f7ac1841ecdf3ce138aa61e62faa63924"
 dependencies = [
  "base64 0.13.0",
  "biscuit",
