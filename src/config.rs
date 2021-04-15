@@ -1,15 +1,31 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context as AnyhowContext, Result};
 use serde::{Deserialize, Serialize};
 use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path};
 
 use chrono::{DateTime, Utc};
 use oauth2::basic::BasicTokenResponse;
+use read_input::prelude::*;
 use url::Url;
+
+use crate::AppId;
+
+type ContextId = String;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
+    pub active_context: ContextId,
+    pub contexts: Vec<Context>,
+    //todo : when loading, put a ref to the active context for faster access
+    // to avoid looping through the contexts each time.
+    // #[serde(skip)]
+    // active_ctx_ref: &Context
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Context {
+    pub name: ContextId,
     pub drogue_cloud_url: Url,
-    pub default_app: Option<String>,
+    pub default_app: Option<AppId>,
     pub auth_url: Url,
     pub token_url: Url,
     pub registry_url: Url,
@@ -17,26 +33,162 @@ pub struct Config {
     pub token: BasicTokenResponse,
 }
 
-pub fn load_config(path: Option<&str>) -> Result<Config> {
-    let path = eval_config_path(path);
-    log::info!("Loading configuration file: {}", path);
+impl Config {
+    pub fn empty() -> Config {
+        Config {
+            active_context: String::new(),
+            contexts: Vec::new(),
+        }
+    }
+    pub fn from(path: Option<&str>) -> Result<Config> {
+        let path = eval_config_path(path);
+        log::info!("Loading configuration file: {}", &path);
 
-    let file = File::open(path)
-        .context("Unable to open configuration file. Did you log into a drogue cloud cluster ?")?;
-    let config: Config = serde_json::from_reader(file).context("Invalid configuration file.")?;
-    Ok(config)
-}
+        let file = File::open(path).context(
+            "Unable to open configuration file. Did ou log into a drogue cloud cluster ?",
+        )?;
+        let config: Config =
+            serde_yaml::from_reader(file).context("Invalid configuration file.")?;
 
-pub fn save_config(config: &Config) -> Result<()> {
-    let path = eval_config_path(None);
-    log::info!("Saving config file: {}", path);
-
-    if let Some(parent) = Path::new(&path).parent() {
-        create_dir_all(parent).context("Failed to create parent directory of configuration")?;
+        Ok(config)
     }
 
-    write(&path, serde_json::to_string_pretty(&config)?)
-        .context(format!("Unable to write config file :{}", path))
+    pub fn add_context(&mut self, context: Context) -> Result<()> {
+        let name = &context.name;
+        if !self.contains_context(name) {
+            if self.contexts.is_empty() {
+                self.active_context = name.clone();
+            }
+            self.contexts.push(context);
+            Ok(())
+        } else {
+            Err(anyhow!("Context {} already exist in config!", name))
+        }
+    }
+
+    pub fn get_context(&self, name: &Option<ContextId>) -> Result<&Context> {
+        match name {
+            Some(n) => self.get_context_as_ref(n),
+            None => self.get_active_context(),
+        }
+    }
+
+    pub fn get_context_mut(&mut self, name: &Option<ContextId>) -> Result<&mut Context> {
+        match name {
+            Some(n) => self.get_context_as_mut(n),
+            None => self.get_active_context_mut(),
+        }
+    }
+    fn get_active_context(&self) -> Result<&Context> {
+        let default_context = &self.active_context;
+        self.get_context_as_ref(default_context)
+    }
+    fn get_active_context_mut(&mut self) -> Result<&mut Context> {
+        // todo : avoid the clone ?
+        let default_context = &self.active_context.clone();
+        self.get_context_as_mut(default_context)
+    }
+    fn get_context_as_ref(&self, name: &ContextId) -> Result<&Context> {
+        for c in &self.contexts {
+            if &c.name == name {
+                return Ok(c);
+            }
+        }
+        Err(anyhow!("Context \"{}\" not found in config file.", name))
+    }
+
+    fn get_context_as_mut(&mut self, name: &ContextId) -> Result<&mut Context> {
+        for c in &mut self.contexts {
+            if &c.name == name {
+                return Ok(c);
+            }
+        }
+        Err(anyhow!("Context \"{}\" not found in config file.", name))
+    }
+    fn contains_context(&self, name: &ContextId) -> bool {
+        for config in &self.contexts {
+            if &config.name == name {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn list_contexts(&self) {
+        for config in &self.contexts {
+            println!("{}", &config.name)
+        }
+    }
+
+    pub fn set_active_context(&mut self, name: ContextId) -> Result<()> {
+        if self.contains_context(&name) {
+            log::error!("{} set as active context.", &name);
+            self.active_context = name;
+            Ok(())
+        } else {
+            Err(anyhow!("Context {} does not exist in config file.", name))
+        }
+    }
+
+    pub fn write(&self, path: Option<&str>) -> Result<()> {
+        let path = eval_config_path(path);
+        if let Some(parent) = Path::new(&path).parent() {
+            create_dir_all(parent).context("Failed to create parent directory of configuration")?;
+        }
+
+        log::info!("Saving config file: {}", &path);
+        write(&path, serde_yaml::to_string(&self)?)
+            .context(format!("Unable to write config file :{}", path))
+    }
+
+    pub fn delete_context(&mut self, name: &ContextId) -> Result<()> {
+        if self.contains_context(&name) {
+            self.contexts.retain(|c| &c.name != name);
+
+            if &self.active_context == name {
+                if self.contexts.len() > 0 {
+                    self.active_context = self.contexts[0].name.clone();
+                } else {
+                    self.active_context = String::new();
+                }
+            }
+            Ok(())
+        } else {
+            Err(anyhow!("Context {} does not exist in config file.", name))
+        }
+    }
+
+    // see fnOnce ?
+    // https://github.com/ctron/operator-framework/blob/e827775e023dfbe22a9defbf31e6a87f46d38ef5/src/install/container/env.rs#L259-L277
+
+    pub fn rename_context(&mut self, name: ContextId, new_name: ContextId) -> Result<()> {
+        if self.contains_context(&name) {
+            let ctx = self.get_context_as_mut(&name)?;
+            ctx.rename(new_name.clone());
+
+            if self.active_context == name {
+                self.active_context = new_name;
+            }
+            Ok(())
+        } else {
+            Err(anyhow!("Context {} does not exist in config file.", name))
+        }
+    }
+
+    //todo implement a display Trait ?
+    pub fn show(&self) -> Result<()> {
+        println!("{}", serde_yaml::to_string(&self)?);
+        Ok(())
+    }
+}
+
+impl Context {
+    fn rename(&mut self, new_name: ContextId) {
+        self.name = new_name;
+    }
+
+    pub fn set_default_app(&mut self, app: AppId) {
+        self.default_app = Some(app);
+    }
 }
 
 // use the provided config path or `$DRGCFG` value if set
@@ -49,7 +201,18 @@ fn eval_config_path(path: Option<&str>) -> String {
         None => env::var("DRGCFG").unwrap_or_else(|_| {
             let xdg = env::var("XDG_CONFIG_HOME")
                 .unwrap_or(format!("{}/.config", env::var("HOME").unwrap()));
-            format!("{}/drg_config.json", xdg)
+            format!("{}/drg_config.yaml", xdg)
         }),
     }
+}
+
+pub fn ask_config_name() -> ContextId {
+    input::<String>()
+        .msg("Context name: ")
+        .err("Invalid context name")
+        .add_err_test(
+            |s| !s.contains(" "),
+            "context name should not contains spaces",
+        )
+        .get()
 }

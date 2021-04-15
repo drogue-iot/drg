@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::Verbs;
-use anyhow::{Context, Result};
+use anyhow::{Context as AnyhowContext, Result};
 use clap::crate_version;
 use clap::ArgMatches;
 use colored_json::write_colored_json;
@@ -105,15 +105,24 @@ pub fn print_version(config: &Result<Config>) {
     println!("Client Version: {}", VERSION);
 
     match config {
-        Ok(c) => {
-            let cloud_version = get_drogue_services_version(&c.drogue_cloud_url).unwrap();
-            println!("Connected drogue-cloud service: v{}", cloud_version);
+        Ok(cfg) => {
+            let context = cfg.get_context(&None);
+            match context {
+                Ok(ctx) => {
+                    let cloud_version = get_drogue_services_version(&ctx.drogue_cloud_url).unwrap();
+                    println!("Connected drogue-cloud service: v{}", cloud_version);
+                }
+                Err(e) => {
+                    println!("{}", e);
+                }
+            }
         }
-        Err(_) => {
+        Err(e) => {
             println!(
-                "Not connected to a drogue-cloud service. Compatible with v{}",
+                "Invalid configuration file. Compatible with v{}",
                 COMPATIBLE_DROGUE_VERSION
             );
+            log::info!("{}", e)
         }
     }
 

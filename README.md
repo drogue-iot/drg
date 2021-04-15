@@ -19,7 +19,7 @@ In order to use `drg` to manage resources in drogue cloud you first need to auth
 ```
 drg login https://drogue-cloud-registry-endpoint
 ```
-Then follow the steps to authenticate. drg will generate a config file to save your configuration.
+Then follow the steps to authenticate. drg will ask you to name this new context and generate a config file to save your configuration.
 
 ## Managing resources 
 
@@ -66,16 +66,39 @@ drg edit device <deviceId> -a <appId> -f </path/to/json>
 drg delete device <deviceId> - <appId>
 ```
 
-## Configuration fie
+## Configuration file
 
-`drg` will load cluster settings from a configuration file. The `DRGCFG` environment variable can point to a config file location.
-The default config file location is `$HOME/.config/drg_config.json`. This default value will be used if the environment variable is not set. 
+`drg` will load cluster settings from the default context of a configuration file. The `DRGCFG` environment variable can point to a config file location.
+The default config file location is `$HOME/.config/drg_config.yaml`. This default value will be used if the environment variable is not set. 
 This location can be overriden with the `--config` argument : 
 ```
 drg --config path/to/config create device <deviceId> --app <appId>
 ```
 
 To get a working config file, run see [login to a drogue cloud instance](#Log-in-to-a-drogue-cloud-instance)
+
+### Context management
+
+A valid configuration can contain multiple context allowing you to switch between cluster easily. 
+To create a new context simply log into a cluster with `drg login` : [login to a drogue cloud instance](#Log-in-to-a-drogue-cloud-instance)
+If it's the first context created for this configuration file it will be set as active by default. 
+
+To update the active context for a config file : 
+```
+drg context set-active <contextId>
+```
+
+Here are some other commads available to manage contexts :
+```
+drg context show #will display the whole config file. 
+drg context list
+drg context set-default-app <appId> #will use active context
+drg context set-default-app <appId> --context <anotherContextId>
+drg context delete <contextId> 
+drg context rename <contextId> <newContextId>
+```
+
+context and app can be set with environment variables : `DRG_CONTEXT` and `DRG_APP`.
 
 # Roadmap
 

@@ -1,6 +1,6 @@
-use crate::config::Config;
+use crate::config::Context;
 use crate::{util, AppId, Verbs};
-use anyhow::{Context, Result};
+use anyhow::{Context as AnyhowContext, Result};
 use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
@@ -11,7 +11,7 @@ fn craft_url(base: &Url, app_id: &AppId) -> String {
     format!("{}api/v1/apps/{}", base, app_id)
 }
 
-pub fn create(config: &Config, app: &AppId, data: serde_json::Value) -> Result<()> {
+pub fn create(config: &Context, app: AppId, data: serde_json::Value) -> Result<()> {
     let client = Client::new();
     let url = format!("{}api/v1/apps", &config.registry_url);
     let body = json!({
@@ -33,41 +33,41 @@ pub fn create(config: &Config, app: &AppId, data: serde_json::Value) -> Result<(
         .map(|res| util::print_result(res, format!("App {}", app), Verbs::create))
 }
 
-pub fn read(config: &Config, app: &AppId) -> Result<()> {
-    get(config, app).map(|res| util::print_result(res, app.to_string(), Verbs::get))
+pub fn read(config: &Context, app: AppId) -> Result<()> {
+    get(config, &app).map(|res| util::print_result(res, app.to_string(), Verbs::get))
 }
 
-pub fn delete(config: &Config, app: &AppId) -> Result<()> {
+pub fn delete(config: &Context, app: AppId) -> Result<()> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, app);
+    let url = craft_url(&config.registry_url, &app);
 
     client
         .delete(&url)
         .bearer_auth(&config.token.access_token().secret())
         .send()
         .context("Can't get app.")
-        .map(|res| util::print_result(res, format!("App {}", app), Verbs::delete))
+        .map(|res| util::print_result(res, format!("App {}", &app), Verbs::delete))
 }
 
-pub fn edit(config: &Config, app: &AppId, file: Option<&str>) -> Result<()> {
+pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
     match file {
         Some(f) => {
             let data = util::get_data_from_file(f)?;
 
-            put(&config, app, data)
-                .map(|res| util::print_result(res, format!("App {}", app), Verbs::edit))
+            put(&config, &app, data)
+                .map(|res| util::print_result(res, format!("App {}", &app), Verbs::edit))
         }
         None => {
             //read app data
-            let res = get(config, app);
+            let res = get(config, &app);
             match res {
                 Ok(r) => match r.status() {
                     StatusCode::OK => {
                         let body = r.text().unwrap_or("{}".to_string());
                         let insert = util::editor(body)?;
 
-                        put(config, app, insert)
-                            .map(|p| util::print_result(p, format!("App {}", app), Verbs::edit))
+                        put(config, &app, insert)
+                            .map(|p| util::print_result(p, format!("App {}", &app), Verbs::edit))
                     }
                     e => {
                         log::error!("Error : could not retrieve app: {}", e);
@@ -83,7 +83,7 @@ pub fn edit(config: &Config, app: &AppId, file: Option<&str>) -> Result<()> {
     }
 }
 
-fn get(config: &Config, app: &AppId) -> Result<Response> {
+fn get(config: &Context, app: &AppId) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app);
     client
@@ -93,7 +93,7 @@ fn get(config: &Config, app: &AppId) -> Result<Response> {
         .context("Can't retrieve app data.")
 }
 
-fn put(config: &Config, app: &AppId, data: serde_json::Value) -> Result<Response> {
+fn put(config: &Context, app: &AppId, data: serde_json::Value) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app);
 
