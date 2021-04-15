@@ -165,7 +165,6 @@ impl Config {
             let ctx = self.get_context_as_mut(&name)?;
             ctx.rename(new_name.clone());
 
-
             if self.active_context == name {
                 self.active_context = new_name;
             }
