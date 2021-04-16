@@ -11,17 +11,20 @@ fn craft_url(base: &Url, app_id: &AppId) -> String {
     format!("{}api/v1/apps/{}", base, app_id)
 }
 
-pub fn create(config: &Context, app: AppId, data: serde_json::Value) -> Result<()> {
+pub fn create(config: &Context, app: AppId, data: serde_json::Value, file: Option<&str>) -> Result<()> {
     let client = Client::new();
     let url = format!("{}api/v1/apps", &config.registry_url);
-    let body = json!({
+    let body = match file {
+        Some(f) => util::get_data_from_file(f)?,
+        None => {
+            json!({
         "metadata": {
             "name": app,
         },
-        "spec": {
-            "data": data,
+        "spec": data,
+        })
         }
-    });
+    };
 
     client
         .post(&url)

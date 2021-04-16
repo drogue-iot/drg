@@ -86,6 +86,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .long(Parameters::filename.as_ref())
         .takes_value(true)
         .value_name("FILE")
+        .conflicts_with(Parameters::spec.as_ref())
         .help("file that contains the spec to update the resource with.");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
@@ -133,13 +134,15 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .about("create a device.")
                         .arg(&resource_id_arg)
                         .arg(&app_id_arg)
-                        .arg(&spec_arg),
+                        .arg(&spec_arg)
+                        .arg(&file_arg),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("create an app.")
                         .arg(&resource_id_arg)
-                        .arg(&spec_arg),
+                        .arg(&spec_arg)
+                        .arg(&file_arg),
                 ),
         )
         .subcommand(

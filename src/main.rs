@@ -142,9 +142,10 @@ fn main() -> Result<()> {
                             .to_string();
 
                         let resource = Resources::from_str(res);
+                        let file = command.unwrap().value_of(Parameters::filename);
 
                         match resource? {
-                            Resources::app => apps::create(&context, id, data)
+                            Resources::app => apps::create(&context, id, data, file)
                                 .map_err(|e| {
                                     log::error!("{:?}", e);
                                     exit(3)
@@ -153,7 +154,7 @@ fn main() -> Result<()> {
                             Resources::device => {
                                 let app_id =
                                     arguments::get_app_id(&command.unwrap(), &context)?.to_string();
-                                devices::create(&context, id, data, app_id)
+                                devices::create(&context, id, data, app_id, file)
                                     .map_err(|e| {
                                         log::error!("{:?}", e);
                                         exit(3)

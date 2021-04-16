@@ -34,16 +34,24 @@ pub fn create(
     device_id: DeviceId,
     data: serde_json::Value,
     app_id: AppId,
+    file: Option<&str>
 ) -> Result<()> {
-    let client = Client::new();
-    let url = format!("{}api/v1/apps/{}/devices", &config.registry_url, app_id);
-    let body = json!({
+
+    let body = match file {
+        Some(f) => util::get_data_from_file(f)?,
+        None => {
+            json!({
         "metadata": {
             "name": device_id,
             "application": app_id
         },
         "spec": data
-    });
+        })
+        }
+    };
+
+    let client = Client::new();
+    let url = format!("{}api/v1/apps/{}/devices", &config.registry_url, app_id);
 
     client
         .post(&url)
