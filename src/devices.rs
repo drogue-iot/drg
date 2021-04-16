@@ -34,19 +34,18 @@ pub fn create(
     device_id: DeviceId,
     data: serde_json::Value,
     app_id: AppId,
-    file: Option<&str>
+    file: Option<&str>,
 ) -> Result<()> {
-
     let body = match file {
         Some(f) => util::get_data_from_file(f)?,
         None => {
             json!({
-        "metadata": {
-            "name": device_id,
-            "application": app_id
-        },
-        "spec": data
-        })
+            "metadata": {
+                "name": device_id,
+                "application": app_id
+            },
+            "spec": data
+            })
         }
     };
 
