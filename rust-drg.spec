@@ -5,14 +5,14 @@
 %global crate drg
 
 Name:           rust-%{crate}
-Version:        0.3.0
+Version:        0.4.0
 Release:        1.20210406114535497168.main.19.ga7278ba%{?dist}
 Summary:        Command line tool to interact with a drogue-cloud instance
 
 # Upstream license specification: Apache-2.0
 License:        ASL 2.0
 URL:            https://crates.io/crates/drg
-Source:         drg-0.3.0.tar.gz
+Source:         drg-0.4.0.tar.gz
 
 ExclusiveArch:  %{rust_arches}
 
