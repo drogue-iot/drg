@@ -12,7 +12,7 @@ Summary:        Command line tool to interact with a drogue-cloud instance
 # Upstream license specification: Apache-2.0
 License:        ASL 2.0
 URL:            https://crates.io/crates/drg
-Source:         drg-0.4.0.tar.gz
+Source:         %{crates_source}
 
 ExclusiveArch:  %{rust_arches}
 
@@ -72,5 +72,3 @@ Summary:        %{summary}
 - make use of the default app setting (Jean-Baptiste Trystram)
 - Automatic browser open to login (#28) (Vedang Joshi)
 
-* Tue Apr 06 13:44:55 CEST 2021 Jens Reimann <jreimann@redhat.com> - 0.3.0-1
-- Initial package

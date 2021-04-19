@@ -41,9 +41,9 @@ checksum = "28b2cd92db5cbd74e8e5028f7e27dd7aa3090e89e4f2a197cc7c8dfb69c7063b"
 
 [[package]]
 name = "ascii"
-version = "1.0.0"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbf56136a5198c7b01a49e3afcbef6cf84597273d298f54432926024107b0109"
+checksum = "97be891acc47ca214468e09425d02cef3af2c94d0d82081cd02061f996802f14"
 
 [[package]]
 name = "atty"
@@ -199,9 +199,9 @@ dependencies = [
 
 [[package]]
 name = "chunked_transfer"
-version = "1.4.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fff857943da45f546682664a79488be82e69e43c1a7a2307679ab9afb3a66d2e"
+checksum = "498d20a7aaf62625b9bf26e637cf7736417cde1d0c99f1d04d1170229a85cf87"
 
 [[package]]
 name = "clap"
@@ -1874,15 +1874,15 @@ dependencies = [
 
 [[package]]
 name = "tiny_http"
-version = "0.8.0"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eded47106b8e52d8ed8119f0ea6e8c0f5881e69783e0297b5a8462958f334bc1"
+checksum = "7ef26912202ff40efe1af278c8b09145e5d5def7a2d684b1bd2fe5f372f61282"
 dependencies = [
  "ascii",
  "chrono",
  "chunked_transfer",
  "log",
- "url 2.2.1",
+ "url 1.7.2",
 ]
 
 [[package]]
