@@ -89,6 +89,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .conflicts_with(Parameters::spec.as_ref())
         .help("file that contains the spec to update the resource with.");
 
+    let token_arg = Arg::with_name(Other_commands::token.as_ref())
+        .short("t")
+        .takes_value(true)
+        .long(Other_commands::token.as_ref())
+        .help("Refresh token for authentication.");
+
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
         .short("C")
@@ -203,6 +209,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Other_commands::login.as_ref())
+                .arg(&token_arg)
                 .about("Log into a drogue cloud installation.")
                 .arg(&url_arg),
         )

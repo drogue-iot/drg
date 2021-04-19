@@ -21,6 +21,11 @@ drg login https://drogue-cloud-registry-endpoint
 ```
 Then follow the steps to authenticate. drg will ask you to name this new context and generate a config file to save your configuration.
 
+You can also use a refresh token to authenticate, suitable when the browser can't be accessed:
+```
+drg login https://drogue-cloud-registry-endpoint --token <refresh_token>
+```
+
 ## Managing resources 
 
 `drg` interacts with resources existing in drogue-cloud, currently `apps` and  `devices` operations are supported. 
