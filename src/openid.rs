@@ -22,13 +22,17 @@ const CLIENT_ID: &str = "drogue";
 const SERVER_PORT: u16 = 8080;
 const REDIRECT_URL: &str = "http://localhost:8080";
 
-pub fn login(api_endpoint: Url) -> Result<Context> {
+pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>) -> Result<Context> {
     log::info!("Starting authentication process with {}", api_endpoint);
 
     let (sso_url, registry_url) = util::get_drogue_services_endpoint(api_endpoint.clone())?;
     let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
 
-    let token = get_token(auth_url.clone(), token_url.clone())?;
+    let token = match refresh_token_val {
+        Some(i) => login_with_refresh_token(auth_url.clone(), token_url.clone(), i)?,
+        None => get_token(auth_url.clone(), token_url.clone())?,
+    };
+
     let token_exp_date = calculate_token_expiration_date(&token)?;
 
     log::info!("Token successfully obtained.");
@@ -46,6 +50,30 @@ pub fn login(api_endpoint: Url) -> Result<Context> {
     };
 
     Ok(config)
+}
+
+fn login_with_refresh_token(
+    auth_url: Url,
+    token_url: Url,
+    refresh_token_val: &str,
+) -> Result<BasicTokenResponse> {
+    log::debug!("Using refresh token");
+
+    let auth_url = AuthUrl::new(auth_url.to_string())?;
+    let token_url = TokenUrl::new(token_url.to_string())?;
+
+    let client = BasicClient::new(
+        ClientId::new(CLIENT_ID.to_string()),
+        None,
+        auth_url,
+        Some(token_url.clone()),
+    );
+
+    // Exchange the refresh token for access token
+    client
+        .exchange_refresh_token(&oauth2::RefreshToken::new(refresh_token_val.to_string()))
+        .request(http_client)
+        .map_err(|_| Error::msg("Invalid refresh token"))
 }
 
 fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {

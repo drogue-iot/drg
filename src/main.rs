@@ -33,8 +33,10 @@ fn main() -> Result<()> {
         let (_, submatches) = matches.subcommand();
         let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
 
+        let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
+
         let mut config = config_result.unwrap_or(Config::empty());
-        let context = openid::login(url.clone())?;
+        let context = openid::login(url.clone(), refresh_token_val)?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
         config.add_context(context)?;
