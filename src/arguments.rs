@@ -93,7 +93,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .short("t")
         .takes_value(true)
         .long(Other_commands::token.as_ref())
-        .help("Paste you very long refresh token.");
+        .help("Refresh token for authentication.");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())

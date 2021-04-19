@@ -29,7 +29,11 @@ pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>) -> Result<Conte
     let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
 
     let token = match refresh_token_val {
-        Some(i) => login_with_refresh_token(auth_url.clone(), token_url.clone(), i)?,
+        Some(refresh_token_val) => exchange_token(
+            auth_url.clone(),
+            token_url.clone(),
+            &oauth2::RefreshToken::new(refresh_token_val.to_string()),
+        )?,
         None => get_token(auth_url.clone(), token_url.clone())?,
     };
 
@@ -50,30 +54,6 @@ pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>) -> Result<Conte
     };
 
     Ok(config)
-}
-
-fn login_with_refresh_token(
-    auth_url: Url,
-    token_url: Url,
-    refresh_token_val: &str,
-) -> Result<BasicTokenResponse> {
-    log::debug!("Using refresh token");
-
-    let auth_url = AuthUrl::new(auth_url.to_string())?;
-    let token_url = TokenUrl::new(token_url.to_string())?;
-
-    let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string()),
-        None,
-        auth_url,
-        Some(token_url.clone()),
-    );
-
-    // Exchange the refresh token for access token
-    client
-        .exchange_refresh_token(&oauth2::RefreshToken::new(refresh_token_val.to_string()))
-        .request(http_client)
-        .map_err(|_| Error::msg("Invalid refresh token"))
 }
 
 fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
@@ -152,26 +132,15 @@ pub fn verify_token_validity(context: &mut Context) -> Result<bool> {
 }
 
 fn refresh_token(context: &mut Context) -> Result<bool> {
-    let auth_url = AuthUrl::new(context.auth_url.to_string())?;
-    let token_url = TokenUrl::new(context.token_url.to_string())?;
-    let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string()),
-        None,
-        auth_url,
-        Some(token_url.clone()),
-    );
-
-    log::debug!("Refreshing token using url : {}", &token_url.url());
-
-    let new_token = client
-        .exchange_refresh_token(
-            context
-                .token
-                .refresh_token()
-                .ok_or(Error::msg("Error loading refresh token from config"))?,
-        )
-        .request(http_client)
-        .map_err(|_| Error::msg("Error when fetching a refresh token"))?;
+    let refresh_token_var = context
+        .token
+        .refresh_token()
+        .ok_or(Error::msg("Error loading refresh token from config"))?;
+    let new_token = exchange_token(
+        context.auth_url.clone(),
+        context.token_url.clone(),
+        &refresh_token_var,
+    )?;
 
     context.token_exp_date = calculate_token_expiration_date(&new_token)?;
     context.token = new_token;
@@ -180,6 +149,30 @@ fn refresh_token(context: &mut Context) -> Result<bool> {
     log::info!("Token successfully refreshed.");
 
     Ok(true)
+}
+
+fn exchange_token(
+    auth_url: Url,
+    token_url: Url,
+    refresh_token_val: &oauth2::RefreshToken,
+) -> Result<BasicTokenResponse> {
+    log::debug!("Refreshing token using url : {}", &token_url);
+
+    let auth_url = AuthUrl::new(auth_url.to_string())?;
+    let token_url = TokenUrl::new(token_url.to_string())?;
+
+    let client = BasicClient::new(
+        ClientId::new(CLIENT_ID.to_string()),
+        None,
+        auth_url,
+        Some(token_url.clone()),
+    );
+
+    // Exchange the refresh token for access token
+    client
+        .exchange_refresh_token(refresh_token_val)
+        .request(http_client)
+        .map_err(|_| Error::msg("Invalid refresh token"))
 }
 
 fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTime<Utc>> {
