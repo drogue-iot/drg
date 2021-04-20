@@ -16,7 +16,7 @@ use std::{
     io::{Read, Write},
     process::Command,
 };
-use tempfile::NamedTempFile;
+use tempfile::Builder;
 use url::Url;
 
 pub const VERSION: &str = crate_version!();
@@ -81,7 +81,7 @@ pub fn editor(original: String) -> Result<Value> {
 
     // todo cross platform support
     let editor = var("EDITOR").unwrap_or("vi".to_string());
-    let file = NamedTempFile::new()?;
+    let file = Builder::new().suffix(".json").tempfile()?;
     //the handler needs to be kept to reopen the file later.
     let mut file2 = file.reopen()?;
 
