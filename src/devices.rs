@@ -8,7 +8,7 @@ use reqwest::{StatusCode, Url};
 use serde_json::json;
 use std::process::exit;
 
-fn craft_url(base: &Url, app_id: &AppId, device_id: &DeviceId) -> String {
+fn craft_url(base: &Url, app_id: &str, device_id: &str) -> String {
     format!("{}api/v1/apps/{}/devices/{}", base, app_id, device_id)
 }
 
@@ -76,7 +76,7 @@ pub fn edit(config: &Context, app: AppId, device_id: DeviceId, file: Option<&str
             match res {
                 Ok(r) => match r.status() {
                     StatusCode::OK => {
-                        let body = r.text().unwrap_or("{}".to_string());
+                        let body = r.text().unwrap_or_else(|_| "{}".to_string());
                         let insert = util::editor(body)?;
                         put(&config, &app, &device_id, insert).map(|p| {
                             util::print_result(p, format!("Device {}", device_id), Verbs::edit)
@@ -96,7 +96,7 @@ pub fn edit(config: &Context, app: AppId, device_id: DeviceId, file: Option<&str
     }
 }
 
-fn get(config: &Context, app: &AppId, device_id: &DeviceId) -> Result<Response> {
+fn get(config: &Context, app: &str, device_id: &str) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app, device_id);
 
@@ -107,12 +107,7 @@ fn get(config: &Context, app: &AppId, device_id: &DeviceId) -> Result<Response> 
         .context("Can't get device.")
 }
 
-fn put(
-    config: &Context,
-    app: &AppId,
-    device_id: &DeviceId,
-    data: serde_json::Value,
-) -> Result<Response> {
+fn put(config: &Context, app: &str, device_id: &str, data: serde_json::Value) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app, device_id);
     let token = &config.token.access_token().secret();

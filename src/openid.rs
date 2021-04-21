@@ -79,17 +79,15 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
 
     // The URL the user should browse to, in order to trigger the authorization process.
     log::info!("Opening browser.");
-    match webbrowser::open(final_auth_url.as_str()) {
-        Err(_) => {
-            log::warn!("Failed to open browser.");
-            println!(
-                "\nTo authenticate with drogue cloud please browse to: \n{}",
-                final_auth_url
-            )
-        }
-        _ => (),
-    };
+    if webbrowser::open(final_auth_url.as_str()).is_err() {
+        log::warn!("Failed to open browser.");
+        println!(
+            "\nTo authenticate with drogue cloud please browse to: \n{}",
+            final_auth_url
+        );
+    }
 
+    //todo : Ipv4Addr::LOCALHOST it's cheaper than string.
     let bind = format!("0.0.0.0:{}", SERVER_PORT);
     //start a local server
     let server = Server::http(bind).unwrap();
@@ -135,7 +133,7 @@ fn refresh_token(context: &mut Context) -> Result<bool> {
     let refresh_token_var = context
         .token
         .refresh_token()
-        .ok_or(Error::msg("Error loading refresh token from config"))?;
+        .ok_or_else(|| Error::msg("Error loading refresh token from config"))?;
     let new_token = exchange_token(
         context.auth_url.clone(),
         context.token_url.clone(),
@@ -165,7 +163,7 @@ fn exchange_token(
         ClientId::new(CLIENT_ID.to_string()),
         None,
         auth_url,
-        Some(token_url.clone()),
+        Some(token_url),
     );
 
     // Exchange the refresh token for access token
@@ -179,12 +177,10 @@ fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTim
     let now = Utc::now();
     let expiration = token
         .expires_in()
-        .ok_or(anyhow::Error::msg("Missing expiration time on token"))?;
+        .ok_or_else(|| anyhow::Error::msg("Missing expiration time on token"))?;
 
     now.checked_add_signed(Duration::from_std(expiration)?)
-        .ok_or(anyhow::Error::msg(
-            "Error calculating token expiration date",
-        ))
+        .ok_or_else(|| anyhow::Error::msg("Error calculating token expiration date"))
 }
 
 pub fn print_token(context: &Context) {

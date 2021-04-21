@@ -88,26 +88,26 @@ impl Config {
         let default_context = &self.active_context.clone();
         self.get_context_as_mut(default_context)
     }
-    fn get_context_as_ref(&self, name: &ContextId) -> Result<&Context> {
+    fn get_context_as_ref(&self, name: &str) -> Result<&Context> {
         for c in &self.contexts {
-            if &c.name == name {
+            if c.name == name {
                 return Ok(c);
             }
         }
         Err(anyhow!("Context \"{}\" not found in config file.", name))
     }
 
-    fn get_context_as_mut(&mut self, name: &ContextId) -> Result<&mut Context> {
+    fn get_context_as_mut(&mut self, name: &str) -> Result<&mut Context> {
         for c in &mut self.contexts {
-            if &c.name == name {
+            if c.name == name {
                 return Ok(c);
             }
         }
         Err(anyhow!("Context \"{}\" not found in config file.", name))
     }
-    fn contains_context(&self, name: &ContextId) -> bool {
+    fn contains_context(&self, name: &str) -> bool {
         for config in &self.contexts {
-            if &config.name == name {
+            if config.name == name {
                 return true;
             }
         }
@@ -140,12 +140,12 @@ impl Config {
             .context(format!("Unable to write config file :{}", path))
     }
 
-    pub fn delete_context(&mut self, name: &ContextId) -> Result<()> {
+    pub fn delete_context(&mut self, name: &str) -> Result<()> {
         if self.contains_context(&name) {
-            self.contexts.retain(|c| &c.name != name);
+            self.contexts.retain(|c| c.name != name);
 
-            if &self.active_context == name {
-                if self.contexts.len() > 0 {
+            if self.active_context == name {
+                if !self.contexts.is_empty() {
                     self.active_context = self.contexts[0].name.clone();
                 } else {
                     self.active_context = String::new();
@@ -211,7 +211,7 @@ pub fn ask_config_name() -> ContextId {
         .msg("Context name: ")
         .err("Invalid context name")
         .add_err_test(
-            |s| !s.contains(" "),
+            |s| !s.contains(' '),
             "context name should not contains spaces",
         )
         .get()

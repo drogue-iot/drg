@@ -7,7 +7,7 @@ use reqwest::{StatusCode, Url};
 use serde_json::json;
 use std::process::exit;
 
-fn craft_url(base: &Url, app_id: &AppId) -> String {
+fn craft_url(base: &Url, app_id: &str) -> String {
     format!("{}api/v1/apps/{}", base, app_id)
 }
 
@@ -71,7 +71,7 @@ pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
             match res {
                 Ok(r) => match r.status() {
                     StatusCode::OK => {
-                        let body = r.text().unwrap_or("{}".to_string());
+                        let body = r.text().unwrap_or_else(|_| "{}".to_string());
                         let insert = util::editor(body)?;
 
                         put(config, &app, insert)
@@ -91,7 +91,7 @@ pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
     }
 }
 
-fn get(config: &Context, app: &AppId) -> Result<Response> {
+fn get(config: &Context, app: &str) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app);
     client
@@ -101,7 +101,7 @@ fn get(config: &Context, app: &AppId) -> Result<Response> {
         .context("Can't retrieve app data.")
 }
 
-fn put(config: &Context, app: &AppId, data: serde_json::Value) -> Result<Response> {
+fn put(config: &Context, app: &str, data: serde_json::Value) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app);
 

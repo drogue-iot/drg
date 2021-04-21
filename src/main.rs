@@ -35,7 +35,7 @@ fn main() -> Result<()> {
 
         let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
 
-        let mut config = config_result.unwrap_or(Config::empty());
+        let mut config = config_result.unwrap_or_else(|_| Config::empty());
         let context = openid::login(url.clone(), refresh_token_val)?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
@@ -58,67 +58,65 @@ fn main() -> Result<()> {
     }
 
     if matches.is_present(Other_commands::context) {
-        match matches.subcommand() {
-            (_cmd_name, sub_cmd) => {
-                let cmd = sub_cmd.unwrap();
-                let (v, c) = cmd.subcommand();
-                let verb = Context_subcommands::from_str(v);
+        let (_cmd_name, sub_cmd) = matches.subcommand();
 
-                match verb? {
-                    Context_subcommands::create => {
-                        println!("To create a new context use drg login");
-                        exit(1);
-                    }
-                    Context_subcommands::list => {
-                        config.list_contexts();
-                        exit(0);
-                    }
-                    Context_subcommands::show => {
-                        config.show()?;
-                        exit(0);
-                    }
-                    Context_subcommands::set_active => {
-                        let id = c
-                            .unwrap()
-                            .value_of(Parameters::context_id)
-                            .unwrap()
-                            .to_string();
-                        config.set_active_context(id)?;
-                        config.write(config_path)?;
-                        exit(0);
-                    }
-                    Context_subcommands::delete => {
-                        let id = c
-                            .unwrap()
-                            .value_of(Parameters::context_id)
-                            .unwrap()
-                            .to_string();
-                        config.delete_context(&id)?;
-                        config.write(config_path)?;
-                        exit(0);
-                    }
-                    Context_subcommands::set_default_app => {
-                        let id = c.unwrap().value_of(Parameters::id).unwrap().to_string();
-                        let ctx_name = matches.value_of(Parameters::context).map(|s| s.to_string());
+        let cmd = sub_cmd.unwrap();
+        let (v, c) = cmd.subcommand();
+        let verb = Context_subcommands::from_str(v);
 
-                        let context = config.get_context_mut(&ctx_name)?;
-                        context.set_default_app(id);
-                        config.write(config_path)?;
-                        exit(0);
-                    }
-                    Context_subcommands::rename => {
-                        let ctx = c
-                            .unwrap()
-                            .value_of(Parameters::context_id)
-                            .unwrap()
-                            .to_string();
-                        let new_ctx = c.unwrap().value_of("new_context_id").unwrap().to_string();
+        match verb? {
+            Context_subcommands::create => {
+                println!("To create a new context use drg login");
+                exit(1);
+            }
+            Context_subcommands::list => {
+                config.list_contexts();
+                exit(0);
+            }
+            Context_subcommands::show => {
+                config.show()?;
+                exit(0);
+            }
+            Context_subcommands::set_active => {
+                let id = c
+                    .unwrap()
+                    .value_of(Parameters::context_id)
+                    .unwrap()
+                    .to_string();
+                config.set_active_context(id)?;
+                config.write(config_path)?;
+                exit(0);
+            }
+            Context_subcommands::delete => {
+                let id = c
+                    .unwrap()
+                    .value_of(Parameters::context_id)
+                    .unwrap()
+                    .to_string();
+                config.delete_context(&id)?;
+                config.write(config_path)?;
+                exit(0);
+            }
+            Context_subcommands::set_default_app => {
+                let id = c.unwrap().value_of(Parameters::id).unwrap().to_string();
+                let ctx_name = matches.value_of(Parameters::context).map(|s| s.to_string());
 
-                        config.rename_context(ctx, new_ctx)?;
-                        config.write(config_path)?;
-                        exit(0);
-                    }
-                }
+                let context = config.get_context_mut(&ctx_name)?;
+                context.set_default_app(id);
+                config.write(config_path)?;
+                exit(0);
+            }
+            Context_subcommands::rename => {
+                let ctx = c
+                    .unwrap()
+                    .value_of(Parameters::context_id)
+                    .unwrap()
+                    .to_string();
+                let new_ctx = c.unwrap().value_of("new_context_id").unwrap().to_string();
+
+                config.rename_context(ctx, new_ctx)?;
+                config.write(config_path)?;
+                exit(0);
             }
         }
     }
@@ -128,133 +126,123 @@ fn main() -> Result<()> {
     }
 
     let context = config.get_context(&context_arg)?;
-    match matches.subcommand() {
-        (cmd_name, sub_cmd) => {
-            let verb = Verbs::from_str(cmd_name);
-            let cmd = sub_cmd.unwrap();
 
-            match verb? {
-                Verbs::create => match cmd.subcommand() {
-                    (res, command) => {
-                        let data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
-                        let id = command
-                            .unwrap()
-                            .value_of(Parameters::id)
-                            .unwrap()
-                            .to_string();
+    let (cmd_name, sub_cmd) = matches.subcommand();
+    let verb = Verbs::from_str(cmd_name);
+    let cmd = sub_cmd.unwrap();
 
-                        let resource = Resources::from_str(res);
-                        let file = command.unwrap().value_of(Parameters::filename);
+    match verb? {
+        Verbs::create => {
+            let (res, command) = cmd.subcommand();
+            let data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
+            let id = command
+                .unwrap()
+                .value_of(Parameters::id)
+                .unwrap()
+                .to_string();
 
-                        match resource? {
-                            Resources::app => apps::create(&context, id, data, file)
-                                .map_err(|e| {
-                                    log::error!("{:?}", e);
-                                    exit(3)
-                                })
-                                .unwrap(),
-                            Resources::device => {
-                                let app_id =
-                                    arguments::get_app_id(&command.unwrap(), &context)?.to_string();
-                                devices::create(&context, id, data, app_id, file)
-                                    .map_err(|e| {
-                                        log::error!("{:?}", e);
-                                        exit(3)
-                                    })
-                                    .unwrap();
-                            }
-                        }
-                    }
-                },
-                Verbs::delete => match cmd.subcommand() {
-                    (res, command) => {
-                        let id = command
-                            .unwrap()
-                            .value_of(Parameters::id)
-                            .unwrap()
-                            .to_string();
-                        let resource = Resources::from_str(res);
+            let resource = Resources::from_str(res);
+            let file = command.unwrap().value_of(Parameters::filename);
 
-                        match resource? {
-                            Resources::app => apps::delete(&context, id)
-                                .map_err(|e| {
-                                    log::error!("{:?}", e);
-                                    exit(3)
-                                })
-                                .unwrap(),
-                            Resources::device => {
-                                let app_id =
-                                    arguments::get_app_id(&command.unwrap(), &context)?.to_string();
-                                devices::delete(&context, app_id, id)
-                                    .map_err(|e| {
-                                        log::error!("{:?}", e);
-                                        exit(3)
-                                    })
-                                    .unwrap()
-                            }
-                        }
-                    }
-                },
-                Verbs::edit => match cmd.subcommand() {
-                    (res, command) => {
-                        let id = command
-                            .unwrap()
-                            .value_of(Parameters::id)
-                            .unwrap()
-                            .to_string();
-                        let file = command.unwrap().value_of(Parameters::filename);
-                        let resource = Resources::from_str(res);
+            match resource? {
+                Resources::app => apps::create(&context, id, data, file)
+                    .map_err(|e| {
+                        log::error!("{:?}", e);
+                        exit(3)
+                    })
+                    .unwrap(),
+                Resources::device => {
+                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                    devices::create(&context, id, data, app_id, file)
+                        .map_err(|e| {
+                            log::error!("{:?}", e);
+                            exit(3)
+                        })
+                        .unwrap();
+                }
+            }
+        }
+        Verbs::delete => {
+            let (res, command) = cmd.subcommand();
+            let id = command
+                .unwrap()
+                .value_of(Parameters::id)
+                .unwrap()
+                .to_string();
+            let resource = Resources::from_str(res);
 
-                        match resource? {
-                            Resources::app => apps::edit(&context, id, file)
-                                .map_err(|e| {
-                                    log::error!("{:?}", e);
-                                    exit(3)
-                                })
-                                .unwrap(),
-                            Resources::device => {
-                                let app_id =
-                                    arguments::get_app_id(&command.unwrap(), &context)?.to_string();
-                                devices::edit(&context, app_id, id, file)
-                                    .map_err(|e| {
-                                        log::error!("{:?}", e);
-                                        exit(3)
-                                    })
-                                    .unwrap()
-                            }
-                        }
-                    }
-                },
-                Verbs::get => match cmd.subcommand() {
-                    (res, command) => {
-                        let id = command
-                            .unwrap()
-                            .value_of(Parameters::id)
-                            .unwrap()
-                            .to_string();
+            match resource? {
+                Resources::app => apps::delete(&context, id)
+                    .map_err(|e| {
+                        log::error!("{:?}", e);
+                        exit(3)
+                    })
+                    .unwrap(),
+                Resources::device => {
+                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                    devices::delete(&context, app_id, id)
+                        .map_err(|e| {
+                            log::error!("{:?}", e);
+                            exit(3)
+                        })
+                        .unwrap()
+                }
+            }
+        }
+        Verbs::edit => {
+            let (res, command) = cmd.subcommand();
+            let id = command
+                .unwrap()
+                .value_of(Parameters::id)
+                .unwrap()
+                .to_string();
+            let file = command.unwrap().value_of(Parameters::filename);
+            let resource = Resources::from_str(res);
 
-                        let resource = Resources::from_str(res);
+            match resource? {
+                Resources::app => apps::edit(&context, id, file)
+                    .map_err(|e| {
+                        log::error!("{:?}", e);
+                        exit(3)
+                    })
+                    .unwrap(),
+                Resources::device => {
+                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                    devices::edit(&context, app_id, id, file)
+                        .map_err(|e| {
+                            log::error!("{:?}", e);
+                            exit(3)
+                        })
+                        .unwrap()
+                }
+            }
+        }
+        Verbs::get => {
+            let (res, command) = cmd.subcommand();
+            let id = command
+                .unwrap()
+                .value_of(Parameters::id)
+                .unwrap()
+                .to_string();
 
-                        match resource? {
-                            Resources::app => apps::read(&context, id)
-                                .map_err(|e| {
-                                    log::error!("{:?}", e);
-                                    exit(3)
-                                })
-                                .unwrap(),
-                            Resources::device => {
-                                let app_id =
-                                    arguments::get_app_id(&command.unwrap(), &context)?.to_string();
-                                devices::read(&context, app_id, id)
-                                    .map_err(|e| {
-                                        log::error!("{:?}", e);
-                                        exit(3)
-                                    })
-                                    .unwrap()
-                            }
-                        }
-                    }
-                },
+            let resource = Resources::from_str(res);
+
+            match resource? {
+                Resources::app => apps::read(&context, id)
+                    .map_err(|e| {
+                        log::error!("{:?}", e);
+                        exit(3)
+                    })
+                    .unwrap(),
+                Resources::device => {
+                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                    devices::read(&context, app_id, id)
+                        .map_err(|e| {
+                            log::error!("{:?}", e);
+                            exit(3)
+                        })
+                        .unwrap()
+                }
             }
         }
     }

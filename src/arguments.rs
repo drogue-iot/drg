@@ -276,8 +276,8 @@ pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Context) -> Result<Ap
                 println!("Using default app \"{}\".", &v);
                 v.to_string()
             })
-            .ok_or(anyhow!(
-                "Missing app argument and no default app specified in config file."
-            )),
+            .ok_or_else(|| {
+                anyhow!("Missing app argument and no default app specified in config file.")
+            }),
     }
 }

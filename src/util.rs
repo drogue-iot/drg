@@ -80,7 +80,7 @@ pub fn editor(original: String) -> Result<Value> {
     let data: Value = serde_json::from_str(original.as_str())?;
 
     // todo cross platform support
-    let editor = var("EDITOR").unwrap_or("vi".to_string());
+    let editor = var("EDITOR").unwrap_or_else(|_| "vi".to_string());
     let file = Builder::new().suffix(".json").tempfile()?;
     //the handler needs to be kept to reopen the file later.
     let mut file2 = file.reopen()?;
