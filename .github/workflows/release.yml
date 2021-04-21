@@ -6,7 +6,7 @@ on:
 name: Publish release
 jobs:
   release_linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - name: Install build tools
         run: sudo apt-get update; DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install build-essential curl tzdata 
@@ -20,10 +20,9 @@ jobs:
         with:
           command: build
           args: --release
-      - name: Rename
-        run: mv ./target/release/drg ./target/release/drg-linux
-      - uses: AButler/upload-release-assets@v2.0
-        with:
-          files: ./target/release/drg-linux
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Upload release asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mv ./target/release/drg drg-linux
+          hub release edit -m "" -a drg-linux ${GITHUB_REF/refs\/tags\//}
