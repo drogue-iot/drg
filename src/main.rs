@@ -51,12 +51,6 @@ fn main() -> Result<()> {
 
     let mut config: Config = config_result?;
 
-    if matches.is_present(Other_commands::token) {
-        let context = config.get_context(&context_arg)?;
-        openid::print_token(&context);
-        exit(0);
-    }
-
     if matches.is_present(Other_commands::context) {
         let (_cmd_name, sub_cmd) = matches.subcommand();
 
@@ -121,11 +115,16 @@ fn main() -> Result<()> {
         }
     }
 
+    // The following commands needs a context and a valid token
     if openid::verify_token_validity(config.get_context_mut(&context_arg)?)? {
         config.write(config_path)?;
     }
-
     let context = config.get_context(&context_arg)?;
+
+    if matches.is_present(Other_commands::token) {
+        openid::print_token(&context);
+        exit(0);
+    }
 
     let (cmd_name, sub_cmd) = matches.subcommand();
     let verb = Verbs::from_str(cmd_name);
