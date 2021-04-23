@@ -1,4 +1,4 @@
-[![Formating and build](https://github.com/drogue-iot/drg/actions/workflows/build.yaml/badge.svg?branch=main)](https://github.com/drogue-iot/drg/actions/workflows/build.yaml)
+[![Build](https://github.com/drogue-iot/drg/actions/workflows/build.yaml/badge.svg?branch=main)](https://github.com/drogue-iot/drg/actions/workflows/build.yaml)
 
 
 # drg : Drogue cloud command line tool
