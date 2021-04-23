@@ -3,15 +3,20 @@ on:
     branches:
       - main
     types: [created]
+
 name: Publish release
 jobs:
-  release_linux:
-    runs-on: ubuntu-18.04
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-10.15]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Install build tools
-        run: sudo apt-get update; DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install build-essential curl tzdata 
-      - name: Install openssl
-        run: sudo apt install -y libssl-dev pkg-config
+        if: ${{ matrix.os == 'ubuntu-18.04' }}
+        run: |
+          sudo apt-get update; DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install build-essential curl tzdata
+          sudo apt install -y libssl-dev pkg-config
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
@@ -20,9 +25,10 @@ jobs:
         with:
           command: build
           args: --release
+      - name : Prepare release asset
+        run: .github/scripts/package_release.sh
       - name: Upload release asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mv ./target/release/drg drg-linux
-          hub release edit -m "" -a drg-linux ${GITHUB_REF/refs\/tags\//}
+          hub release edit -m "" -a drg*.tar.gz ${GITHUB_REF/refs\/tags\//}
