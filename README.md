@@ -1,3 +1,6 @@
+[![Formating and build](https://github.com/drogue-iot/drg/actions/workflows/build.yaml/badge.svg?branch=main)](https://github.com/drogue-iot/drg/actions/workflows/build.yaml)
+
+
 # drg : Drogue cloud command line tool
 
 A Command line tool for managing apps and devices in a drogue cloud instance. 
