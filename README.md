@@ -1,5 +1,6 @@
+[![Release (latest SemVer)](https://img.shields.io/github/v/tag/drogue-iot/drg?sort=semver)](https://github.com/drogue-iot/drg/releases)
 [![Build](https://github.com/drogue-iot/drg/actions/workflows/build.yaml/badge.svg?branch=main)](https://github.com/drogue-iot/drg/actions/workflows/build.yaml)
-
+[![Matrix](https://img.shields.io/matrix/drogue-iot:matrix.org)](https://matrix.to/#/#drogue-iot:matrix.org)
 
 # drg : Drogue cloud command line tool
 
