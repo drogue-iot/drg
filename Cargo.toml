@@ -20,7 +20,7 @@ clap = "2.33.3"
 
 oauth2 = "3.0"
 
-simple_logger = "1.11.0"
+simple_logger = { version = "1.11.0", default-features = false, features = [ "colored" ] } 
 log = "0.4.13"
 
 read_input = "0.8.4"
