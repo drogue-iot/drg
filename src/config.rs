@@ -2,12 +2,12 @@ use anyhow::{anyhow, Context as AnyhowContext, Result};
 use serde::{Deserialize, Serialize};
 use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path};
 
+use crate::AppId;
 use chrono::{DateTime, Utc};
+use dirs::config_dir;
 use oauth2::basic::BasicTokenResponse;
 use read_input::prelude::*;
 use url::Url;
-
-use crate::AppId;
 
 type ContextId = String;
 
@@ -194,13 +194,14 @@ impl Context {
 // use the provided config path or `$DRGCFG` value if set
 // otherwise will default to $XDG_CONFIG_HOME
 // fall back to `$HOME/.config` if XDG var is not set.
-// todo crossplatform support
 fn eval_config_path(path: Option<&str>) -> String {
     match path {
         Some(p) => p.to_string(),
         None => env::var("DRGCFG").unwrap_or_else(|_| {
-            let xdg = env::var("XDG_CONFIG_HOME")
-                .unwrap_or(format!("{}/.config", env::var("HOME").unwrap()));
+            let xdg = match config_dir() {
+                Some(path) => path.into_os_string().into_string().unwrap(),
+                None => String::from("."),
+            };
             format!("{}/drg_config.yaml", xdg)
         }),
     }

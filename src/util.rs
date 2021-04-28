@@ -10,12 +10,8 @@ use reqwest::StatusCode;
 use serde_json::{from_str, Value};
 use std::fs;
 use std::io::stdout;
+use std::io::{Read, Write};
 use std::process::exit;
-use std::{
-    env::var,
-    io::{Read, Write},
-    process::Command,
-};
 use tempfile::Builder;
 use url::Url;
 
@@ -79,8 +75,6 @@ pub fn json_parse(data: Option<&str>) -> Result<Value> {
 pub fn editor(original: String) -> Result<Value> {
     let data: Value = serde_json::from_str(original.as_str())?;
 
-    // todo cross platform support
-    let editor = var("EDITOR").unwrap_or_else(|_| "vi".to_string());
     let file = Builder::new().suffix(".json").tempfile()?;
     //the handler needs to be kept to reopen the file later.
     let mut file2 = file.reopen()?;
@@ -89,10 +83,13 @@ pub fn editor(original: String) -> Result<Value> {
     file.as_file()
         .write_all(serde_json::to_string_pretty(&data)?.as_bytes())?;
 
-    Command::new(editor)
-        .arg(file.path())
-        .status()
-        .expect("Could not open current data in editor.");
+    edit::edit_file(file.path())
+        .map_err(|err| {
+            log::debug!("{}", err);
+            log::error!("Error opening a text editor, pelase try --file");
+            exit(1);
+        })
+        .unwrap();
 
     // Read the data using the second handle.
     let mut buf = String::new();
