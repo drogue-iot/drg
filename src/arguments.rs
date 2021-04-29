@@ -233,9 +233,9 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .about("Print a valid bearer token for the drogue cloud instance."),
         )
         .subcommand(
-                    SubCommand::with_name(Other_commands::whoami.as_ref())
-                    .about("Print cluster adress, version and default app(if any)")
-                    .arg(token_arg.clone()),
+            SubCommand::with_name(Other_commands::whoami.as_ref())
+                .about("Print cluster adress, version and default app(if any)")
+                .arg(token_arg.clone()),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())
@@ -281,7 +281,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                                 .help("The new context name")
                                 .conflicts_with(Parameters::context.as_ref()),
                         ),
-                )
+                ),
         )
         .get_matches()
 }
