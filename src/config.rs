@@ -45,7 +45,7 @@ impl Config {
         log::info!("Loading configuration file: {}", &path);
 
         let file = File::open(path).context(
-            "Unable to open configuration file. Did ou log into a drogue cloud cluster ?",
+            "Unable to open configuration file. Did you log into a drogue cloud cluster ?",
         )?;
         let config: Config =
             serde_yaml::from_reader(file).context("Invalid configuration file.")?;

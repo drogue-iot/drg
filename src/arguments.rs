@@ -40,6 +40,7 @@ pub enum Other_commands {
     login,
     token,
     version,
+    whoami,
     context,
 }
 
@@ -121,6 +122,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
     let context_id_arg = Arg::with_name(Parameters::context_id.as_ref())
         .required(true)
         .help("The id of the context");
+    let token_arg = Arg::with_name(Other_commands::token.as_ref())
+        .short("t")
+        .long(Other_commands::token.as_ref())
+        .takes_value(false)
+        .multiple(false)
+        .global(false)
+        .help("Print a valid bearer token for the drogue cloud instance.");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
@@ -218,6 +226,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .about("Print a valid bearer token for the drogue cloud instance."),
         )
         .subcommand(
+                    SubCommand::with_name(Other_commands::whoami.as_ref())
+                    .about("Print cluster adress, version and default app(if any)")
+                    .arg(token_arg.clone()),
+        )
+        .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())
                 .about("Manage contexts in the configuration file.")
                 .alias("config")
@@ -261,7 +274,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                                 .help("The new context name")
                                 .conflicts_with(Parameters::context.as_ref()),
                         ),
-                ),
+                )
         )
         .get_matches()
 }
