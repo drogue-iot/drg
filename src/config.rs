@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use serde::{Deserialize, Serialize};
-use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path};
+use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exit};
 
 use crate::AppId;
 use chrono::{DateTime, Utc};
@@ -200,7 +200,10 @@ fn eval_config_path(path: Option<&str>) -> String {
         None => env::var("DRGCFG").unwrap_or_else(|_| {
             let xdg = match config_dir() {
                 Some(path) => path.into_os_string().into_string().unwrap(),
-                None => String::from("."),
+                None => {
+                    log::error!("Error accessing config file, please try using --filename");
+                    exit(1);
+                }
             };
             format!("{}/drg_config.yaml", xdg)
         }),
