@@ -201,7 +201,7 @@ fn eval_config_path(path: Option<&str>) -> String {
             let xdg = match config_dir() {
                 Some(path) => path.into_os_string().into_string().unwrap(),
                 None => {
-                    log::error!("Error accessing config file, please try using --filename");
+                    log::error!("Error accessing config file, please try using --config");
                     exit(1);
                 }
             };

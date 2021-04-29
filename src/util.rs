@@ -86,7 +86,10 @@ pub fn editor(original: String) -> Result<Value> {
     edit::edit_file(file.path())
         .map_err(|err| {
             log::debug!("{}", err);
-            log::error!("Error opening a text editor, please try using --filename");
+            log::error!(
+                "Error opening a text editor, please try using --filename with the following json"
+            );
+            show_json(&original);
             exit(1);
         })
         .unwrap();
