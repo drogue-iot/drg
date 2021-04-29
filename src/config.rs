@@ -214,5 +214,6 @@ pub fn ask_config_name() -> ContextId {
             |s| !s.contains(' '),
             "context name should not contains spaces",
         )
+        .repeat_msg("Context name: ")
         .get()
 }

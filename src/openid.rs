@@ -16,11 +16,9 @@ use reqwest::Url;
 use crate::config::{self, Context};
 use crate::util;
 use chrono::{DateTime, Duration, Utc};
+use std::net::{Ipv4Addr, SocketAddr};
 
 const CLIENT_ID: &str = "drogue";
-//todo random port
-const SERVER_PORT: u16 = 8080;
-const REDIRECT_URL: &str = "http://localhost:8080";
 
 pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>) -> Result<Context> {
     log::info!("Starting authentication process with {}", api_endpoint);
@@ -58,6 +56,12 @@ pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>) -> Result<Conte
 
 fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
     log::debug!("Using auth url : {}", auth_url);
+
+    //start a local server
+    let bind = SocketAddr::from((Ipv4Addr::LOCALHOST, 0));
+    let server = Server::http(bind).unwrap();
+    let port = server.server_addr().port();
+
     let client = BasicClient::new(
         ClientId::new(CLIENT_ID.to_string()),
         None,
@@ -65,7 +69,7 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
         Some(TokenUrl::new(token_url.to_string())?),
     )
     // Where the user will be redirected to after the authorization process.
-    .set_redirect_url(RedirectUrl::new(REDIRECT_URL.to_string())?);
+    .set_redirect_url(RedirectUrl::new(format!("http://localhost:{}", port))?);
 
     // Generate a PKCE challenge. As this is a client app a PKCE challenge this is needed to assure confidentiality.
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
@@ -87,10 +91,7 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
         );
     }
 
-    //todo : Ipv4Addr::LOCALHOST it's cheaper than string.
-    let bind = format!("0.0.0.0:{}", SERVER_PORT);
-    //start a local server
-    let server = Server::http(bind).unwrap();
+    // get the request from the localhost webserver
     let request = server.recv()?;
 
     // extract code and state from the openID server request
