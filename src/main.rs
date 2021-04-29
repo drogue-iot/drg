@@ -133,6 +133,18 @@ fn main() -> Result<()> {
         exit(0);
     }
 
+    if matches.is_present(Other_commands::whoami){
+        if let Some(_value) = matches.subcommand_matches("token"){
+            openid::print_token(&context);
+        }
+        else{
+            println!("cluster adress : {}",context.drogue_cloud_url);
+            println!("Default App : {}", match context.default_app{None => "No default app", Some(ref x) => x});
+            util::print_version(&Ok(config));
+        }
+        exit(0);
+    }
+
     let (cmd_name, sub_cmd) = matches.subcommand();
     let verb = Verbs::from_str(cmd_name);
     let cmd = sub_cmd.unwrap();
