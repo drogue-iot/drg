@@ -9,7 +9,7 @@ use oauth2::basic::BasicTokenResponse;
 use read_input::prelude::*;
 use url::Url;
 
-type ContextId = String;
+pub type ContextId = String;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
