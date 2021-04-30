@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<?include $(sys.CURRENTDIR)\dist\wix\drg.wxi?>
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Name='$(var.ProductName)'
+             Manufacturer='Drogue IoT'
+             Id='*'
+             UpgradeCode='e902f102-a9ac-11eb-8348-d45d6455d2cc'
+             Language='1033' Codepage='1252'
+             Version='$(var.Version)'>
+
+        <Package Id='*'
+                 Keywords='Installer'
+                 Description="Drogue IoT command cline tool"
+                 Manufacturer='Drogue IoT'
+                 InstallerVersion='300'
+                 Languages='1033' SummaryCodepage='1252'
+                 Compressed='yes' />
+
+        <Media Id="1" Cabinet="contents.cab" EmbedCab="yes" CompressionLevel="high"/>
+
+        <MajorUpgrade
+                DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit."/>
+
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="$(var.PlatformProgramFilesFolder)" Name="PFiles">
+                <Directory Id="INSTALLDIR" Name="$(var.ProductName)">
+                    <Component Id="MainComponent" Guid="042603de-a9ad-11eb-9756-d45d6455d2cc" DiskId="1">
+                        <File Id="MainExe" Name="drg.exe" DiskId="1" Source="target/release/drg.exe" KeyPath="yes"/>
+                        <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="no" Part="last" Action="set" System="yes" />
+                    </Component>
+                </Directory>
+            </Directory>
+        </Directory>
+
+        <DirectoryRef Id="TARGETDIR">
+            <Merge Id="VCRedist" SourceFile="c:\Program Files (x86)\Common Files\Merge Modules\Microsoft_VC140_CRT_x64.msm" DiskId="1" Language="0"/>
+        </DirectoryRef>
+
+        <Feature Id="Complete"
+                 Title="$(var.ProductName)"
+                 Description="The $(var.ProductName)"
+                 Level="1">
+            <ComponentRef Id="MainComponent"/>
+        </Feature>
+        <Feature Id="VCRedist" Title="Visual C++ Runtime" AllowAdvertise="no" Display="hidden" Level="1">
+            <MergeRef Id="VCRedist"/>
+        </Feature>
+
+    </Product>
+</Wix>
