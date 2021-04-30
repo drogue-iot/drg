@@ -2,24 +2,193 @@ name: Formating and build
 
 on:
   push:
-    # Run on the main branch
-    branches:
-      - main
   pull_request:
 
 jobs:
-  clippy_check:
+  check:
     runs-on: ubuntu-latest
+    outputs:
+      do-publish: ${{steps.state.outputs.do-publish}}
+      release: ${{steps.state.outputs.release}}
+      version: ${{steps.version.outputs.version}}
+      prerelease: ${{steps.state.outputs.prerelease}}
     steps:
+      - name: Evaluate state
+        id: state
+        shell: bash
+        run: |
+          test -z "${{github.head_ref}}" && echo '::set-output name=do-publish::true'
+          if [[ "${{ github.event.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+           echo ::set-output name=release::true
+           echo ::set-output name=release::true
+          elif [[ "${{ github.event.ref }}" =~ ^refs/tags/v.*$ ]]; then
+           echo ::set-output name=release::true
+           echo ::set-output name=prerelease::true
+          fi
       - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
       - run: rustup component add clippy
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
-      
+
       - name: Run Rustfmt
         run: cargo fmt -- --check
-      - name: Cargo build
-        run: cargo build
-                 
+      - name: Cargo check
+        run: cargo check
+
+  build:
+
+    needs:
+      - check
+
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        include:
+          - os: ubuntu-18.04
+            suffix: "linux-amd64"
+            pkg: "tar.gz"
+          - os: macos-10.15
+            suffix: "macos-amd64"
+            pkg: "tar.gz"
+          - os: windows-2019
+            suffix: "windows-amd64"
+            exe: ".exe"
+            pkg: "zip"
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+      - name: Set version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
+            VERSION=$(echo $VERSION | sed -e 's/^v//')
+          else
+            VERSION=latest
+          fi
+          echo VERSION=$VERSION
+          echo "::set-output name=version::$VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install build tools
+        if: ${{ matrix.os == 'ubuntu-18.04' }}
+        run: |
+          sudo apt-get update; DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install build-essential curl tzdata
+          sudo apt install -y libssl-dev pkg-config
+
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - name: Prepare release asset
+        shell: bash
+        run: .github/scripts/package_release.sh "${{matrix.suffix}}" "${{matrix.exe}}" "${{matrix.pkg}}" "${VERSION}"
+
+      - name: Build Windows Installer
+        if: ${{ matrix.os == 'windows-2019' }}
+        shell: cmd
+        #
+        # In the following command we add '.0' to the version, as MSI expects a version in the format 'a.b.c.d'.
+        # We also switch the version to '0.0.0.0' if it is 'latest'
+        #
+        run: |
+          cd
+          dir target\release
+          nuget install WiX -version 3.11.2
+          set VERSION=%VERSION:latest=0.0.0%
+          D:\a\drg\drg\WiX.3.11.2\tools\candle -v -dVersion=%VERSION%.0 -arch x64 dist\wix\drg.wxs
+          D:\a\drg\drg\WiX.3.11.2\tools\light drg.wixobj -o drg-%VERSION%.0-${{matrix.suffix}}.msi
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: package-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            drg-*.tar.gz
+            drg-*.zip
+
+      - uses: actions/upload-artifact@v2
+        if: ${{ matrix.os == 'windows-2019' }}
+        with:
+          name: installer-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            drg-*.msi
+
+  publish:
+    #
+    # The publish job will on all branches and tags, except PRs. However, it does only create a release when a
+    # tag of the right format is pushed.
+    #
+    if: ${{needs.check.outputs.do-publish}}
+    needs:
+      - check
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump state
+        run: |
+          echo "Tag/version: ${VERSION} / ${{needs.check.outputs.version}}"
+          echo "Should we publish artifacts? - do-publish = ${{needs.check.outputs.do-publish}}"
+          echo "Release? - release = ${{needs.check.outputs.release}}"
+          echo "Pre-release? - prerelease = ${{needs.check.outputs.prerelease}}"
+
+      - uses: actions/download-artifact@v2
+        with:
+          path: downloads
+
+      - name: Prepare upload area
+        run: |
+          mkdir uploads
+          mv downloads/package-* uploads/
+
+      - name: Check staging content
+        run: |
+          find uploads
+
+      - name: Create Release
+        id: create-release
+        if: ${{ needs.check.outputs.release }}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.check.outputs.version }}
+          release_name: ${{ needs.check.outputs.version }}
+          draft: true
+          prerelease: ${{ needs.check.outputs.prerelease }}
+
+      - name: Upload release assets
+        if: ${{ needs.check.outputs.release }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ needs.check.outputs.version }}
+        run: |
+          # add packages
+          for pkg in tar.gz zip; do
+            hub release edit -m "" $(find uploads/ -type f -name "drg-*.${pkg}" -printf "-a %p ") $TAG
+          done
+          # finally, remove the draft status
+          hub release edit -m "" --draft=false $TAG

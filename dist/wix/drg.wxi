@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Include>
+
+    <?define ProductName = "Drogue IoT command line client" ?>
+
+    <?define Win64 = "yes" ?>
+    <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+    <?define ProductUpgradeCode = "b01e8e78-a9ac-11eb-8793-d45d6455d2cc" ?>
+
+</Include>
