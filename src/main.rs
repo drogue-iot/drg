@@ -39,7 +39,14 @@ fn main() -> Result<()> {
         let context = openid::login(url.clone(), refresh_token_val)?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
+        let name = context.name.clone();
         config.add_context(context)?;
+
+        if !submatches.unwrap().is_present(Parameters::keep_current) {
+            println!("Switched context to: {}", name);
+            config.set_active_context(name)?;
+        }
+
         config.write(config_path)?;
         exit(0);
     }

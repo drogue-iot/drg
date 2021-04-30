@@ -32,6 +32,8 @@ pub enum Parameters {
     filename,
     context,
     context_id,
+    #[strum(serialize = "keep-current")]
+    keep_current,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -122,6 +124,10 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .required(true)
         .help("The id of the context");
 
+    let login_keep_current = Arg::with_name(Parameters::keep_current.as_ref())
+        .short("k")
+        .help("Do not activate the new context.");
+
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
         .author("Jb Trystram <jbtrystram@redhat.com>")
@@ -211,7 +217,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
             SubCommand::with_name(Other_commands::login.as_ref())
                 .arg(&token_arg)
                 .about("Log into a drogue cloud installation.")
-                .arg(&url_arg),
+                .arg(&url_arg)
+                .arg(&login_keep_current),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::token.as_ref())
