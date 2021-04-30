@@ -121,7 +121,7 @@ impl Config {
 
     pub fn set_active_context(&mut self, name: ContextId) -> Result<()> {
         if self.contains_context(&name) {
-            log::error!("{} set as active context.", &name);
+            println!("{} set as active context.", &name);
             self.active_context = name;
             Ok(())
         } else {
