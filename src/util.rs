@@ -108,10 +108,14 @@ pub fn print_version(config: &Result<Config>) {
         Ok(cfg) => {
             let context = cfg.get_context(&None);
             match context {
-                Ok(ctx) => {
-                    let cloud_version = get_drogue_services_version(&ctx.drogue_cloud_url).unwrap();
-                    println!("Connected drogue-cloud service: v{}", cloud_version);
-                }
+                Ok(ctx) => match get_drogue_services_version(&ctx.drogue_cloud_url) {
+                    Ok(cloud_version) => {
+                        println!("Connected drogue-cloud service: v{}", cloud_version);
+                    }
+                    Err(err) => {
+                        log::debug!("Failed to detect server side version: {}", err);
+                    }
+                },
                 Err(e) => {
                     println!("{}", e);
                 }
