@@ -31,7 +31,10 @@ fn main() -> Result<()> {
 
     if matches.is_present(Other_commands::login) {
         let (_, submatches) = matches.subcommand();
-        let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
+        let a: &str = submatches.unwrap().value_of(Parameters::url).unwrap();
+        let https: &str = "https://";
+        let base = format!("{}{}",https,a);
+        let url = util::url_validation(&*base)?;
 
         let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
 
