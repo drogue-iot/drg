@@ -125,9 +125,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
     let token_arg = Arg::with_name(Other_commands::token.as_ref())
         .short("t")
         .long(Other_commands::token.as_ref())
-        .takes_value(false)
-        .multiple(false)
-        .global(false)
         .help("Print a valid bearer token for the drogue cloud instance.");
 
     App::new("Drogue Command Line Tool")
@@ -228,7 +225,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .subcommand(
             SubCommand::with_name(Other_commands::whoami.as_ref())
                 .about("Print cluster adress, version and default app(if any)")
-                .arg(token_arg.clone()),
+                .arg(&token_arg),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())
