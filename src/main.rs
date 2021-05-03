@@ -131,7 +131,8 @@ fn main() -> Result<()> {
             openid::print_token(&context);
         } 
         else {
-            openid::print_whoami(&context, &Ok(config);        
+            openid::print_whoami(&context);
+            util::print_version(&Ok(config));
         }
         exit(0);
     }

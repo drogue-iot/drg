@@ -90,7 +90,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .conflicts_with(Parameters::spec.as_ref())
         .help("file that contains the spec to update the resource with.");
 
-    let token_arg = Arg::with_name(Other_commands::token.as_ref())
+    let _token_arg = Arg::with_name(Other_commands::token.as_ref())
         .short("t")
         .takes_value(true)
         .long(Other_commands::token.as_ref())
