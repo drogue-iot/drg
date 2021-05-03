@@ -127,10 +127,9 @@ fn main() -> Result<()> {
     }
 
     if matches.is_present(Other_commands::whoami) {
-        if matches.is_present("token"){ 
+        if matches.is_present("token") {
             openid::print_token(&context);
-        } 
-        else {
+        } else {
             openid::print_whoami(&context);
             util::print_version(&Ok(config));
         }
