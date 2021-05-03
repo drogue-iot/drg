@@ -187,3 +187,13 @@ fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTim
 pub fn print_token(context: &Context) {
     println!("{}", context.token.access_token().secret());
 }
+pub fn print_whoami(context: &Context, config: &Result<Config>)){
+    println!("cluster adress : {}", context.drogue_cloud_url);
+    println!("Default App : {}",
+            match context.default_app {
+            None => "No default app",
+            Some(ref x) => x,
+            }
+          );
+    util::print_version(&Ok(config));
+}
