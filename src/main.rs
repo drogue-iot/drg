@@ -134,7 +134,8 @@ fn main() -> Result<()> {
     }
 
     if matches.is_present(Other_commands::whoami) {
-        if matches.is_present("token") {
+        let (_, submatches) = matches.subcommand();
+        if submatches.unwrap().is_present("token") {
             openid::print_token(&context);
         } else {
             openid::print_whoami(&context);
