@@ -90,7 +90,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .conflicts_with(Parameters::spec.as_ref())
         .help("file that contains the spec to update the resource with.");
 
-    let _token_arg = Arg::with_name(Other_commands::token.as_ref())
+    let token_arg = Arg::with_name(Other_commands::token.as_ref())
         .short("t")
         .takes_value(true)
         .long(Other_commands::token.as_ref())
@@ -122,10 +122,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
     let context_id_arg = Arg::with_name(Parameters::context_id.as_ref())
         .required(true)
         .help("The id of the context");
-    let token_arg = Arg::with_name(Other_commands::token.as_ref())
-        .short("t")
-        .long(Other_commands::token.as_ref())
-        .help("Print a valid bearer token for the drogue cloud instance.");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
@@ -225,7 +221,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .subcommand(
             SubCommand::with_name(Other_commands::whoami.as_ref())
                 .about("Print cluster adress, version and default app(if any)")
-                .arg(&token_arg),
+                .arg(
+                    token_arg
+                        .clone()
+                        .takes_value(false)
+                        .help("print a valid bearer toke for the drogue cloud instance."),
+                ),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())
