@@ -61,8 +61,25 @@ fn exit_with_code(r: reqwest::StatusCode) {
 
 // todo : assume https as the default scheme
 // Or get rid of this.
-pub fn url_validation(url: &str) -> Result<Url> {
-    Url::parse(url).context(format!("URL args: \'{}\' is not valid", url))
+pub fn url_validation(url: &str) -> Url {
+    let temp_url = Url::parse(url);
+    let temp_url = match temp_url {
+        Ok(pass) => {
+            https(pass)
+        },
+        Err(_error) => {
+            Url::parse(&format!("https://{}",url)).unwrap()
+        },
+    };
+    temp_url
+}
+
+fn https(url: Url) -> Url {
+    if url.as_str().starts_with("http://") {
+        Url::parse(&format!("https://{}",url.host_str().unwrap())).unwrap()
+    } else {
+        url
+    }
 }
 
 pub fn json_parse(data: Option<&str>) -> Result<Value> {
@@ -157,8 +174,8 @@ pub fn get_drogue_services_endpoint(url: Url) -> Result<(Url, Url)> {
 
     // a trailing / is needed to append the rest of the path.
     Ok((
-        url_validation(format!("{}/", sso).as_str())?,
-        url_validation(format!("{}/", registry).as_str())?,
+        url_validation(format!("{}/", sso).as_str()),
+        url_validation(format!("{}/", registry).as_str()),
     ))
 }
 
@@ -186,7 +203,7 @@ pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
         .context("Missing `token_endpoint` in drogue openid-connect configuration")?;
     let token_endpoint = url_validation(token);
 
-    Ok((auth_endpoint?, token_endpoint?))
+    Ok((auth_endpoint, token_endpoint))
 }
 
 pub fn log_level(matches: &ArgMatches) -> LevelFilter {
