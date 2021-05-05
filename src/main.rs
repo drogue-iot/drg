@@ -36,7 +36,7 @@ fn main() -> Result<()> {
         let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
         let context_name = submatches
             .unwrap()
-            .value_of(Parameters::context)
+            .value_of(Parameters::context_id)
             .map(|s| s.to_string() as config::ContextId);
 
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
