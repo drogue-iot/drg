@@ -59,17 +59,11 @@ fn exit_with_code(r: reqwest::StatusCode) {
     exit(2)
 }
 
-// todo : assume https as the default scheme
-// Or get rid of this.
 pub fn url_validation(url: &str) -> Result<Url> {
-    match Url::parse(url) {
-        Ok(pass) => {
-            Ok(pass)
-        },
-        Err(_error) => {
-            Url::parse(&format!("https://{}",url)).context(format!("URL args: \'{}\' is not valid", url))
-        },
-    }
+    Url::parse(url).or_else(|_| {
+        Url::parse(&format!("https://{}",url))
+        .context(format!("URL args: \'{}\' is not valid", url))
+        })
 }
 
 pub fn json_parse(data: Option<&str>) -> Result<Value> {
