@@ -223,7 +223,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Other_commands::token.as_ref())
-                .about("Print a valid bearer token for the drogue cloud instance."),
+                .about("--token is deprecated, use 'drg whoami --token' instead"),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::whoami.as_ref())
@@ -232,7 +232,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     token_arg
                         .clone()
                         .takes_value(false)
-                        .help("print a valid bearer toke for the drogue cloud instance."),
+                        .help("print a valid bearer token for the drogue cloud instance."),
                 ),
         )
         .subcommand(
