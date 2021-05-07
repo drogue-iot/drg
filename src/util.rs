@@ -61,9 +61,9 @@ fn exit_with_code(r: reqwest::StatusCode) {
 
 pub fn url_validation(url: &str) -> Result<Url> {
     Url::parse(url).or_else(|_| {
-        Url::parse(&format!("https://{}",url))
-        .context(format!("URL args: \'{}\' is not valid", url))
-        })
+        Url::parse(&format!("https://{}", url))
+            .context(format!("URL args: \'{}\' is not valid", url))
+    })
 }
 
 pub fn json_parse(data: Option<&str>) -> Result<Value> {
