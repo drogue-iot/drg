@@ -1,20 +1,31 @@
 use crate::config::Context;
 use crate::{util, AppId, DeviceId, Verbs};
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::{anyhow, Context as AnyhowContext, Result};
 use oauth2::TokenResponse;
 use reqwest::blocking::Client;
 use reqwest::blocking::Response;
 use reqwest::{StatusCode, Url};
-use serde_json::json;
+use serde_json::{from_str, json, Value};
 use std::process::exit;
+use tabular::{Row, Table};
 
-fn craft_url(base: &Url, app_id: &str, device_id: &str) -> String {
-    format!("{}api/v1/apps/{}/devices/{}", base, app_id, device_id)
+fn craft_url(base: &Url, app_id: &str, device_id: Option<&str>) -> String {
+    let device = match device_id {
+        Some(dev) => format!("/{}", dev),
+        None => String::new(),
+    };
+    format!(
+        "{}{}/apps/{}/devices{}",
+        base,
+        util::API_PATH,
+        app_id,
+        device
+    )
 }
 
 pub fn delete(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, &app, &device_id);
+    let url = craft_url(&config.registry_url, &app, Some(&device_id));
 
     client
         .delete(&url)
@@ -50,7 +61,7 @@ pub fn create(
     };
 
     let client = Client::new();
-    let url = format!("{}api/v1/apps/{}/devices", &config.registry_url, app_id);
+    let url = craft_url(&config.registry_url, &app_id, None);
 
     client
         .post(&url)
@@ -96,9 +107,34 @@ pub fn edit(config: &Context, app: AppId, device_id: DeviceId, file: Option<&str
     }
 }
 
-fn get(config: &Context, app: &str, device_id: &str) -> Result<Response> {
+pub fn list(config: &Context, app: AppId, labels: Option<String>) -> Result<()> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, app, device_id);
+    let url = craft_url(&config.registry_url, &app, None);
+
+    let mut req = client
+        .get(&url)
+        .bearer_auth(&config.token.access_token().secret());
+
+    if let Some(labels) = labels {
+        req = req.query(&[("labels", labels)]);
+    }
+
+    let res = req.send().context("Can't list devices");
+
+    if let Ok(r) = res {
+        if r.status() == StatusCode::OK {
+            pretty_list(r.text()?)?;
+            Ok(())
+        } else {
+            Err(anyhow!("List operation failed with {}", r.status()))
+        }
+    } else {
+        Err(anyhow!("Error while requesting devices list."))
+    }
+}
+fn get(config: &Context, app: &str, device_id: &DeviceId) -> Result<Response> {
+    let client = Client::new();
+    let url = craft_url(&config.registry_url, app, Some(&device_id));
 
     client
         .get(&url)
@@ -107,9 +143,14 @@ fn get(config: &Context, app: &str, device_id: &str) -> Result<Response> {
         .context("Can't get device.")
 }
 
-fn put(config: &Context, app: &str, device_id: &str, data: serde_json::Value) -> Result<Response> {
+fn put(
+    config: &Context,
+    app: &AppId,
+    device_id: &DeviceId,
+    data: serde_json::Value,
+) -> Result<Response> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, app, device_id);
+    let url = craft_url(&config.registry_url, app, Some(&device_id));
     let token = &config.token.access_token().secret();
 
     client
@@ -122,4 +163,27 @@ fn put(config: &Context, app: &str, device_id: &str, data: serde_json::Value) ->
             "Error while updating device data for {}",
             device_id
         ))
+}
+
+// todo drogue-client and the types would be useful for this
+fn pretty_list(data: String) -> Result<()> {
+    let device_array: Vec<Value> = from_str(data.as_str())?;
+
+    let mut table = Table::new("{:<} {:<}");
+    table.add_row(Row::new().with_cell("NAME").with_cell("AGE"));
+
+    for dev in device_array {
+        let name = dev["metadata"]["name"].as_str();
+        let creation = dev["metadata"]["creationTimestamp"].as_str();
+        if let Some(name) = name {
+            table.add_row(
+                Row::new()
+                    .with_cell(name)
+                    .with_cell(util::age(creation.unwrap())?),
+            );
+        }
+    }
+
+    print!("{}", table);
+    Ok(())
 }

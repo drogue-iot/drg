@@ -7,6 +7,7 @@ use chrono::{DateTime, Utc};
 use dirs::config_dir;
 use oauth2::basic::BasicTokenResponse;
 use read_input::prelude::*;
+use tabular::{Row, Table};
 use url::Url;
 
 type ContextId = String;
@@ -114,9 +115,27 @@ impl Config {
         false
     }
     pub fn list_contexts(&self) {
+        let mut table = Table::new("{:<}  {:<}");
+        table.add_row(Row::new().with_cell("NAME").with_cell("DEFAULT APP"));
+
         for config in &self.contexts {
-            println!("{}", &config.name)
+            let name;
+            if self.active_context == config.name {
+                name = format!("{}*", config.name);
+            } else {
+                name = config.name.clone();
+            }
+            table.add_row(
+                Row::new().with_cell(&name).with_cell(
+                    &config
+                        .default_app
+                        .as_ref()
+                        .unwrap_or(&"<Not Set>".to_string()),
+                ),
+            );
         }
+
+        print!("{}", table);
     }
 
     pub fn set_active_context(&mut self, name: ContextId) -> Result<()> {

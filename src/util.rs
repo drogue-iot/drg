@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::Verbs;
 use anyhow::{Context as AnyhowContext, Result};
+use chrono::{Duration, Utc};
 use clap::crate_version;
 use clap::ArgMatches;
 use colored_json::write_colored_json;
@@ -17,6 +18,7 @@ use url::Url;
 
 pub const VERSION: &str = crate_version!();
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.4.0";
+pub const API_PATH: &str = "api/registry/v1alpha1";
 
 pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     match op {
@@ -225,4 +227,21 @@ pub fn get_data_from_file(path: &str) -> Result<Value> {
     let contents = fs::read_to_string(path).context("Something went wrong reading the file")?;
 
     serde_json::from_str(contents.as_str()).context("Invalid JSON in file")
+}
+
+pub fn age(str_timestamp: &str) -> Result<String> {
+    let time = chrono::DateTime::parse_from_rfc3339(str_timestamp)?;
+    let age = Utc::now().naive_utc() - time.naive_utc();
+
+    if age > Duration::days(7) {
+        Ok(format!("{}d", age.num_days()))
+    } else if age > Duration::days(3) {
+        Ok(format!("{}d{}h", age.num_days(), age.num_hours()))
+    } else if age > Duration::hours(2) {
+        Ok(format!("{}h", age.num_hours()))
+    } else if age > Duration::minutes(2) {
+        Ok(format!("{}m", age.num_minutes()))
+    } else {
+        Ok(format!("{}s", age.num_seconds()))
+    }
 }

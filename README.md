@@ -49,13 +49,38 @@ The following operations are handled :
 * delete
 * edit
 * get
+* list
 
-## Apps operations
+###  Create resources
 
     # Create an app 
     drg create app <appId>
     # adding data
     drg create app <appId> -d `{"foo":"bar"}`
+    
+    # Create a device
+    drg create device <deviceId> --app <appId>    # --app and -a are interchangeable
+    # Add some data
+    drg create device <deviceId> -a <appId> -d `{"foo":"bar"}`
+    
+### Read resources
+
+    # Read an app
+    drg get appp <appId>
+    # Get a list of apps
+    drg get apps
+    
+    # Read a device
+    drg get device <deviceId> --app <appId>
+    # Get a list of devices
+    drg get devices --app <appId>
+    
+Note: `list` support adding labels for filtering results:
+
+          # Get a list of devices (here all 3 labels will be applied.
+          drg get apps -l key=value,foo=bar --label fiz=buz
+    
+### Edit and delete resources
     
     # edit an app - this will open an editor. 
     drg edit app <appId>
@@ -63,21 +88,14 @@ The following operations are handled :
     # update an app providing the data
     drg edit app <appId> -f </path/to/json>
     
-    # Delete an app 
-    drg delete app <appId>
-
-## Devices operations
-
-    # Create a device
-    drg create device <deviceId> --app <appId>    # --app and -a are interchangeable
-    # Add some data
-    drg create device <deviceId> -a <appId> -d `{"foo":"bar"}`
-    
     # Edit a device data - this will open an editor
     drg edit device <deviceId> --app <appId>
     
     # update a device providing the data
     drg edit device <deviceId> -a <appId> -f </path/to/json>
+    
+    # Delete an app 
+    drg delete app <appId>
     
     # Delete a device 
     drg delete device <deviceId> - <appId>
@@ -116,7 +134,5 @@ context and app can be set with environment variables : `DRG_CONTEXT` and `DRG_A
 # Roadmap
 
 In no particular order here are the following things that we would like to add to `drg` :
- * List resources
  * Trust anchors support
  * Json patch operations
- * Other platforms binaries : MacOS and windows.
