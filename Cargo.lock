@@ -402,6 +402,7 @@ dependencies = [
  "simple_logger",
  "strum",
  "strum_macros",
+ "tabular",
  "tempfile",
  "tiny_http",
  "url 2.2.1",
@@ -1878,6 +1879,15 @@ dependencies = [
  "quote",
  "syn",
  "unicode-xid",
+]
+
+[[package]]
+name = "tabular"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7e35bee02dcefe64a74065b6b869d241eab1a02fea0d65e6074ce4e51894c3b"
+dependencies = [
+ "unicode-width",
 ]
 
 [[package]]

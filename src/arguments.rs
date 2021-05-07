@@ -19,7 +19,9 @@ pub enum Verbs {
 #[allow(non_camel_case_types)]
 pub enum Resources {
     device,
+    devices,
     app,
+    apps,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -34,6 +36,7 @@ pub enum Parameters {
     context_id,
     #[strum(serialize = "keep-current")]
     keep_current,
+    labels,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -128,6 +131,14 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .short("k")
         .help("Do not activate the new context.");
 
+    let labels = Arg::with_name(&Parameters::labels.as_ref())
+        .required(false)
+        .short("l")
+        .long(Parameters::labels.as_ref())
+        .use_delimiter(true)
+        .multiple(true)
+        .help("A comma separated list of the label filters to filter the list with.");
+
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
         .author("Jb Trystram <jbtrystram@redhat.com>")
@@ -176,7 +187,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Verbs::get.as_ref())
-                .about("Read a resource from the drogue-cloud registry")
+                .about("Display one or many resources from the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
@@ -188,6 +199,19 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("retrieve an app spec.")
                         .arg(&resource_id_arg),
+                )
+                // Listing subcommands
+                .subcommand(
+                    SubCommand::with_name(Resources::apps.as_ref())
+                        .about("List all apps.")
+                        .arg(&labels)
+                        .about("List all apps the user have access to."),
+                )
+                .subcommand(
+                    SubCommand::with_name(Resources::devices.as_ref())
+                        .arg(&app_id_arg)
+                        .arg(&labels)
+                        .about("List all devices for an app."),
                 ),
         )
         .subcommand(

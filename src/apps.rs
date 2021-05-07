@@ -1,14 +1,19 @@
 use crate::config::Context;
 use crate::{util, AppId, Verbs};
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::{anyhow, Context as AnyhowContext, Result};
 use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
-use serde_json::json;
+use serde_json::{from_str, json, Value};
 use std::process::exit;
+use tabular::{Row, Table};
 
-fn craft_url(base: &Url, app_id: &str) -> String {
-    format!("{}api/v1/apps/{}", base, app_id)
+fn craft_url(base: &Url, app_id: Option<&str>) -> String {
+    let app = match app_id {
+        Some(app) => format!("/{}", app),
+        None => String::new(),
+    };
+    format!("{}{}/apps{}", base, util::API_PATH, app)
 }
 
 pub fn create(
@@ -18,7 +23,7 @@ pub fn create(
     file: Option<&str>,
 ) -> Result<()> {
     let client = Client::new();
-    let url = format!("{}api/v1/apps", &config.registry_url);
+    let url = craft_url(&config.registry_url, None);
     let body = match file {
         Some(f) => util::get_data_from_file(f)?,
         None => {
@@ -47,7 +52,7 @@ pub fn read(config: &Context, app: AppId) -> Result<()> {
 
 pub fn delete(config: &Context, app: AppId) -> Result<()> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, &app);
+    let url = craft_url(&config.registry_url, Some(&app));
 
     client
         .delete(&url)
@@ -91,9 +96,35 @@ pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
     }
 }
 
+pub fn list(config: &Context, labels: Option<String>) -> Result<()> {
+    let client = Client::new();
+    let url = craft_url(&config.registry_url, None);
+
+    let mut req = client
+        .get(&url)
+        .bearer_auth(&config.token.access_token().secret());
+
+    if let Some(labels) = labels {
+        req = req.query(&[("labels", labels)]);
+    }
+
+    let res = req.send().context("Can't list apps");
+
+    if let Ok(r) = res {
+        if r.status() == StatusCode::OK {
+            pretty_list(r.text()?)?;
+            Ok(())
+        } else {
+            Err(anyhow!("List operation failed with {}", r.status()))
+        }
+    } else {
+        Err(anyhow!("Error while requesting app list."))
+    }
+}
+
 fn get(config: &Context, app: &str) -> Result<Response> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, app);
+    let url = craft_url(&config.registry_url, Some(app));
     client
         .get(&url)
         .bearer_auth(&config.token.access_token().secret())
@@ -103,7 +134,7 @@ fn get(config: &Context, app: &str) -> Result<Response> {
 
 fn put(config: &Context, app: &str, data: serde_json::Value) -> Result<Response> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, app);
+    let url = craft_url(&config.registry_url, Some(app));
 
     client
         .put(&url)
@@ -112,4 +143,27 @@ fn put(config: &Context, app: &str, data: serde_json::Value) -> Result<Response>
         .body(data.to_string())
         .send()
         .context("Can't update app data.")
+}
+
+// todo drogue-client and the types would be useful for this
+fn pretty_list(data: String) -> Result<()> {
+    let apps_array: Vec<Value> = from_str(data.as_str())?;
+
+    let mut table = Table::new("{:<} {:<}");
+    table.add_row(Row::new().with_cell("NAME").with_cell("AGE"));
+
+    for app in apps_array {
+        let name = app["metadata"]["name"].as_str();
+        let creation = app["metadata"]["creationTimestamp"].as_str();
+        if let Some(name) = name {
+            table.add_row(
+                Row::new()
+                    .with_cell(name)
+                    .with_cell(util::age(creation.unwrap())?),
+            );
+        }
+    }
+
+    print!("{}", table);
+    Ok(())
 }
