@@ -105,7 +105,7 @@ pub fn editor(original: String) -> Result<Value> {
 }
 
 pub fn print_version(config: &Result<Config>) {
-    println!("Client Version: {}", VERSION);
+    println!("Drg Version: {}", VERSION);
 
     match config {
         Ok(cfg) => {
