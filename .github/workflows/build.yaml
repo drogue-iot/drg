@@ -65,6 +65,9 @@ jobs:
             pkg: "zip"
     runs-on: ${{ matrix.os }}
 
+    env:
+      VERSION: ${{needs.check.outputs.version}}
+
     steps:
 
       - name: Set version
@@ -147,6 +150,8 @@ jobs:
       - check
       - build
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{needs.check.outputs.version}}
     steps:
       - name: Dump state
         run: |
