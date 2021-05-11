@@ -163,6 +163,9 @@ jobs:
           echo "Release? - release = ${{needs.check.outputs.release}}"
           echo "Pre-release? - prerelease = ${{needs.check.outputs.prerelease}}"
 
+      # we need the checkout for the "hub" tool later on
+      - uses: actions/checkout@v2
+
       - uses: actions/download-artifact@v2
         with:
           path: downloads
