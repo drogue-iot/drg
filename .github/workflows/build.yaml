@@ -25,12 +25,23 @@ jobs:
            echo ::set-output name=release::true
            echo ::set-output name=prerelease::true
           fi
+      - name: Set version
+        if: ${{github.head_ref == ''}}
+        id: version
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          [ "$VERSION" == "main" ] && VERSION=latest
+          echo VERSION=$VERSION
+          echo "::set-output name=version::$VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Dump state
         run: |
           echo "Tag/version: ${VERSION} / ${{needs.check.outputs.version}}"
           echo "Should we publish artifacts? - do-publish = ${{needs.check.outputs.do-publish}}"
           echo "Release? - release = ${{needs.check.outputs.release}}"
           echo "Pre-release? - prerelease = ${{needs.check.outputs.prerelease}}"
+
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -75,20 +86,6 @@ jobs:
       VERSION: ${{needs.check.outputs.version}}
 
     steps:
-
-      - name: Set version
-        id: version
-        shell: bash
-        run: |
-          if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
-            VERSION=$(echo $VERSION | sed -e 's/^v//')
-          else
-            VERSION=latest
-          fi
-          echo VERSION=$VERSION
-          echo "::set-output name=version::$VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
       - name: Install build tools
         if: ${{ matrix.os == 'ubuntu-18.04' }}
         run: |
