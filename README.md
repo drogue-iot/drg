@@ -8,7 +8,7 @@ A Command line tool for managing apps and devices in a drogue cloud instance.
 
 # Installation 
 
-## Build from sources : 
+## Build from sources 
 
 Via crates.io:
     
@@ -23,8 +23,12 @@ Download the latest release from the [github release page](https://github.com/dr
     brew tap drogue-iot/drg
     brew install drg
 
+Note: Debian users must install the `libssl1.1` package.
 
-Note : Debian users must install the `libssl1.1` package.
+## Snap
+
+    sudo snap install drogue-cli
+    sudo snap alias drogue-cli drg
 
 # Usage
 
