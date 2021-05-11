@@ -35,14 +35,13 @@ fn main() -> Result<()> {
         let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
 
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
-        let context = openid::login(url.clone(), refresh_token_val)?;
+        let context = openid::login(url.clone(), refresh_token_val, context_arg)?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
         let name = context.name.clone();
         config.add_context(context)?;
 
         if !submatches.unwrap().is_present(Parameters::keep_current) {
-            println!("Switched context to: {}", name);
             config.set_active_context(name)?;
         }
 

@@ -20,7 +20,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 
 const CLIENT_ID: &str = "drogue";
 
-pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>) -> Result<Context> {
+pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>, context_name: Option<String>) -> Result<Context> {
     log::info!("Starting authentication process with {}", api_endpoint);
 
     let (sso_url, registry_url) = util::get_drogue_services_endpoint(api_endpoint.clone())?;
@@ -39,7 +39,8 @@ pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>) -> Result<Conte
 
     log::info!("Token successfully obtained.");
     log::debug!("{:?}", token);
-    let name = config::ask_config_name();
+    let name = context_name.unwrap_or_else(|| config::ask_config_name());
+
     let config = Context {
         name,
         drogue_cloud_url: api_endpoint,
