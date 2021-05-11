@@ -10,7 +10,7 @@ use read_input::prelude::*;
 use tabular::{Row, Table};
 use url::Url;
 
-type ContextId = String;
+pub type ContextId = String;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {

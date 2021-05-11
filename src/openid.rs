@@ -20,7 +20,11 @@ use std::net::{Ipv4Addr, SocketAddr};
 
 const CLIENT_ID: &str = "drogue";
 
-pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>, context_name: Option<String>) -> Result<Context> {
+pub fn login(
+    api_endpoint: Url,
+    refresh_token_val: Option<&str>,
+    context_name: Option<config::ContextId>,
+) -> Result<Context> {
     log::info!("Starting authentication process with {}", api_endpoint);
 
     let (sso_url, registry_url) = util::get_drogue_services_endpoint(api_endpoint.clone())?;
@@ -39,7 +43,7 @@ pub fn login(api_endpoint: Url, refresh_token_val: Option<&str>, context_name: O
 
     log::info!("Token successfully obtained.");
     log::debug!("{:?}", token);
-    let name = context_name.unwrap_or_else(|| config::ask_config_name());
+    let name = context_name.unwrap_or_else(config::ask_config_name);
 
     let config = Context {
         name,
@@ -192,9 +196,6 @@ pub fn print_whoami(context: &Context) {
     println!("Cluster adress : {}", context.drogue_cloud_url);
     println!(
         "Default App : {}",
-        match context.default_app {
-            None => "No default app",
-            Some(ref x) => x,
-        }
+        context.default_app.as_ref().unwrap_or(&"No default app".to_string())
     );
 }
