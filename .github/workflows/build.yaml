@@ -26,7 +26,6 @@ jobs:
            echo ::set-output name=prerelease::true
           fi
       - name: Set version
-        if: ${{github.head_ref == ''}}
         id: version
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
