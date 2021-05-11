@@ -196,6 +196,9 @@ pub fn print_whoami(context: &Context) {
     println!("Cluster adress : {}", context.drogue_cloud_url);
     println!(
         "Default App : {}",
-        context.default_app.as_ref().unwrap_or(&"No default app".to_string())
+        context
+            .default_app
+            .as_ref()
+            .unwrap_or(&"No default app".to_string())
     );
 }
