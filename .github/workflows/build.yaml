@@ -25,6 +25,12 @@ jobs:
            echo ::set-output name=release::true
            echo ::set-output name=prerelease::true
           fi
+      - name: Dump state
+        run: |
+          echo "Tag/version: ${VERSION} / ${{needs.check.outputs.version}}"
+          echo "Should we publish artifacts? - do-publish = ${{needs.check.outputs.do-publish}}"
+          echo "Release? - release = ${{needs.check.outputs.release}}"
+          echo "Pre-release? - prerelease = ${{needs.check.outputs.prerelease}}"
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
