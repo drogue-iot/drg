@@ -54,7 +54,7 @@ impl Config {
         Ok(config)
     }
 
-    pub fn add_context(&mut self, context: Context) -> Result<()> {
+    pub fn add_context(&mut self, mut context: Context) -> Result<()> {
         let name = &context.name;
         if !self.contains_context(name) {
             if self.contexts.is_empty() {
@@ -63,8 +63,18 @@ impl Config {
             self.contexts.push(context);
             Ok(())
         } else {
-            Err(anyhow!("Context {} already exist in config!", name))
+            context.default_app = self.get_context(&Some(name.clone()))?.default_app.clone();
+            self.replace_context(context)?;
+            Ok(())
         }
+    }
+
+    fn replace_context(&mut self, context: Context) -> Result<()> {
+        let name = &context.name;
+        self.delete_context(&name)?;
+        println!("Updated context {}", &name);
+        self.contexts.push(context);
+        Ok(())
     }
 
     pub fn get_context(&self, name: &Option<ContextId>) -> Result<&Context> {
