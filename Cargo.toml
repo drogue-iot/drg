@@ -23,8 +23,6 @@ oauth2 = "3.0"
 simple_logger = { version = "1.11.0", default-features = false, features = [ "colored" ] } 
 log = "0.4.13"
 
-read_input = "0.8.4"
-
 strum = "0.18"
 strum_macros = "0.18"
 

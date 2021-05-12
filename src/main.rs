@@ -7,7 +7,7 @@ mod util;
 
 use arguments::{Context_subcommands, Other_commands, Parameters, Resources, Verbs};
 
-use crate::config::Config;
+use crate::config::{Config, ContextId};
 use anyhow::{Context as AnyhowContext, Result};
 use std::process::exit;
 use std::str::FromStr;
@@ -18,7 +18,12 @@ type DeviceId = String;
 fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
     let config_path = matches.value_of(Parameters::config);
-    let context_arg = matches.value_of(Parameters::context).map(|s| s.to_string());
+    let (command, submatches) = matches.subcommand();
+    let context_arg= if let Some(submatches) = submatches {
+        submatches.value_of(Parameters::context).map(|s| s.to_string())
+    } else {
+        None
+    };
 
     simple_logger::SimpleLogger::new()
         .with_level(util::log_level(&matches))
@@ -29,13 +34,13 @@ fn main() -> Result<()> {
     let config_result: Result<Config> =
         Config::from(config_path).context("Error loading config file");
 
-    if matches.is_present(Other_commands::login) {
-        let (_, submatches) = matches.subcommand();
+    if command == Other_commands::login.as_ref() {
         let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
         let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
 
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
-        let context = openid::login(url.clone(), refresh_token_val, context_arg)?;
+        println!("{:?}", context_arg);
+        let context = openid::login(url.clone(), refresh_token_val, context_arg.unwrap_or("default".to_string() as ContextId))?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
         let name = context.name.clone();
@@ -47,19 +52,16 @@ fn main() -> Result<()> {
 
         config.write(config_path)?;
         exit(0);
-    }
-
-    if matches.is_present(Other_commands::version) {
+    } else if command == Other_commands::version.as_ref() {
         util::print_version(&config_result);
         exit(0);
     }
 
     let mut config: Config = config_result?;
 
-    if matches.is_present(Other_commands::context) {
-        let (_cmd_name, sub_cmd) = matches.subcommand();
+    if command == Other_commands::context.as_ref() {
 
-        let cmd = sub_cmd.unwrap();
+        let cmd = submatches.unwrap();
         let (v, c) = cmd.subcommand();
         let verb = Context_subcommands::from_str(v);
 
@@ -71,26 +73,21 @@ fn main() -> Result<()> {
         match verb? {
             Context_subcommands::create => {
                 println!("To create a new context use drg login");
-                exit(1);
             }
             Context_subcommands::list => {
                 config.list_contexts();
-                exit(0);
             }
             Context_subcommands::show => {
                 config.show()?;
-                exit(0);
             }
             Context_subcommands::set_active => {
                 config.set_active_context(ctx_id.unwrap())?;
                 config.write(config_path)?;
-                exit(0);
             }
             Context_subcommands::delete => {
                 let id = ctx_id.unwrap();
                 config.delete_context(&id)?;
                 config.write(config_path)?;
-                exit(0);
             }
             Context_subcommands::set_default_app => {
                 let id = c.unwrap().value_of(Parameters::id).unwrap().to_string();
@@ -98,16 +95,15 @@ fn main() -> Result<()> {
 
                 context.set_default_app(id);
                 config.write(config_path)?;
-                exit(0);
             }
             Context_subcommands::rename => {
                 let new_ctx = c.unwrap().value_of("new_context_id").unwrap().to_string();
 
                 config.rename_context(ctx_id.unwrap(), new_ctx)?;
                 config.write(config_path)?;
-                exit(0);
             }
         }
+        exit(0);
     }
 
     // The following commands needs a context and a valid token
@@ -116,12 +112,9 @@ fn main() -> Result<()> {
     }
     let context = config.get_context(&context_arg)?;
 
-    if matches.is_present(Other_commands::token) {
+    if command == Other_commands::token.as_ref() {
         openid::print_token(&context);
-        exit(0);
-    }
-
-    if matches.is_present(Other_commands::whoami) {
+    } else if command == Other_commands::whoami.as_ref() {
         let (_, submatches) = matches.subcommand();
         if submatches.unwrap().is_present("token") {
             openid::print_token(&context);
@@ -129,12 +122,11 @@ fn main() -> Result<()> {
             openid::print_whoami(&context);
             util::print_version(&Ok(config));
         }
-        exit(0);
+        exit(0)
     }
 
-    let (cmd_name, sub_cmd) = matches.subcommand();
-    let verb = Verbs::from_str(cmd_name);
-    let cmd = sub_cmd.unwrap();
+    let verb = Verbs::from_str(command);
+    let cmd = submatches.unwrap();
 
     match verb? {
         Verbs::create => {

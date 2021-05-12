@@ -6,7 +6,6 @@ use crate::AppId;
 use chrono::{DateTime, Utc};
 use dirs::config_dir;
 use oauth2::basic::BasicTokenResponse;
-use read_input::prelude::*;
 use tabular::{Row, Table};
 use url::Url;
 
@@ -245,20 +244,4 @@ fn eval_config_path(path: Option<&str>) -> String {
             format!("{}/drg_config.yaml", xdg)
         }),
     }
-}
-
-pub fn ask_config_name() -> ContextId {
-    input::<String>()
-        .msg("Context name: ")
-        .err("Invalid context name")
-        .add_err_test(
-            |s| !s.contains(' '),
-            "context name should not contains spaces",
-        )
-        .add_err_test(
-            |s| !s.is_empty(),
-            "context name must not be empty"
-        )
-        .repeat_msg("Context name: ")
-        .get()
 }

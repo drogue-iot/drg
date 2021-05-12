@@ -117,7 +117,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .help("Enable verbose output. Multiple occurences increase verbosity.");
 
     let context_arg = Arg::with_name(Parameters::context.as_ref())
-        .long("context")
+        .long(Parameters::context.as_ref())
         .short("c")
         .takes_value(true)
         .global(true)
@@ -260,6 +260,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .subcommand(
             SubCommand::with_name(Other_commands::whoami.as_ref())
                 .about("Print cluster adress, version and default app(if any)")
+                .arg(&context_arg)
                 .arg(
                     token_arg
                         .clone()

@@ -23,7 +23,7 @@ const CLIENT_ID: &str = "drogue";
 pub fn login(
     api_endpoint: Url,
     refresh_token_val: Option<&str>,
-    context_name: Option<config::ContextId>,
+    context_name: config::ContextId,
 ) -> Result<Context> {
     log::info!("Starting authentication process with {}", api_endpoint);
 
@@ -43,10 +43,9 @@ pub fn login(
 
     log::info!("Token successfully obtained.");
     log::debug!("{:?}", token);
-    let name = context_name.unwrap_or_else(config::ask_config_name);
 
     let config = Context {
-        name,
+        name: context_name,
         drogue_cloud_url: api_endpoint,
         default_app: None,
         token,

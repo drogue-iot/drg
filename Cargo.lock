@@ -394,7 +394,6 @@ dependencies = [
  "log",
  "oauth2",
  "qstring",
- "read_input",
  "reqwest 0.11.2",
  "serde",
  "serde_json",
@@ -1509,12 +1508,6 @@ checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
 dependencies = [
  "rand_core 0.3.1",
 ]
-
-[[package]]
-name = "read_input"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b57518cc6538a2eb7dce826e24fa51d0b7cf8e744ee10c7f56259cdec40050e5"
 
 [[package]]
 name = "redox_syscall"
