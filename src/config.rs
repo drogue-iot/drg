@@ -72,7 +72,7 @@ impl Config {
     fn replace_context(&mut self, context: Context) -> Result<()> {
         let name = &context.name;
         self.delete_context(&name)?;
-        println!("Updated context {}", &name);
+        println!("Updated existing context {}", &name);
         self.contexts.push(context);
         Ok(())
     }
@@ -125,23 +125,31 @@ impl Config {
         false
     }
     pub fn list_contexts(&self) {
-        let mut table = Table::new("{:<}  {:<}");
-        table.add_row(Row::new().with_cell("NAME").with_cell("DEFAULT APP"));
+        let mut table = Table::new("{:<}  {:<}  {:<}");
+        table.add_row(
+            Row::new()
+                .with_cell("NAME")
+                .with_cell("ADDRESS")
+                .with_cell("DEFAULT APP"),
+        );
 
         for config in &self.contexts {
             let name;
             if self.active_context == config.name {
-                name = format!("{}*", config.name);
+                name = format!("{} *", config.name);
             } else {
                 name = config.name.clone();
             }
             table.add_row(
-                Row::new().with_cell(&name).with_cell(
-                    &config
-                        .default_app
-                        .as_ref()
-                        .unwrap_or(&"<Not Set>".to_string()),
-                ),
+                Row::new()
+                    .with_cell(&name)
+                    .with_cell(&config.drogue_cloud_url)
+                    .with_cell(
+                        &config
+                            .default_app
+                            .as_ref()
+                            .unwrap_or(&"<Not Set>".to_string()),
+                    ),
             );
         }
 
@@ -246,6 +254,10 @@ pub fn ask_config_name() -> ContextId {
         .add_err_test(
             |s| !s.contains(' '),
             "context name should not contains spaces",
+        )
+        .add_err_test(
+            |s| !s.is_empty(),
+            "context name must not be empty"
         )
         .repeat_msg("Context name: ")
         .get()

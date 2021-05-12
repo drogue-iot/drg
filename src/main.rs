@@ -33,13 +33,9 @@ fn main() -> Result<()> {
         let (_, submatches) = matches.subcommand();
         let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
         let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
-        let context_name = submatches
-            .unwrap()
-            .value_of(Parameters::context_id)
-            .map(|s| s.to_string() as config::ContextId);
 
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
-        let context = openid::login(url.clone(), refresh_token_val, context_name)?;
+        let context = openid::login(url.clone(), refresh_token_val, context_arg)?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
         let name = context.name.clone();
@@ -67,6 +63,11 @@ fn main() -> Result<()> {
         let (v, c) = cmd.subcommand();
         let verb = Context_subcommands::from_str(v);
 
+        let ctx_id = c
+            .unwrap()
+            .value_of(Parameters::context_name)
+            .map(|s| s.to_string());
+
         match verb? {
             Context_subcommands::create => {
                 println!("To create a new context use drg login");
@@ -81,43 +82,28 @@ fn main() -> Result<()> {
                 exit(0);
             }
             Context_subcommands::set_active => {
-                let id = c
-                    .unwrap()
-                    .value_of(Parameters::context_id)
-                    .unwrap()
-                    .to_string();
-                config.set_active_context(id)?;
+                config.set_active_context(ctx_id.unwrap())?;
                 config.write(config_path)?;
                 exit(0);
             }
             Context_subcommands::delete => {
-                let id = c
-                    .unwrap()
-                    .value_of(Parameters::context_id)
-                    .unwrap()
-                    .to_string();
+                let id = ctx_id.unwrap();
                 config.delete_context(&id)?;
                 config.write(config_path)?;
                 exit(0);
             }
             Context_subcommands::set_default_app => {
                 let id = c.unwrap().value_of(Parameters::id).unwrap().to_string();
-                let ctx_name = matches.value_of(Parameters::context).map(|s| s.to_string());
+                let context = config.get_context_mut(&ctx_id)?;
 
-                let context = config.get_context_mut(&ctx_name)?;
                 context.set_default_app(id);
                 config.write(config_path)?;
                 exit(0);
             }
             Context_subcommands::rename => {
-                let ctx = c
-                    .unwrap()
-                    .value_of(Parameters::context_id)
-                    .unwrap()
-                    .to_string();
                 let new_ctx = c.unwrap().value_of("new_context_id").unwrap().to_string();
 
-                config.rename_context(ctx, new_ctx)?;
+                config.rename_context(ctx_id.unwrap(), new_ctx)?;
                 config.write(config_path)?;
                 exit(0);
             }

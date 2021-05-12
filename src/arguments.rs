@@ -33,10 +33,10 @@ pub enum Parameters {
     config,
     filename,
     context,
-    context_id,
     #[strum(serialize = "keep-current")]
     keep_current,
     labels,
+    context_name,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -117,14 +117,15 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .help("Enable verbose output. Multiple occurences increase verbosity.");
 
     let context_arg = Arg::with_name(Parameters::context.as_ref())
-        .long(Parameters::context.as_ref())
+        .long("context")
         .short("c")
         .takes_value(true)
         .global(true)
         .env("DRG_CONTEXT")
         .help("The name of the context to use. Can be set with DRG_CONTEXT environment variable.");
 
-    let context_id_arg = Arg::with_name(Parameters::context_id.as_ref())
+    let context_id_arg = Arg::with_name(Parameters::context_name.as_ref())
+        .conflicts_with(Parameters::context.as_ref())
         .required(true)
         .help("The id of the context");
 
@@ -247,13 +248,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .arg(&token_arg)
                 .about("Log into a drogue cloud installation.")
                 .arg(&url_arg)
-                .arg(
-                    context_id_arg
-                        .clone()
-                        .required(false)
-                        .long("context-name")
-                        .takes_value(true),
-                )
+                .arg(&context_arg)
                 .arg(&login_keep_current),
         )
         // todo : deprecated
@@ -313,8 +308,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(
                             Arg::with_name("new_context_id")
                                 .required(true)
-                                .help("The new context name")
-                                .conflicts_with(Parameters::context.as_ref()),
+                                .help("The new context name"),
                         ),
                 ),
         )
