@@ -19,8 +19,10 @@ fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
     let config_path = matches.value_of(Parameters::config);
     let (command, submatches) = matches.subcommand();
-    let context_arg= if let Some(submatches) = submatches {
-        submatches.value_of(Parameters::context).map(|s| s.to_string())
+    let context_arg = if let Some(submatches) = submatches {
+        submatches
+            .value_of(Parameters::context)
+            .map(|s| s.to_string())
     } else {
         None
     };
@@ -40,7 +42,11 @@ fn main() -> Result<()> {
 
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
         println!("{:?}", context_arg);
-        let context = openid::login(url.clone(), refresh_token_val, context_arg.unwrap_or("default".to_string() as ContextId))?;
+        let context = openid::login(
+            url.clone(),
+            refresh_token_val,
+            context_arg.unwrap_or("default".to_string() as ContextId),
+        )?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
         let name = context.name.clone();
@@ -60,7 +66,6 @@ fn main() -> Result<()> {
     let mut config: Config = config_result?;
 
     if command == Other_commands::context.as_ref() {
-
         let cmd = submatches.unwrap();
         let (v, c) = cmd.subcommand();
         let verb = Context_subcommands::from_str(v);
