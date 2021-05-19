@@ -41,7 +41,6 @@ fn main() -> Result<()> {
         let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
 
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
-        println!("{:?}", context_arg);
         let context = openid::login(
             url.clone(),
             refresh_token_val,
@@ -130,6 +129,7 @@ fn main() -> Result<()> {
         exit(0)
     }
 
+    log::warn!("Using context: {}", context.name);
     let verb = Verbs::from_str(command);
     let cmd = submatches.unwrap();
 
