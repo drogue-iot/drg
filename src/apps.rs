@@ -84,7 +84,7 @@ pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
                     }
                     e => {
                         log::error!("Error : could not retrieve app: {}", e);
-                        exit(2);
+                        util::exit_with_code(e)
                     }
                 },
                 Err(e) => {
@@ -111,11 +111,15 @@ pub fn list(config: &Context, labels: Option<String>) -> Result<()> {
     let res = req.send().context("Can't list apps");
 
     if let Ok(r) = res {
-        if r.status() == StatusCode::OK {
-            pretty_list(r.text()?)?;
-            Ok(())
-        } else {
-            Err(anyhow!("List operation failed with {}", r.status()))
+        match r.status() {
+            StatusCode::OK => {
+                pretty_list(r.text()?)?;
+                Ok(())
+            }
+            e => {
+                log::error!("List operation failed with {}", r.status());
+                util::exit_with_code(e)
+            }
         }
     } else {
         Err(anyhow!("Error while requesting app list."))

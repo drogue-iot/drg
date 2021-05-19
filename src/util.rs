@@ -53,7 +53,7 @@ fn show_json<S: Into<String>>(payload: S) {
     }
 }
 
-fn exit_with_code(r: reqwest::StatusCode) {
+pub fn exit_with_code(r: reqwest::StatusCode) -> ! {
     log::error!("Error : {}", r);
     if r.as_u16() == 403 {
         exit(4)
@@ -238,7 +238,7 @@ pub fn age(str_timestamp: &str) -> Result<String> {
     } else if age > Duration::days(3) {
         let hours = age
             .checked_sub(&Duration::days(age.num_days()))
-            .unwrap_or(Duration::hours(0));
+            .unwrap_or_else(|| Duration::hours(0));
         Ok(format!("{}d{}h", age.num_days(), hours.num_hours()))
     } else if age > Duration::hours(2) {
         Ok(format!("{}h", age.num_hours()))

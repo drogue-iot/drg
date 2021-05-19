@@ -95,11 +95,11 @@ pub fn edit(config: &Context, app: AppId, device_id: DeviceId, file: Option<&str
                     }
                     e => {
                         log::error!("Error : could not retrieve device: {}", e);
-                        exit(2);
+                        util::exit_with_code(e)
                     }
                 },
                 Err(e) => {
-                    log::error!("Error : could not retrieve device: {}", e);
+                    log::error!("Error : could not execute request: {}", e);
                     exit(2)
                 }
             }

@@ -199,26 +199,28 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
                         .about("Retrieve a device spec.")
-                        .arg(&resource_id_arg)
+                        .arg(resource_id_arg.clone().required(false))
                         .arg(&app_id_arg),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("retrieve an app spec.")
-                        .arg(&resource_id_arg),
+                        .arg(resource_id_arg.clone().required(false)),
                 )
                 // Listing subcommands
                 .subcommand(
                     SubCommand::with_name(Resources::apps.as_ref())
                         .about("List all apps.")
                         .arg(&labels)
-                        .about("List all apps the user have access to."),
+                        .about("List all apps the user have access to.")
+                        .arg(resource_id_arg.clone().required(false)),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::devices.as_ref())
                         .arg(&app_id_arg)
                         .arg(&labels)
-                        .about("List all devices for an app."),
+                        .about("List all devices for an app.")
+                        .arg(resource_id_arg.clone().required(false)),
                 ),
         )
         .subcommand(

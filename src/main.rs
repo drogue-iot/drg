@@ -8,7 +8,7 @@ mod util;
 use arguments::{Context_subcommands, Other_commands, Parameters, Resources, Verbs};
 
 use crate::config::{Config, ContextId};
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::{anyhow, Context as AnyhowContext, Result};
 use std::process::exit;
 use std::str::FromStr;
 
@@ -147,24 +147,14 @@ fn main() -> Result<()> {
             let file = command.unwrap().value_of(Parameters::filename);
 
             match resource? {
-                Resources::app => apps::create(&context, id, data, file)
-                    .map_err(|e| {
-                        log::error!("{:?}", e);
-                        exit(3)
-                    })
-                    .unwrap(),
+                Resources::app => apps::create(&context, id, data, file),
                 Resources::device => {
                     let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
                     devices::create(&context, id, data, app_id, file)
-                        .map_err(|e| {
-                            log::error!("{:?}", e);
-                            exit(3)
-                        })
-                        .unwrap();
                 }
                 // ignore apps and devices keywords
-                _ => {}
-            }
+                _ => Err(anyhow!("Cannot create multiple resources")),
+            }?;
         }
         Verbs::delete => {
             let (res, command) = cmd.subcommand();
@@ -176,24 +166,14 @@ fn main() -> Result<()> {
             let resource = Resources::from_str(res);
 
             match resource? {
-                Resources::app => apps::delete(&context, id)
-                    .map_err(|e| {
-                        log::error!("{:?}", e);
-                        exit(3)
-                    })
-                    .unwrap(),
+                Resources::app => apps::delete(&context, id),
                 Resources::device => {
                     let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
                     devices::delete(&context, app_id, id)
-                        .map_err(|e| {
-                            log::error!("{:?}", e);
-                            exit(3)
-                        })
-                        .unwrap()
                 }
                 // ignore apps and devices keywords
-                _ => {}
-            }
+                _ => Err(anyhow!("Cannot delete multiple resources")),
+            }?;
         }
         Verbs::edit => {
             let (res, command) = cmd.subcommand();
@@ -206,61 +186,24 @@ fn main() -> Result<()> {
             let resource = Resources::from_str(res);
 
             match resource? {
-                Resources::app => apps::edit(&context, id, file)
-                    .map_err(|e| {
-                        log::error!("{:?}", e);
-                        exit(3)
-                    })
-                    .unwrap(),
+                Resources::app => apps::edit(&context, id, file),
                 Resources::device => {
                     let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
                     devices::edit(&context, app_id, id, file)
-                        .map_err(|e| {
-                            log::error!("{:?}", e);
-                            exit(3)
-                        })
-                        .unwrap()
                 }
                 // ignore apps and devices keywords
-                _ => {}
-            }
+                _ => Err(anyhow!("Cannot edit multiple resources")),
+            }?;
         }
         Verbs::get => {
             let (res, command) = cmd.subcommand();
 
             let resource = Resources::from_str(res)?;
 
-            // todo beter match structure
-            match resource {
-                Resources::app | Resources::device => {
-                    let id = command
-                        .unwrap()
-                        .value_of(Parameters::id)
-                        .unwrap()
-                        .to_string();
-
-                    match resource {
-                        Resources::app => apps::read(&context, id)
-                            .map_err(|e| {
-                                log::error!("{:?}", e);
-                                exit(3)
-                            })
-                            .unwrap(),
-                        Resources::device => {
-                            let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-
-                            devices::read(&context, app_id, id)
-                                .map_err(|e| {
-                                    log::error!("{:?}", e);
-                                    exit(3)
-                                })
-                                .unwrap()
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
+            let id = command
+                .unwrap()
+                .value_of(Parameters::id)
+                .map(|s| s.to_string());
 
             let labels = command
                 .unwrap()
@@ -268,22 +211,19 @@ fn main() -> Result<()> {
                 .map(|v| v.collect::<Vec<&str>>().join(","));
 
             match resource {
-                Resources::apps => apps::list(&context, labels)
-                    .map_err(|e| {
-                        log::error!("{:?}", e);
-                        exit(3)
-                    })
-                    .unwrap(),
-                Resources::devices => {
-                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-                    devices::list(&context, app_id, labels)
-                        .map_err(|e| {
-                            log::error!("{:?}", e);
-                            exit(3)
-                        })
-                        .unwrap()
+                Resources::app | Resources::apps => {
+                    match id {
+                        Some(id) => apps::read(&context, id as AppId),
+                        None => apps::list(&context, labels),
+                    }?;
                 }
-                _ => {}
+                Resources::device | Resources::devices => {
+                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                    match id {
+                        Some(id) => devices::read(&context, app_id, id as DeviceId),
+                        None => devices::list(&context, app_id, labels),
+                    }?;
+                }
             }
         }
     }
