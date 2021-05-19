@@ -236,7 +236,10 @@ pub fn age(str_timestamp: &str) -> Result<String> {
     if age > Duration::days(7) {
         Ok(format!("{}d", age.num_days()))
     } else if age > Duration::days(3) {
-        Ok(format!("{}d{}h", age.num_days(), age.num_hours()))
+        let hours = age
+            .checked_sub(&Duration::days(age.num_days()))
+            .unwrap_or(Duration::hours(0));
+        Ok(format!("{}d{}h", age.num_days(), hours.num_hours()))
     } else if age > Duration::hours(2) {
         Ok(format!("{}h", age.num_hours()))
     } else if age > Duration::minutes(2) {
