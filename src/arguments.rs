@@ -85,7 +85,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .long(Parameters::spec.as_ref())
         .alias("data")
         .takes_value(true)
-        .help("The spec for the resource. --data is deprecated");
+        .help("The spec for the resource. --data is deprecated.");
 
     let file_arg = Arg::with_name(Parameters::filename.as_ref())
         .short("f")
@@ -93,7 +93,10 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .value_name("FILE")
         .conflicts_with(Parameters::spec.as_ref())
-        .help("file that contains the spec to update the resource with.");
+        .help("File containing the data to create or update the resource with.")
+        .long_help("File containing the data to create or update the resource with. \
+            Note: unlike the --spec argument which cover only the spec section of the resource, \
+            the file provided with --file must contains the complete resource object, including metadata.");
 
     let token_arg = Arg::with_name(Other_commands::token.as_ref())
         .short("t")
