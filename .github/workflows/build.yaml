@@ -30,7 +30,8 @@ jobs:
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-          [ "$VERSION" == "main" ] && VERSION=latest
+          [ "$VERSION" == "main" ] && VERSION=latest  # main branch
+          [ "$VERSION" == "merge" ] && VERSION=latest # PR
           echo VERSION=$VERSION
           echo "::set-output name=version::$VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
