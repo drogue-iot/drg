@@ -150,7 +150,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name(Verbs::create.as_ref())
-                .alias("add")
+                .visible_alias("add")
                 .about("create a resource in the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .arg(&context_arg)
@@ -172,7 +172,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Verbs::delete.as_ref())
-                .alias("remove")
+                .visible_alias("remove")
                 .about("delete a resource in the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .arg(&context_arg)
@@ -220,7 +220,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Verbs::edit.as_ref())
-                .alias("update")
+                .visible_alias("update")
                 .about("Update a resource from the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .arg(&context_arg)

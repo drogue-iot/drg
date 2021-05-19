@@ -29,6 +29,7 @@ Summary:        %{summary}
 %description -n %{crate} %{_description}
 
 %files       -n %{crate}
+%license LICENSE
 %doc README.md
 %{_bindir}/drg
 
@@ -51,24 +52,5 @@ Summary:        %{summary}
 %endif
 
 %changelog
-* Tue Apr 06 2021 Jens Reimann <jreimann@redhat.com> - 0.3.0-1.20210406114535497168.main.19.ga7278ba
-- Drop github actions snap workflow (Jens Reimann)
-- workflow name (Jean-Baptiste Trystram)
-- do snap build only on tags. Fixes #36 (Jean-Baptiste Trystram)
-- merge update and edit and use the file flag as differenciator (Jean-Baptiste Trystram)
-- update doc (Jean-Baptiste Trystram)
-- added update subcommand to load json file (Jean-Baptiste Trystram)
-- rename artifact to match published snap file name (Jean-Baptiste Trystram)
-- fix snap file path (Jean-Baptiste Trystram)
-- Fix reference (Jens Reimann)
-- Set id for build step (Jens Reimann)
-- Try different syntax (Jens Reimann)
-- Automatically publish (Jens Reimann)
-- experiment with snaps (Jens Reimann)
-- Create parent directory of configuration if it doesn't exists (Jens Reimann)
-- update Cargo.lock (Jens Reimann)
-- add the actual Cargo.lock (Jens Reimann)
-- commit Cargo.lock as this is a binary (Jens Reimann)
-- make use of the default app setting (Jean-Baptiste Trystram)
-- Automatic browser open to login (#28) (Vedang Joshi)
-
+* Mon May 17 18:16:00 CEST 2021 Jean-Baptiste Trystram <jbtrystram@redhat.com> - 0.5.0-1
+- Initial package
