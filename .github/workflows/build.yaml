@@ -68,30 +68,27 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-10.15, windows-2019]
-        include:
-          - os: ubuntu-18.04
-            suffix: "linux-amd64"
-            pkg: "tar.gz"
-          - os: macos-10.15
-            suffix: "macos-amd64"
-            pkg: "tar.gz"
-          - os: windows-2019
-            suffix: "windows-amd64"
-            exe: ".exe"
-            pkg: "zip"
-    runs-on: ${{ matrix.os }}
+        cfg:
+          - {os: ubuntu-18.04, suffix: linux-amd64, pkg: tar.gz}
+          - {os: ubuntu-18.04, suffix: linux-arm64, pkg: tar.gz, target: aarch64-unknown-linux-gnu, cross: true}
+          - {os: macos-10.15, suffix: macos-amd64, pkg: tar.gz}
+          - {os: macos-10.15, suffix: macos-m1, pkg: tar.gz, target: aarch64-apple-darwin, cross: true}
+          - {os: windows-2019, suffix: windows-amd64, pkg: zip, exe: .exe}
+
+    runs-on: ${{ matrix.cfg.os }}
 
     env:
       VERSION: ${{needs.check.outputs.version}}
 
     steps:
       - name: Install build tools
-        if: ${{ matrix.os == 'ubuntu-18.04' }}
+        if: ${{ matrix.cfg.os == 'ubuntu-18.04' }}
         run: |
           sudo apt-get update; DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install build-essential curl tzdata
           sudo apt install -y libssl-dev pkg-config
-
+      - name : Set build target
+        shell: bash
+        run : test ${{ matrix.cfg.target }} && echo "build-target=--target ${{ matrix.cfg.target }}" >> $GITHUB_ENV || true
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -103,17 +100,19 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          target: ${{matrix.cfg.target}}
       - uses: actions-rs/cargo@v1
         with:
+          use-cross: ${{matrix.cfg.cross}}
           command: build
-          args: --release
+          args: --release ${{ env.build-target }}
 
       - name: Prepare release asset
         shell: bash
-        run: .github/scripts/package_release.sh "${{matrix.suffix}}" "${{matrix.exe}}" "${{matrix.pkg}}" "${VERSION}"
+        run: .github/scripts/package_release.sh "${{matrix.cfg.suffix}}" "${{matrix.cfg.exe}}" "${{matrix.cfg.pkg}}" "${VERSION}"
 
       - name: Build Windows Installer
-        if: ${{ matrix.os == 'windows-2019' }}
+        if: ${{ matrix.cfg.os == 'windows-2019' }}
         shell: cmd
         #
         # In the following command we add '.0' to the version, as MSI expects a version in the format 'a.b.c.d'.
@@ -125,20 +124,20 @@ jobs:
           nuget install WiX -version 3.11.2
           set VERSION=%VERSION:latest=0.0.0%
           D:\a\drg\drg\WiX.3.11.2\tools\candle -v -dVersion=%VERSION%.0 -arch x64 dist\wix\drg.wxs
-          D:\a\drg\drg\WiX.3.11.2\tools\light drg.wixobj -o drg-%VERSION%.0-${{matrix.suffix}}.msi
+          D:\a\drg\drg\WiX.3.11.2\tools\light drg.wixobj -o drg-%VERSION%.0-${{matrix.cfg.suffix}}.msi
 
       - uses: actions/upload-artifact@v2
         with:
-          name: package-${{ matrix.os }}
+          name: package-${{ matrix.cfg.os }}
           if-no-files-found: error
           path: |
             drg-*.tar.gz
             drg-*.zip
 
       - uses: actions/upload-artifact@v2
-        if: ${{ matrix.os == 'windows-2019' }}
+        if: ${{ matrix.cfg.os == 'windows-2019' }}
         with:
-          name: installer-${{ matrix.os }}
+          name: installer-${{ matrix.cfg.os }}
           if-no-files-found: error
           path: |
             drg-*.msi
