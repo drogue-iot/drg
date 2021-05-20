@@ -67,6 +67,7 @@ jobs:
       - check
 
     strategy:
+      fail-fast: false
       matrix:
         cfg:
           - {os: ubuntu-18.04, suffix: linux-amd64, pkg: tar.gz}
