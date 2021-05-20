@@ -78,13 +78,13 @@ pub fn json_parse(data: Option<&str>) -> Result<Value> {
 pub fn editor(original: String) -> Result<Value> {
     let data: Value = serde_json::from_str(original.as_str())?;
 
-    let file = Builder::new().suffix(".json").tempfile()?;
+    let file = Builder::new().suffix(".yml").tempfile()?;
     //the handler needs to be kept to reopen the file later.
     let mut file2 = file.reopen()?;
 
-    // Write the original data to the file.
+    // Write the original data to the file, but in YAML for easier editing
     file.as_file()
-        .write_all(serde_json::to_string_pretty(&data)?.as_bytes())?;
+        .write_all(serde_yaml::to_string(&data)?.as_bytes())?;
 
     edit::edit_file(file.path())
         .map_err(|err| {
@@ -101,7 +101,13 @@ pub fn editor(original: String) -> Result<Value> {
     let mut buf = String::new();
     file2.read_to_string(&mut buf)?;
 
-    from_str(buf.as_str()).context("Invalid JSON data.")
+    let new_data: Value = serde_yaml::from_str(buf.as_str()).context("Invalid YAML data.")?;
+    if data == new_data {
+        println!("Edit cancelled, no changes made.");
+        exit(2);
+    } else {
+        Ok(new_data)
+    }
 }
 
 pub fn print_version(config: &Result<Config>) {
