@@ -15,9 +15,10 @@ categories = ["command-line-utilities"]
 
 anyhow = "1.0"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+
 clap = "2.33.3"
 
-oauth2 = "3.0"
+oauth2 = "4.0"
 
 simple_logger = { version = "1.11.0", default-features = false, features = [ "colored" ] } 
 log = "0.4.13"
