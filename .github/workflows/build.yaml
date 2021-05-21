@@ -115,10 +115,10 @@ jobs:
           command: build
           args: --release ${{ env.build-target }}
 
-      - name: [DEBUG] Setup tmate session
+      - name: DEBUG Setup tmate session
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 15
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
       - name: Prepare release asset
         shell: bash
