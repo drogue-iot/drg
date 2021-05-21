@@ -122,7 +122,7 @@ jobs:
 
       - name: Prepare release asset
         shell: bash
-        run: .github/scripts/package_release.sh "${{matrix.cfg.suffix}}" "${{matrix.cfg.exe}}" "${{matrix.cfg.pkg}}" "${VERSION}"
+        run: .github/scripts/package_release.sh "${{matrix.cfg.suffix}}" "${{matrix.cfg.exe}}" "${{matrix.cfg.pkg}}" "${VERSION}" "${{matrix.cfg.target}}"
 
       - name: Build Windows Installer
         if: ${{ matrix.cfg.os == 'windows-2019' }}

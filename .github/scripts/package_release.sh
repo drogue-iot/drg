@@ -6,9 +6,10 @@ SUFFIX="$1"
 EXE="$2"
 TYPE="$3"
 VERSION="$4"
+ARCH="$5"
 
 # copy, don't move, as we might need it later
-cp "target/release/drg${EXE}" "drg${EXE}"
+cp "target/${ARCH}/release/drg${EXE}" "drg${EXE}"
 case "$TYPE" in
   "tar.gz")
     tar -czf drg-"$VERSION"-"$SUFFIX".tar.gz README.md LICENSE "drg${EXE}"
