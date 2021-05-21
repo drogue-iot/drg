@@ -3,6 +3,12 @@ name: Formating and build
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
 
 jobs:
   check:
@@ -108,6 +114,11 @@ jobs:
           use-cross: ${{matrix.cfg.cross}}
           command: build
           args: --release ${{ env.build-target }}
+
+      - name: [DEBUG] Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
       - name: Prepare release asset
         shell: bash
