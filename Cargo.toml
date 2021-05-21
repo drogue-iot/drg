@@ -9,7 +9,6 @@ description = "A command line tool to interact with a drogue-cloud instance."
 repository = "https://github.com/drogue-iot/drg/"
 homepage = "https://drogue.io/"
 
-
 categories = ["command-line-utilities"]
 
 [dependencies]
@@ -44,3 +43,11 @@ edit = "0.1.3"
 dirs = "3.0"
 
 tabular = "0.1.4"
+
+
+# openssl is a indirect dependency because of reqwest, I have to add openssl as
+# a direct dependency if I want to enable the "vendored" feature, but for
+# Windows it breaks the build. Looks like adding it as an optional dependency is
+# working for both cases
+# Requiered for cross compilation
+openssl = { version = "0.10", features = ["vendored"] }
