@@ -11,9 +11,13 @@ VERSION="$4"
 cp "target/release/drg${EXE}" "drg${EXE}"
 case "$TYPE" in
   "tar.gz")
-    tar -czf drg-"$VERSION"-"$SUFFIX".tar.gz README.md LICENSE "drg${EXE}"
+    mkdir -p drg-"$VERSION"
+    cp README.md LICENSE "drg${EXE}" drg-"$VERSION"/
+    tar -czf drg-"$VERSION"-"$SUFFIX".tar.gz drg-"$VERSION"
     ;;
   "zip")
-    7z a -tzip drg-"$VERSION"-"$SUFFIX".zip README.md LICENSE "drg${EXE}"
+    mkdir -p drg-"$VERSION"
+    cp README.md LICENSE "drg${EXE}" drg-"$VERSION"/
+    7z a -tzip drg-"$VERSION"-"$SUFFIX".zip drg-"$VERSION"
     ;;
 esac
