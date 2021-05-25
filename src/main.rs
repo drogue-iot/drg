@@ -19,13 +19,9 @@ fn main() -> Result<()> {
     let matches = arguments::parse_arguments();
     let config_path = matches.value_of(Parameters::config);
     let (command, submatches) = matches.subcommand();
-    let context_arg = if let Some(submatches) = submatches {
-        submatches
+    let context_arg = matches
             .value_of(Parameters::context)
-            .map(|s| s.to_string())
-    } else {
-        None
-    };
+            .map(|s| s.to_string());
 
     simple_logger::SimpleLogger::new()
         .with_level(util::log_level(&matches))

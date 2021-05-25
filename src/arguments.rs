@@ -150,13 +150,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .about("Allows to manage drogue apps and devices in a drogue-cloud instance")
         .arg(config_file_arg)
         .arg(verbose)
+        .arg(&context_arg)
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name(Verbs::create.as_ref())
                 .visible_alias("add")
                 .about("create a resource in the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
-                .arg(&context_arg)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
                         .about("create a device.")
@@ -178,7 +178,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .visible_alias("remove")
                 .about("delete a resource in the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
-                .arg(&context_arg)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
                         .about("delete a device.")
@@ -195,7 +194,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
             SubCommand::with_name(Verbs::get.as_ref())
                 .about("Display one or many resources from the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
-                .arg(&context_arg)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
                         .about("Retrieve a device spec.")
@@ -228,7 +226,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .visible_alias("update")
                 .about("Update a resource from the drogue-cloud registry")
                 .setting(AppSettings::ArgRequiredElseHelp)
-                .arg(&context_arg)
                 .subcommand(
                     SubCommand::with_name(Resources::device.as_ref())
                         .about("Edit a device spec.")
@@ -245,7 +242,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Other_commands::version.as_ref())
-                .arg(&context_arg)
                 .about("Print version information."),
         )
         .subcommand(
@@ -253,19 +249,16 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .arg(&token_arg)
                 .about("Log into a drogue cloud installation.")
                 .arg(&url_arg)
-                .arg(&context_arg)
                 .arg(&login_keep_current),
         )
         // todo : deprecated
         .subcommand(
             SubCommand::with_name(Other_commands::token.as_ref())
-                .arg(&context_arg)
                 .about("--token is deprecated, use 'drg whoami --token' instead"),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::whoami.as_ref())
                 .about("Print cluster adress, version and default app(if any)")
-                .arg(&context_arg)
                 .arg(
                     token_arg
                         .clone()
