@@ -38,7 +38,7 @@ In order to use `drg` to manage resources in drogue cloud you first need to auth
     
     drg login https://drogue-cloud-registry-endpoint
 
-Then follow the steps to authenticate. drg will ask you to name this new context and generate a config file to save your configuration.
+Then follow the steps to authenticate. drg will generate a config file to save your configuration.
 
 You can also use a refresh token to authenticate, suitable when the browser can't be accessed:
     

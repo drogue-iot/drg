@@ -110,6 +110,7 @@ fn main() -> Result<()> {
     }
     let context = config.get_context(&context_arg)?;
 
+    // todo : deprecated
     if command == Other_commands::token.as_ref() {
         openid::print_token(&context);
         exit(0);

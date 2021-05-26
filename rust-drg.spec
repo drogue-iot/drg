@@ -5,7 +5,7 @@
 %global crate drg
 
 Name:           rust-%{crate}
-Version:        0.5.0
+Version:        0.5.1
 Release:        1.20210406114535497168.main.19.ga7278ba%{?dist}
 Summary:        Command line tool to interact with a drogue-cloud instance
 
