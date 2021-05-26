@@ -112,6 +112,7 @@ fn main() -> Result<()> {
 
     if command == Other_commands::token.as_ref() {
         openid::print_token(&context);
+        exit(0);
     } else if command == Other_commands::whoami.as_ref() {
         let (_, submatches) = matches.subcommand();
         if submatches.unwrap().is_present("token") {
