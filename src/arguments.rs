@@ -13,6 +13,20 @@ pub enum Verbs {
     delete,
     edit,
     get,
+    set,
+}
+
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Set_targets {
+    gateway,
+    password,
+}
+
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Set_args {
+    username,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -82,10 +96,25 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .required(true)
         .help("The unique id of the resource.");
 
+    let set_arg = Arg::with_name(Verbs::set.as_ref())
+        .required(true)
+        .multiple(true)
+        .number_of_values(2)
+        .value_names(&["device","value"])
+        .help("For gateway value is the device id of the gateway, for setting a password credential, value is the password");
+
     let url_arg = Arg::with_name(Parameters::url.as_ref())
         .required(true)
         .value_name("URL")
         .help("The url of the drogue cloud api endpoint");
+
+    let set_password_username = Arg::with_name(Set_args::username.as_ref())
+        .short("u")
+        .long("username")
+        .required(false)
+        .takes_value(true)
+        .value_name("username")
+        .help("The username associated with the password");
 
     let app_id_arg = Arg::with_name(Resources::app.as_ref())
         .short("a")
@@ -289,6 +318,24 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .about("Edit an app spec.")
                         .arg(&resource_id_arg)
                         .arg(&file_arg),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name(Verbs::set.as_ref())
+                .about("Configure apps or devices resources")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name(Set_targets::gateway.as_ref())
+                        .about("Set a gateway for a device.")
+                        .arg(&set_arg)
+                        .arg(&app_id_arg),
+                )
+                .subcommand(
+                    SubCommand::with_name(Set_targets::password.as_ref())
+                        .about("Set a password credentials for a device")
+                        .arg(&set_arg)
+                        .arg(&app_id_arg)
+                        .arg(&set_password_username),
                 ),
         )
         .subcommand(

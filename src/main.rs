@@ -7,7 +7,7 @@ mod trust;
 mod util;
 
 use arguments::{
-    Context_subcommands, Other_commands, Parameters, Resources, Trust_subcommands, Verbs,
+    Context_subcommands, Other_commands, Parameters, Resources, Set_args, Set_targets, Trust_subcommands, Verbs,
 };
 
 use crate::config::{Config, ContextId};
@@ -268,6 +268,24 @@ fn main() -> Result<()> {
                         Some(id) => devices::read(&context, app_id, id as DeviceId),
                         None => devices::list(&context, app_id, labels),
                     }?;
+                }
+            }
+        }
+        Verbs::set => {
+            let (res, command) = cmd.subcommand();
+            let args: Vec<&str> = command.unwrap().values_of(Verbs::set).unwrap().collect();
+
+            // clap already makes sure vals contains two values
+            let (device, value) = (args[0].to_string(), args[1].to_string());
+            let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+
+            match Set_targets::from_str(res)? {
+                Set_targets::gateway => {
+                    devices::set_gateway(&context, app_id, device as DeviceId, value)?;
+                }
+                Set_targets::password => {
+                    let username = command.unwrap().value_of(Set_args::username);
+                    devices::set_password(&context, app_id, device as DeviceId, value, username)?;
                 }
             }
         }
