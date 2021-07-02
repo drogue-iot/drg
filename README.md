@@ -109,6 +109,10 @@ Note: `list` support adding labels for filtering results:
     
     # Delete a device 
     drg delete device <deviceId> - <appId>
+    
+    # Quickly add a gateway and credentials to a device
+    drg set gateway foo bar # set device bar as a gateway for device foo
+    drg set password foo verysecret --username johndoe #username is optional here                                                                                set  ✭
 
 ## Configuration file
 

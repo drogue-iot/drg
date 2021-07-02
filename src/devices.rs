@@ -1,6 +1,7 @@
 use crate::config::Context;
 use crate::{util, AppId, DeviceId, Verbs};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
+use json_value_merge::Merge;
 use oauth2::TokenResponse;
 use reqwest::blocking::Client;
 use reqwest::blocking::Response;
@@ -132,6 +133,72 @@ pub fn list(config: &Context, app: AppId, labels: Option<String>) -> Result<()> 
         Err(anyhow!("Error while requesting devices list."))
     }
 }
+
+pub fn set_gateway(
+    config: &Context,
+    app: AppId,
+    device_id: DeviceId,
+    gateway_id: DeviceId,
+) -> Result<()> {
+    // prepare json data to merge
+    let data = json!({"spec": {
+    "gatewaySelector": {
+        "matchNames": [gateway_id]
+    }
+    }});
+
+    set(config, app, device_id, data)
+}
+
+pub fn set_password(
+    config: &Context,
+    app: AppId,
+    device_id: DeviceId,
+    password: String,
+    username: Option<&str>,
+) -> Result<()> {
+    let credential = match username {
+        Some(user) => json!({ "username": user, "password": password}),
+        None => json!({ "password": password }),
+    };
+
+    // prepare json data to merge
+    let data = json!({"spec": {
+    "credentials": {
+        "credentials": [{
+        "user": credential
+        }]
+    }
+    }});
+
+    set(config, app, device_id, data)
+}
+
+// The "set" operation merges the data with what already exists on the server side
+fn set(config: &Context, app: AppId, device_id: DeviceId, data: Value) -> Result<()> {
+    //read device data
+    let res = get(&config, &app, &device_id);
+    match res {
+        Ok(r) => match r.status() {
+            StatusCode::OK => {
+                let mut body: Value =
+                    serde_json::from_str(r.text().unwrap_or_else(|_| "{}".to_string()).as_str())?;
+                body.merge(data);
+                put(&config, &app, &device_id, body)
+                    .map(|p| util::print_result(p, format!("Device {}", device_id), Verbs::edit))
+            }
+            e => {
+                log::error!("Error : could not retrieve device: {}", e);
+                util::exit_with_code(e)
+            }
+        },
+        Err(e) => {
+            log::error!("Error : could not execute request: {}", e);
+            exit(2)
+        }
+    }
+}
+
 fn get(config: &Context, app: &str, device_id: &DeviceId) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app, Some(&device_id));

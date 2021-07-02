@@ -34,7 +34,7 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
             StatusCode::OK => show_json(r.text().expect("Empty response")),
             r => exit_with_code(r),
         },
-        Verbs::edit => match r.status() {
+        Verbs::edit | Verbs::set => match r.status() {
             StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
             r => exit_with_code(r),
         },

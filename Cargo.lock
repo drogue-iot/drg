@@ -441,6 +441,7 @@ dependencies = [
  "colored_json",
  "dirs",
  "edit",
+ "json_value_merge",
  "log",
  "oauth2",
  "qstring",
@@ -957,6 +958,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d99f9e3e84b8f67f846ef5b4cbbc3b1c29f6c759fcbce6f01aa0e73d932a24c"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "json_value_merge"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98b1e40b2763dae577e4fe84fd62d81f38a668ab511439f628479b2837d83477"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

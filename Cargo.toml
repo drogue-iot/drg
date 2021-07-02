@@ -47,3 +47,4 @@ tabular = "0.1.4"
 
 base64 = "0.13.0"
 rcgen = { version  = "0.8.11", features = ["pem", "x509-parser"] }
+json_value_merge = "0.1.2"
