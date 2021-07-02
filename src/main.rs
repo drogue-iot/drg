@@ -7,7 +7,8 @@ mod trust;
 mod util;
 
 use arguments::{
-    Context_subcommands, Other_commands, Parameters, Resources, Set_args, Set_targets, Trust_subcommands, Verbs,
+    Context_subcommands, Other_commands, Parameters, Resources, Set_args, Set_targets,
+    Trust_subcommands, Verbs,
 };
 
 use crate::config::{Config, ContextId};
