@@ -1,5 +1,5 @@
 use crate::config::Context;
-use crate::{util, AppId, Verbs};
+use crate::{trust, util, AppId, Verbs};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
@@ -134,6 +134,64 @@ fn get(config: &Context, app: &str) -> Result<Response> {
         .bearer_auth(&config.token.access_token().secret())
         .send()
         .context("Can't retrieve app data.")
+}
+
+pub fn add_trust_anchor(config: &Context, app: &str, keyout: &str) -> Result<()> {
+    let res = get(config, &app);
+    match res {
+        Ok(r) => match r.status() {
+            StatusCode::OK => {
+                let resp = r.text().unwrap_or_else(|_| "{}".to_string());
+                let metadata: Value = serde_json::from_str(&resp).unwrap();
+
+                let body = json!({
+                    "metadata": metadata["metadata"],
+                    "spec": trust::create_trust_anchor(app, keyout)
+                });
+
+                put(config, app, body)
+                    .map(|p| util::print_result(p, format!("App {}", &app), Verbs::edit))
+            }
+            e => {
+                log::error!("Error : could not retrieve app: {}", e);
+                util::exit_with_code(e)
+            }
+        },
+        Err(e) => {
+            log::error!("Error : could not retrieve app: {}", e);
+            exit(2);
+        }
+    }
+}
+
+pub fn get_trust_anchor(config: &Context, app: &str) -> Result<String> {
+    let res = get(config, &app);
+    match res {
+        Ok(r) => match r.status() {
+            StatusCode::OK => {
+                let body = r.text().unwrap_or_else(|_| "{}".to_string());
+                let body_json: Value = serde_json::from_str(&body).unwrap();
+                let cert = body_json["spec"]["trustAnchors"]["anchors"][0]["certificate"]
+                    .to_string()
+                    .replace("\"", "");
+
+                if cert == "null".to_string() {
+                    log::error!("No trust anchor found in this application.");
+                    exit(1);
+                }
+
+                Ok(cert)
+            }
+            e => {
+                log::error!("Error : could not retrieve app: {}", e);
+                util::exit_with_code(e)
+            }
+        },
+        Err(e) => {
+            log::error!("Error : could not retrieve app: {}", e);
+            exit(2);
+        }
+    }
 }
 
 fn put(config: &Context, app: &str, data: serde_json::Value) -> Result<Response> {

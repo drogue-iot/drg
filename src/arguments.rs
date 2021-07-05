@@ -37,6 +37,9 @@ pub enum Parameters {
     keep_current,
     labels,
     context_name,
+    keyout,
+    CAkey,
+    out,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -47,6 +50,7 @@ pub enum Other_commands {
     version,
     whoami,
     context,
+    trust,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -61,6 +65,13 @@ pub enum Context_subcommands {
     #[strum(serialize = "set-default-app")]
     set_default_app,
     rename,
+}
+
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Trust_subcommands {
+    create,
+    add,
 }
 
 pub fn parse_arguments() -> ArgMatches<'static> {
@@ -143,6 +154,32 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .use_delimiter(true)
         .multiple(true)
         .help("A comma separated list of the label filters to filter the list with.");
+
+    let keyout = Arg::with_name(&Parameters::keyout.as_ref())
+        .takes_value(true)
+        .required(true)
+        .long(Parameters::keyout.as_ref())
+        .help("Private key used to sign the trust-anchor and device certificates.");
+
+    let device_id_arg = Arg::with_name(&Resources::device.as_ref())
+        .short("d")
+        .required(true)
+        .long(&Resources::device.as_ref())
+        .takes_value(true)
+        .help("Device id");
+
+    let ca_key = Arg::with_name(&Parameters::CAkey.as_ref())
+        .long(&Parameters::CAkey.as_ref())
+        .takes_value(true)
+        .required(true)
+        .help("Private key of the CA i.e application.");
+
+    let cert_out = Arg::with_name(&Parameters::out.as_ref())
+        .long(&Parameters::out.as_ref())
+        .short("o")
+        .takes_value(true)
+        .required(true)
+        .help("Output device certificate");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
@@ -309,6 +346,26 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                                 .required(true)
                                 .help("The new context name"),
                         ),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name(Other_commands::trust.as_ref())
+                .about("Manage trust anchors and device certificates.")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name(Trust_subcommands::create.as_ref())
+                        .about("Create a trust anchor for an application. Defaults to rsa::4096")
+                        .arg(&app_id_arg)
+                        .arg(&keyout),
+                )
+                .subcommand(
+                    SubCommand::with_name(Trust_subcommands::add.as_ref())
+                        .about("Signs device certificate using application private key.")
+                        .arg(&app_id_arg)
+                        .arg(&device_id_arg)
+                        .arg(&ca_key)
+                        .arg(&cert_out)
+                        .arg(&keyout),
                 ),
         )
         .get_matches()
