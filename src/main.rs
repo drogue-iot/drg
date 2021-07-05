@@ -3,9 +3,12 @@ mod arguments;
 mod config;
 mod devices;
 mod openid;
+mod trust;
 mod util;
 
-use arguments::{Context_subcommands, Other_commands, Parameters, Resources, Verbs};
+use arguments::{
+    Context_subcommands, Other_commands, Parameters, Resources, Trust_subcommands, Verbs,
+};
 
 use crate::config::{Config, ContextId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
@@ -123,6 +126,59 @@ fn main() -> Result<()> {
             util::print_version(&Ok(config));
         }
         exit(0)
+    }
+
+    if command == Other_commands::trust.as_ref() {
+        let (v, command) = submatches.unwrap().subcommand();
+        let verb = Trust_subcommands::from_str(v);
+
+        match verb? {
+            Trust_subcommands::create => {
+                let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                let keyout = &command
+                    .unwrap()
+                    .value_of(&Parameters::keyout)
+                    .unwrap()
+                    .to_string();
+                apps::add_trust_anchor(&context, &app_id, &keyout)
+            }
+            Trust_subcommands::add => {
+                let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                let cert = apps::get_trust_anchor(&context, &app_id)?;
+                let ca_key = &command
+                    .unwrap()
+                    .value_of(&Parameters::CAkey)
+                    .unwrap()
+                    .to_string();
+
+                let device_id = &command
+                    .unwrap()
+                    .value_of(&Resources::device)
+                    .unwrap()
+                    .to_string();
+
+                let device_cert = &command
+                    .unwrap()
+                    .value_of(&Parameters::out)
+                    .unwrap()
+                    .to_string();
+                let device_key = &command
+                    .unwrap()
+                    .value_of(&Parameters::keyout)
+                    .unwrap()
+                    .to_string();
+                trust::create_device_certificate(
+                    &device_id,
+                    ca_key,
+                    &cert,
+                    device_key,
+                    device_cert,
+                );
+
+                Ok(())
+            }
+        }?;
+        exit(0);
     }
 
     log::warn!("Using context: {}", context.name);

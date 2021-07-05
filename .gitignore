@@ -15,3 +15,6 @@
 
 # RPMs
 *.rpm
+
+*.pem
+*.crt
