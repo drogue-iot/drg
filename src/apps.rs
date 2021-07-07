@@ -136,7 +136,12 @@ fn get(config: &Context, app: &str) -> Result<Response> {
         .context("Can't retrieve app data.")
 }
 
-pub fn add_trust_anchor(config: &Context, app: &str, keyout: Option<&str>) -> Result<()> {
+pub fn add_trust_anchor(
+    config: &Context,
+    app: &str,
+    keyout: Option<&str>,
+    days: i64,
+) -> Result<()> {
     let res = get(config, &app);
     match res {
         Ok(r) => match r.status() {
@@ -146,7 +151,7 @@ pub fn add_trust_anchor(config: &Context, app: &str, keyout: Option<&str>) -> Re
 
                 let body = json!({
                     "metadata": metadata["metadata"],
-                    "spec": trust::create_trust_anchor(app, keyout)
+                    "spec": trust::create_trust_anchor(app, keyout, days)
                 });
 
                 put(config, app, body)

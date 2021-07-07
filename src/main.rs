@@ -136,7 +136,13 @@ fn main() -> Result<()> {
             Trust_subcommands::create => {
                 let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
                 let keyout = command.unwrap().value_of(&Parameters::keyout);
-                apps::add_trust_anchor(&context, &app_id, keyout)
+                let days: i64 = command
+                    .unwrap()
+                    .value_of(&Parameters::days)
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                apps::add_trust_anchor(&context, &app_id, keyout, days)
             }
             Trust_subcommands::add => {
                 let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
@@ -158,12 +164,20 @@ fn main() -> Result<()> {
 
                 let device_key = command.unwrap().value_of(&Parameters::keyout);
 
+                let days: i64 = command
+                    .unwrap()
+                    .value_of(&Parameters::days)
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+
                 trust::create_device_certificate(
                     &device_id,
                     ca_key,
                     &cert,
                     device_key,
                     device_cert,
+                    days,
                 );
 
                 Ok(())
