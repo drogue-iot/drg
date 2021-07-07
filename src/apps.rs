@@ -136,7 +136,7 @@ fn get(config: &Context, app: &str) -> Result<Response> {
         .context("Can't retrieve app data.")
 }
 
-pub fn add_trust_anchor(config: &Context, app: &str, keyout: &str) -> Result<()> {
+pub fn add_trust_anchor(config: &Context, app: &str, keyout: Option<&str>) -> Result<()> {
     let res = get(config, &app);
     match res {
         Ok(r) => match r.status() {

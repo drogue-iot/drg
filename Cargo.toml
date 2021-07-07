@@ -45,6 +45,5 @@ dirs = "3.0"
 
 tabular = "0.1.4"
 
-webpki = "0.22.0"
 base64 = "0.13.0"
 rcgen = { version  = "0.8.11", features = ["pem", "x509-parser"] }

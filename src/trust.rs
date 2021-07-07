@@ -1,8 +1,8 @@
 use base64::encode;
 use chrono::{Duration, Utc};
 use rcgen::{
-    BasicConstraints, Certificate, CertificateParams, CertificateSigningRequest, CustomExtension,
-    DnType, ExtendedKeyUsagePurpose, IsCa, KeyIdMethod, KeyPair,
+    BasicConstraints, Certificate, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa,
+    KeyIdMethod, KeyPair,
 };
 use serde_json::{json, Value};
 use std::fs::File;
@@ -10,34 +10,54 @@ use std::io::Write;
 use std::{fs, process::exit, str::from_utf8};
 
 #[allow(non_camel_case_types)]
+enum CertificateType {
+    app,
+    device,
+}
+
+#[allow(non_camel_case_types)]
 struct cert {
     certificate: Certificate,
 }
 
 impl cert {
-    fn get_certificate(params: CertificateParams) -> Self {
+    fn get_certificate(cert_type: CertificateType, comman_name: &str) -> Self {
+        let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
+        params.not_before = Utc::now();
+        params.not_after = Utc::now() + Duration::days(365);
+        params
+            .distinguished_name
+            .push(DnType::OrganizationName, "Drogue IoT".to_owned());
+        params
+            .distinguished_name
+            .push(DnType::OrganizationalUnitName, "Cloud".to_owned());
+        params
+            .distinguished_name
+            .push(DnType::CommonName, comman_name.to_owned());
+
+        match cert_type {
+            CertificateType::app => {
+                params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+            }
+            CertificateType::device => {
+                params
+                    .extended_key_usages
+                    .push(ExtendedKeyUsagePurpose::ServerAuth);
+                params
+                    .extended_key_usages
+                    .push(ExtendedKeyUsagePurpose::ClientAuth);
+                params.key_identifier_method = KeyIdMethod::Sha256;
+            }
+        };
+
         Self {
             certificate: Certificate::from_params(params).unwrap(),
         }
     }
 }
 
-pub fn create_trust_anchor(app: &str, keyout: &str) -> Value {
-    let mut params = CertificateParams::new(vec!["Drogue IoT".to_string()]);
-    params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
-    params.not_before = Utc::now();
-    params.not_after = Utc::now() + Duration::days(365);
-    params
-        .distinguished_name
-        .push(DnType::OrganizationName, "Drogue IoT".to_owned());
-    params
-        .distinguished_name
-        .push(DnType::CommonName, &app.to_owned());
-    params
-        .distinguished_name
-        .push(DnType::OrganizationalUnitName, "Cloud".to_owned());
-
-    let app_certificate = cert::get_certificate(params);
+pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>) -> Value {
+    let app_certificate = cert::get_certificate(CertificateType::app, app_id);
 
     let pem_cert = &app_certificate.certificate.serialize_pem().unwrap();
     log::debug!("Self-signed certificate generated.");
@@ -45,19 +65,10 @@ pub fn create_trust_anchor(app: &str, keyout: &str) -> Value {
     let private_key = &app_certificate.certificate.serialize_private_key_pem();
     log::debug!("Private key extracted.");
 
-    let mut app_key_file = File::create(keyout);
-    match app_key_file.as_mut() {
-        Ok(file) => match file.write_all(&private_key.as_bytes()) {
-            Ok(_) => {
-                log::debug!("Key exported to file")
-            }
-            Err(_) => {
-                log::error!("Error writing key to file.")
-            }
-        },
-        Err(e) => {
-            log::error!("Error opening the file. {}", e)
-        }
+    // Private key printed to terminal, when keyout argument not specified.
+    match keyout {
+        Some(file_name) => write_to_file(file_name, &private_key),
+        _ => println!("{}", &private_key),
     };
 
     json!({
@@ -75,92 +86,68 @@ pub fn create_device_certificate(
     device_id: &str,
     ca_key: &str,
     ca_cert: &str,
-    cert_key: &str,
-    cert_out: &str,
+    cert_key: Option<&str>,
+    cert_out: Option<&str>,
 ) {
     let ca_key_content: KeyPair;
 
-    match fs::read_to_string(ca_key) {
-        Ok(s) => match KeyPair::from_pem(&s.to_string()) {
-            Ok(s) => {
-                ca_key_content = s;
-            }
-            Err(e) => {
-                log::error!("Error reading CA key file. {}", e);
-                exit(1);
-            }
-        },
-        Err(_) => {
-            log::error!("Error reading CA key file.");
+    match KeyPair::from_pem(&read_from_file(ca_key)) {
+        Ok(s) => {
+            ca_key_content = s;
+        }
+        Err(e) => {
+            log::error!("Error reading CA key file. {}", e);
             exit(1);
         }
     };
 
     let ca_base64 = base64::decode(&ca_cert).unwrap();
     let ca_cert_pem = from_utf8(&ca_base64).unwrap();
+
     let ca_certificate = CertificateParams::from_ca_cert_pem(&ca_cert_pem, ca_key_content)
         .map_err(|e| {
-            log::error!("Error: {}", e);
+            log::error!("Error : {}", e);
             exit(1);
         })
         .unwrap();
 
-    let mut params = CertificateParams::new(vec![device_id.to_owned()]);
-    params.is_ca = IsCa::SelfSignedOnly;
-    params.not_before = Utc::now();
-    params.not_after = Utc::now() + Duration::days(365);
-    params
-        .distinguished_name
-        .push(DnType::OrganizationName, "Drogue IoT".to_owned());
-    params
-        .distinguished_name
-        .push(DnType::CommonName, &device_id.to_owned());
-    params
-        .distinguished_name
-        .push(DnType::OrganizationalUnitName, "Cloud".to_owned());
+    let deivce_temp = cert::get_certificate(CertificateType::device, &device_id);
+    let ca_cert_fin = Certificate::from_params(ca_certificate).unwrap();
 
-    // const OID_EXT_KEY_USAGE :&[u64] = &[2, 5, 29, 15];
-    // const DIGITAL_SIGNATURE: &[u8] = &[2, 5, 29, 15, 4];
-
-    // params.custom_extensions.push(CustomExtension::from_oid_content(OID_EXT_KEY_USAGE, DIGITAL_SIGNATURE.to_vec()));
-    // params.custom_extensions.push(CustomExtension::from_oid_content(OID_EXT_KEY_USAGE, KEY_AGREEMENT.to_vec()));
-    params
-        .extended_key_usages
-        .push(ExtendedKeyUsagePurpose::ServerAuth);
-    params
-        .extended_key_usages
-        .push(ExtendedKeyUsagePurpose::ClientAuth);
-
-    params.key_identifier_method = KeyIdMethod::Sha256;
-
-    let deivce_temp = cert::get_certificate(params);
-    let ca_cert_fin = cert::get_certificate(ca_certificate);
-
+    // Signing the device certificate with CA
     let csr = deivce_temp
         .certificate
-        .serialize_pem_with_signer(&ca_cert_fin.certificate)
+        .serialize_pem_with_signer(&ca_cert_fin)
         .unwrap();
 
-    write(cert_out, &csr);
-    write(
-        cert_key,
-        &deivce_temp.certificate.serialize_private_key_pem(),
-    );
+    match cert_out {
+        Some(file_name) => write_to_file(file_name, &csr),
+        _ => println!("{}", &csr),
+    };
+
+    match cert_key {
+        Some(file_name) => write_to_file(file_name, &csr),
+        _ => println!("{}", &deivce_temp.certificate.serialize_private_key_pem()),
+    };
 }
 
-fn write(file_name: &str, content: &str) {
-    let mut app_key_file = File::create(file_name);
-    match app_key_file.as_mut() {
+fn write_to_file(file_name: &str, content: &str) {
+    let mut file = File::create(file_name);
+    match file.as_mut() {
         Ok(file) => match file.write_all(&content.as_bytes()) {
-            Ok(_) => {
-                log::debug!("File created. ")
-            }
-            Err(_) => {
-                log::error!("Error writing to file.")
-            }
+            Ok(_) => log::info!("File created."),
+            Err(e) => log::error!("Error writing to file: {}", e),
         },
-        Err(e) => {
-            log::error!("Error opening the file. {}", e)
-        }
+        Err(e) => log::error!("Error opening the file: {}", e),
     };
+}
+
+fn read_from_file(file_name: &str) -> String {
+    match fs::read_to_string(file_name) {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("Error reading from {}: {}", file_name, e);
+            exit(1);
+        }
+    }
 }
