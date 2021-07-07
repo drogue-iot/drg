@@ -40,6 +40,7 @@ pub enum Parameters {
     keyout,
     CAkey,
     out,
+    days,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -180,6 +181,14 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .required(false)
         .help("Output device certificate to file.");
+
+    let cert_valid_days = Arg::with_name(&Parameters::days.as_ref())
+        .long(&Parameters::days.as_ref())
+        .takes_value(true)
+        .required(false)
+        .default_value("365")
+        .validator(util::is_number)
+        .help("Number of days the certificate should be valid.");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
@@ -356,7 +365,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     SubCommand::with_name(Trust_subcommands::create.as_ref())
                         .about("Create a trust-anchor for an application.")
                         .arg(&app_id_arg)
-                        .arg(&keyout),
+                        .arg(&keyout)
+                        .arg(&cert_valid_days),
                 )
                 .subcommand(
                     SubCommand::with_name(Trust_subcommands::add.as_ref())
@@ -365,7 +375,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(&device_id_arg)
                         .arg(&ca_key)
                         .arg(&cert_out)
-                        .arg(&keyout),
+                        .arg(&keyout)
+                        .arg(&cert_valid_days),
                 ),
         )
         .get_matches()

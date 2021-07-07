@@ -21,10 +21,10 @@ struct cert {
 }
 
 impl cert {
-    fn get_certificate(cert_type: CertificateType, comman_name: &str) -> Self {
+    fn get_certificate(cert_type: CertificateType, comman_name: &str, days: i64) -> Self {
         let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
         params.not_before = Utc::now();
-        params.not_after = Utc::now() + Duration::days(365);
+        params.not_after = Utc::now() + Duration::days(days);
         params
             .distinguished_name
             .push(DnType::OrganizationName, "Drogue IoT".to_owned());
@@ -56,8 +56,8 @@ impl cert {
     }
 }
 
-pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>) -> Value {
-    let app_certificate = cert::get_certificate(CertificateType::app, app_id);
+pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Value {
+    let app_certificate = cert::get_certificate(CertificateType::app, app_id, days);
 
     let pem_cert = &app_certificate.certificate.serialize_pem().unwrap();
     log::debug!("Self-signed certificate generated.");
@@ -88,6 +88,7 @@ pub fn create_device_certificate(
     ca_cert: &str,
     cert_key: Option<&str>,
     cert_out: Option<&str>,
+    days: i64,
 ) {
     let ca_key_content: KeyPair;
 
@@ -111,7 +112,7 @@ pub fn create_device_certificate(
         })
         .unwrap();
 
-    let deivce_temp = cert::get_certificate(CertificateType::device, &device_id);
+    let deivce_temp = cert::get_certificate(CertificateType::device, &device_id, days);
     let ca_cert_fin = Certificate::from_params(ca_certificate).unwrap();
 
     // Signing the device certificate with CA
