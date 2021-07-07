@@ -135,16 +135,13 @@ fn main() -> Result<()> {
         match verb? {
             Trust_subcommands::create => {
                 let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-                let keyout = &command
-                    .unwrap()
-                    .value_of(&Parameters::keyout)
-                    .unwrap()
-                    .to_string();
-                apps::add_trust_anchor(&context, &app_id, &keyout)
+                let keyout = command.unwrap().value_of(&Parameters::keyout);
+                apps::add_trust_anchor(&context, &app_id, keyout)
             }
             Trust_subcommands::add => {
                 let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
                 let cert = apps::get_trust_anchor(&context, &app_id)?;
+
                 let ca_key = &command
                     .unwrap()
                     .value_of(&Parameters::CAkey)
@@ -157,16 +154,10 @@ fn main() -> Result<()> {
                     .unwrap()
                     .to_string();
 
-                let device_cert = &command
-                    .unwrap()
-                    .value_of(&Parameters::out)
-                    .unwrap()
-                    .to_string();
-                let device_key = &command
-                    .unwrap()
-                    .value_of(&Parameters::keyout)
-                    .unwrap()
-                    .to_string();
+                let device_cert = command.unwrap().value_of(&Parameters::out);
+
+                let device_key = command.unwrap().value_of(&Parameters::keyout);
+
                 trust::create_device_certificate(
                     &device_id,
                     ca_key,

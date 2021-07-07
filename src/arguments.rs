@@ -157,7 +157,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
 
     let keyout = Arg::with_name(&Parameters::keyout.as_ref())
         .takes_value(true)
-        .required(true)
+        .required(false)
         .long(Parameters::keyout.as_ref())
         .help("Private key used to sign the trust-anchor and device certificates.");
 
@@ -178,8 +178,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .long(&Parameters::out.as_ref())
         .short("o")
         .takes_value(true)
-        .required(true)
-        .help("Output device certificate");
+        .required(false)
+        .help("Output device certificate to file.");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
@@ -350,17 +350,17 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Other_commands::trust.as_ref())
-                .about("Manage trust anchors and device certificates.")
+                .about("Manage trust-anchors and device certificates.")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name(Trust_subcommands::create.as_ref())
-                        .about("Create a trust anchor for an application. Defaults to rsa::4096")
+                        .about("Create a trust-anchor for an application.")
                         .arg(&app_id_arg)
                         .arg(&keyout),
                 )
                 .subcommand(
                     SubCommand::with_name(Trust_subcommands::add.as_ref())
-                        .about("Signs device certificate using application private key.")
+                        .about("Signs device certificate using application's private key.")
                         .arg(&app_id_arg)
                         .arg(&device_id_arg)
                         .arg(&ca_key)

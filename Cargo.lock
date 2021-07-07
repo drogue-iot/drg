@@ -457,7 +457,6 @@ dependencies = [
  "tiny_http",
  "url 2.2.1",
  "webbrowser",
- "webpki",
 ]
 
 [[package]]
@@ -2572,16 +2571,6 @@ dependencies = [
  "web-sys",
  "widestring",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "webpki"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f095d78192e208183081cc07bc5515ef55216397af48b873e5edcd72637fa1bd"
-dependencies = [
- "ring",
- "untrusted",
 ]
 
 [[package]]
