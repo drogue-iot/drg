@@ -141,6 +141,17 @@ Here are some other commads available to manage contexts :
 
 context and app can be set with environment variables : `DRG_CONTEXT` and `DRG_APP`.
 
+### Trust-anchor management
+
+Drogue cloud has support for authentication of devices using x509 certificates.
+To enable that we need to create a root CA and add it to the application object.
+
+    drg trust create --app <appId> --keyout <filename>
+
+Once Trust-anchor is set, we can use it to sign device certificates, for example:
+
+    drg trust add --app <appId> --device <deviceId> --CAkey <app-private-key> --out <filename> --keyout <filename>
+
 # Roadmap
 
 In no particular order here are the following things that we would like to add to `drg` :

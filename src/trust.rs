@@ -127,7 +127,7 @@ pub fn create_device_certificate(
     };
 
     match cert_key {
-        Some(file_name) => write_to_file(file_name, &csr),
+        Some(file_name) => write_to_file(file_name, &deivce_temp.certificate.serialize_private_key_pem()),
         _ => println!("{}", &deivce_temp.certificate.serialize_private_key_pem()),
     };
 }
