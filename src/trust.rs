@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use base64::encode;
 use chrono::{Duration, Utc};
 use rcgen::{
@@ -21,19 +22,25 @@ struct cert {
 }
 
 impl cert {
-    fn get_certificate(cert_type: CertificateType, comman_name: &str, days: i64) -> Self {
+    fn generate_certificate(
+        cert_type: CertificateType,
+        common_name: &str,
+        organizational_unit: &str,
+        days: i64,
+    ) -> Self {
         let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
         params.not_before = Utc::now();
         params.not_after = Utc::now() + Duration::days(days);
         params
             .distinguished_name
             .push(DnType::OrganizationName, "Drogue IoT".to_owned());
+        params.distinguished_name.push(
+            DnType::OrganizationalUnitName,
+            organizational_unit.to_owned(),
+        );
         params
             .distinguished_name
-            .push(DnType::OrganizationalUnitName, "Cloud".to_owned());
-        params
-            .distinguished_name
-            .push(DnType::CommonName, comman_name.to_owned());
+            .push(DnType::CommonName, common_name.to_owned());
 
         match cert_type {
             CertificateType::app => {
@@ -57,7 +64,8 @@ impl cert {
 }
 
 pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Value {
-    let app_certificate = cert::get_certificate(CertificateType::app, app_id, days);
+    const OU: &str = "Cloud";
+    let app_certificate = cert::generate_certificate(CertificateType::app, app_id, OU, days);
 
     let pem_cert = &app_certificate.certificate.serialize_pem().unwrap();
     log::debug!("Self-signed certificate generated.");
@@ -67,8 +75,11 @@ pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Val
 
     // Private key printed to terminal, when keyout argument not specified.
     match keyout {
-        Some(file_name) => write_to_file(file_name, &private_key),
-        _ => println!("{}", &private_key),
+        Some(file_name) => write_to_file(file_name, &private_key, "App private key"),
+        _ => {
+            println!("Private key for an application is used to sign device certificates, see `drg trust add --help`\n");
+            println!("{}", &private_key)
+        }
     };
 
     json!({
@@ -83,63 +94,58 @@ pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Val
 }
 
 pub fn create_device_certificate(
+    app_id: &str,
     device_id: &str,
     ca_key: &str,
     ca_cert: &str,
     cert_key: Option<&str>,
     cert_out: Option<&str>,
     days: i64,
-) {
-    let ca_key_content: KeyPair;
+) -> Result<()> {
+    let ca_key_content = KeyPair::from_pem(&read_from_file(ca_key))
+        .map_err(|e| anyhow!("Error reading CA key file. {}", e))?;
 
-    match KeyPair::from_pem(&read_from_file(ca_key)) {
-        Ok(s) => {
-            ca_key_content = s;
-        }
-        Err(e) => {
-            log::error!("Error reading CA key file. {}", e);
-            exit(1);
-        }
-    };
-
-    let ca_base64 = base64::decode(&ca_cert).unwrap();
-    let ca_cert_pem = from_utf8(&ca_base64).unwrap();
+    let ca_base64 = base64::decode(&ca_cert)?;
+    let ca_cert_pem = from_utf8(&ca_base64)?;
 
     let ca_certificate = CertificateParams::from_ca_cert_pem(&ca_cert_pem, ca_key_content)
-        .map_err(|e| {
-            log::error!("Error : {}", e);
-            exit(1);
-        })
-        .unwrap();
+        .map_err(|e| anyhow!("Error: {}", e))?;
 
-    let deivce_temp = cert::get_certificate(CertificateType::device, &device_id, days);
-    let ca_cert_fin = Certificate::from_params(ca_certificate).unwrap();
+    let device_csr = cert::generate_certificate(CertificateType::device, &device_id, &app_id, days);
+    let ca_cert_fin = Certificate::from_params(ca_certificate)?;
 
     // Signing the device certificate with CA
-    let csr = deivce_temp
+    let device_cert = device_csr
         .certificate
-        .serialize_pem_with_signer(&ca_cert_fin)
-        .unwrap();
+        .serialize_pem_with_signer(&ca_cert_fin)?;
 
     match cert_out {
-        Some(file_name) => write_to_file(file_name, &csr),
-        _ => println!("{}", &csr),
+        Some(file_name) => write_to_file(file_name, &device_cert, "Device certificate"),
+        _ => println!("{}", &device_cert),
     };
 
     match cert_key {
         Some(file_name) => write_to_file(
             file_name,
-            &deivce_temp.certificate.serialize_private_key_pem(),
+            &device_csr.certificate.serialize_private_key_pem(),
+            "Device private key",
         ),
-        _ => println!("{}", &deivce_temp.certificate.serialize_private_key_pem()),
+        _ => println!("{}", &device_csr.certificate.serialize_private_key_pem()),
     };
+
+    Ok(())
 }
 
-fn write_to_file(file_name: &str, content: &str) {
+fn write_to_file(file_name: &str, content: &str, resource_type: &str) {
     let mut file = File::create(file_name);
     match file.as_mut() {
         Ok(file) => match file.write_all(&content.as_bytes()) {
-            Ok(_) => log::info!("File created."),
+            Ok(_) => {
+                println!(
+                    "{} was successfully written to file {}.",
+                    resource_type, file_name
+                );
+            }
             Err(e) => log::error!("Error writing to file: {}", e),
         },
         Err(e) => log::error!("Error opening the file: {}", e),

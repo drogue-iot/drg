@@ -37,8 +37,10 @@ pub enum Parameters {
     keep_current,
     labels,
     context_name,
-    keyout,
-    CAkey,
+    #[strum(serialize = "key-output")]
+    key_output,
+    #[strum(serialize = "ca-key")]
+    ca_key,
     out,
     days,
 }
@@ -156,11 +158,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .multiple(true)
         .help("A comma separated list of the label filters to filter the list with.");
 
-    let keyout = Arg::with_name(&Parameters::keyout.as_ref())
+    let keyout = Arg::with_name(&Parameters::key_output.as_ref())
         .takes_value(true)
         .required(false)
-        .long(Parameters::keyout.as_ref())
-        .help("Private key used to sign the trust-anchor and device certificates.");
+        .long(Parameters::key_output.as_ref())
+        .help("Output file containing the private key. Later to be used to sign device certificates, or device authentication.");
 
     let device_id_arg = Arg::with_name(&Resources::device.as_ref())
         .short("d")
@@ -169,8 +171,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .help("Device id");
 
-    let ca_key = Arg::with_name(&Parameters::CAkey.as_ref())
-        .long(&Parameters::CAkey.as_ref())
+    let ca_key = Arg::with_name(&Parameters::ca_key.as_ref())
+        .long(&Parameters::ca_key.as_ref())
         .takes_value(true)
         .required(true)
         .help("Private key of the CA i.e application.");
@@ -187,8 +189,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .required(false)
         .default_value("365")
-        .validator(util::is_number)
-        .help("Number of days the certificate should be valid.");
+        .help("Number of days the certificate should be valid for.")
+        .validator(|n| match n.parse::<u64>() {
+            Err(_) => Err(String::from("The value is not an integer")),
+            Ok(_) => Ok(()),
+        });
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
