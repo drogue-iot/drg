@@ -131,11 +131,11 @@ fn main() -> Result<()> {
     if command == Other_commands::trust.as_ref() {
         let (v, command) = submatches.unwrap().subcommand();
         let verb = Trust_subcommands::from_str(v);
+        let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
 
         match verb? {
             Trust_subcommands::create => {
-                let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-                let keyout = command.unwrap().value_of(&Parameters::keyout);
+                let keyout = command.unwrap().value_of(&Parameters::key_output);
                 let days: i64 = command
                     .unwrap()
                     .value_of(&Parameters::days)
@@ -145,12 +145,9 @@ fn main() -> Result<()> {
                 apps::add_trust_anchor(&context, &app_id, keyout, days)
             }
             Trust_subcommands::add => {
-                let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-                let cert = apps::get_trust_anchor(&context, &app_id)?;
-
                 let ca_key = &command
                     .unwrap()
-                    .value_of(&Parameters::CAkey)
+                    .value_of(&Parameters::ca_key)
                     .unwrap()
                     .to_string();
 
@@ -162,7 +159,7 @@ fn main() -> Result<()> {
 
                 let device_cert = command.unwrap().value_of(&Parameters::out);
 
-                let device_key = command.unwrap().value_of(&Parameters::keyout);
+                let device_key = command.unwrap().value_of(&Parameters::key_output);
 
                 let days: i64 = command
                     .unwrap()
@@ -171,16 +168,17 @@ fn main() -> Result<()> {
                     .parse()
                     .unwrap();
 
+                let cert = apps::get_trust_anchor(&context, &app_id)?;
+
                 trust::create_device_certificate(
+                    &app_id,
                     &device_id,
                     ca_key,
                     &cert,
                     device_key,
                     device_cert,
                     days,
-                );
-
-                Ok(())
+                )
             }
         }?;
         exit(0);

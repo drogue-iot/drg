@@ -254,12 +254,3 @@ pub fn age(str_timestamp: &str) -> Result<String> {
         Ok(format!("{}s", age.num_seconds()))
     }
 }
-
-pub fn is_number(str: String) -> Result<(), String> {
-    for s in str.chars() {
-        if !s.is_numeric() {
-            return Err(String::from("The value is not an integer"));
-        }
-    }
-    Ok(())
-}

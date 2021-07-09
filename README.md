@@ -143,14 +143,21 @@ context and app can be set with environment variables : `DRG_CONTEXT` and `DRG_A
 
 ### Trust-anchor management
 
-Drogue cloud has support for authentication of devices using x509 certificates.
-To enable that we need to create a root CA and add it to the application object.
+x.509 certificates can be used to authenticate devices in Drogue Cloud. To do this, the application object needs
+to contain a root CA certificate, and the intended user must have its private key. This cert+key pair is used to sign
+device cert+key pair.
 
-    drg trust create --app <appId> --keyout <filename>
+    drg trust create --app <appId> --key-output <filename>
+
+Here, `--key-output` is the output file for root CA private key, and it needs to be saved and stored securely.
 
 Once Trust-anchor is set, we can use it to sign device certificates, for example:
 
-    drg trust add --app <appId> --device <deviceId> --CAkey <app-private-key> --out <filename> --keyout <filename>
+    drg trust add --app <appId> --device <deviceId> --ca-key <app-private-key> --out <filename> --key-output <filename>
+
+Here, `--ca-key` is the input file for root CA private key file.
+        `--out` is the output file for device certificate.
+        `--key-output` is the output file for device private key.
 
 # Roadmap
 
