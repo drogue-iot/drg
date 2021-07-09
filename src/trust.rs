@@ -10,67 +10,61 @@ use std::fs::File;
 use std::io::Write;
 use std::{fs, process::exit, str::from_utf8};
 
+pub const CERT_VALIDITY_DAYS: i64 = 365;
+
 #[allow(non_camel_case_types)]
 enum CertificateType {
     app,
     device,
 }
 
-#[allow(non_camel_case_types)]
-struct cert {
-    certificate: Certificate,
-}
+fn generate_certificate(
+    cert_type: CertificateType,
+    common_name: &str,
+    organizational_unit: &str,
+    days: i64,
+) -> Result<Certificate> {
+    let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
+    params.not_before = Utc::now();
+    params.not_after = Utc::now() + Duration::days(days);
+    params
+        .distinguished_name
+        .push(DnType::OrganizationName, "Drogue IoT".to_owned());
+    params.distinguished_name.push(
+        DnType::OrganizationalUnitName,
+        organizational_unit.to_owned(),
+    );
+    params
+        .distinguished_name
+        .push(DnType::CommonName, common_name.to_owned());
 
-impl cert {
-    fn generate_certificate(
-        cert_type: CertificateType,
-        common_name: &str,
-        organizational_unit: &str,
-        days: i64,
-    ) -> Self {
-        let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
-        params.not_before = Utc::now();
-        params.not_after = Utc::now() + Duration::days(days);
-        params
-            .distinguished_name
-            .push(DnType::OrganizationName, "Drogue IoT".to_owned());
-        params.distinguished_name.push(
-            DnType::OrganizationalUnitName,
-            organizational_unit.to_owned(),
-        );
-        params
-            .distinguished_name
-            .push(DnType::CommonName, common_name.to_owned());
-
-        match cert_type {
-            CertificateType::app => {
-                params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
-            }
-            CertificateType::device => {
-                params
-                    .extended_key_usages
-                    .push(ExtendedKeyUsagePurpose::ServerAuth);
-                params
-                    .extended_key_usages
-                    .push(ExtendedKeyUsagePurpose::ClientAuth);
-                params.key_identifier_method = KeyIdMethod::Sha256;
-            }
-        };
-
-        Self {
-            certificate: Certificate::from_params(params).unwrap(),
+    match cert_type {
+        CertificateType::app => {
+            params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
         }
-    }
+        CertificateType::device => {
+            params
+                .extended_key_usages
+                .push(ExtendedKeyUsagePurpose::ServerAuth);
+            params
+                .extended_key_usages
+                .push(ExtendedKeyUsagePurpose::ClientAuth);
+            params.key_identifier_method = KeyIdMethod::Sha256;
+        }
+    };
+
+    Certificate::from_params(params)
+        .map_err(|e| anyhow!("Error Generating certificate for {} : {}", common_name, e))
 }
 
-pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Value {
+pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Result<Value> {
     const OU: &str = "Cloud";
-    let app_certificate = cert::generate_certificate(CertificateType::app, app_id, OU, days);
+    let app_certificate = generate_certificate(CertificateType::app, app_id, OU, days)?;
 
-    let pem_cert = &app_certificate.certificate.serialize_pem().unwrap();
+    let pem_cert = &app_certificate.serialize_pem()?;
     log::debug!("Self-signed certificate generated.");
 
-    let private_key = &app_certificate.certificate.serialize_private_key_pem();
+    let private_key = &app_certificate.serialize_private_key_pem();
     log::debug!("Private key extracted.");
 
     // Private key printed to terminal, when keyout argument not specified.
@@ -82,7 +76,7 @@ pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Val
         }
     };
 
-    json!({
+    Ok(json!({
         "trustAnchors": {
             "anchors": [
                 {
@@ -90,7 +84,7 @@ pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Val
                 }
             ]
         }
-    })
+    }))
 }
 
 pub fn create_device_certificate(
@@ -111,26 +105,30 @@ pub fn create_device_certificate(
     let ca_certificate = CertificateParams::from_ca_cert_pem(&ca_cert_pem, ca_key_content)
         .map_err(|e| anyhow!("Error: {}", e))?;
 
-    let device_csr = cert::generate_certificate(CertificateType::device, &device_id, &app_id, days);
+    let device_csr = generate_certificate(CertificateType::device, &device_id, &app_id, days)?;
     let ca_cert_fin = Certificate::from_params(ca_certificate)?;
 
     // Signing the device certificate with CA
-    let device_cert = device_csr
-        .certificate
-        .serialize_pem_with_signer(&ca_cert_fin)?;
+    let device_cert = device_csr.serialize_pem_with_signer(&ca_cert_fin)?;
 
     match cert_out {
         Some(file_name) => write_to_file(file_name, &device_cert, "Device certificate"),
-        _ => println!("{}", &device_cert),
+        _ => {
+            println!("This signed device certificate needs to be presented at the time of authentication.\n");
+            println!("{}", &device_cert)
+        }
     };
 
     match cert_key {
         Some(file_name) => write_to_file(
             file_name,
-            &device_csr.certificate.serialize_private_key_pem(),
+            &device_csr.serialize_private_key_pem(),
             "Device private key",
         ),
-        _ => println!("{}", &device_csr.certificate.serialize_private_key_pem()),
+        _ => {
+            println!("Device private key needs to be presented at the time of authentication.\n");
+            println!("{}", &device_csr.serialize_private_key_pem())
+        }
     };
 
     Ok(())

@@ -184,12 +184,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .required(false)
         .help("Output device certificate to file.");
 
+    // Default value comes from trust::CERT_VALIDITY_DAYS
     let cert_valid_days = Arg::with_name(&Parameters::days.as_ref())
         .long(&Parameters::days.as_ref())
         .takes_value(true)
         .required(false)
-        .default_value("365")
-        .help("Number of days the certificate should be valid for.")
+        .help("Number of days the certificate should be valid for. [default: 365]")
         .validator(|n| match n.parse::<u64>() {
             Err(_) => Err(String::from("The value is not an integer")),
             Ok(_) => Ok(()),
