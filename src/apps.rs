@@ -152,7 +152,7 @@ pub fn add_trust_anchor(
                 // Todo : use json_value_merge
                 let body = json!({
                     "metadata": device_obj["metadata"],
-                    "spec": trust::create_trust_anchor(app, keyout, days)
+                    "spec": trust::create_trust_anchor(app, keyout, days)?
                 });
 
                 put(config, app, body)
