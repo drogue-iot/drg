@@ -8,22 +8,28 @@ A Command line tool for managing apps and devices in a drogue cloud instance.
 
 # Installation 
 
-## Build from sources 
+## Install from sources 
 
 Via crates.io:
-    
+
     cargo install drg
 
 ## Download a release
 
 Download the latest release from the [github release page](https://github.com/drogue-iot/drg/releases) and place it somewhere in your `$PATH`.
 
+Note: Debian users must install the `libssl1.1` package.
+
 ## Homebrew
-   
+
     brew tap drogue-iot/drg
     brew install drg
 
-Note: Debian users must install the `libssl1.1` package.
+## Fedora 
+
+Starting with Fedora 34, you can install `drg` directly from the Fedora repositories:
+
+    sudo dnf install drg
 
 ## Snap
 
@@ -36,13 +42,13 @@ Note: Debian users must install the `libssl1.1` package.
 
 In order to use `drg` to manage resources in drogue cloud you first need to authenticate : 
     
-    drg login https://drogue-cloud-registry-endpoint
+    drg login https://drogue-cloud-api-endpoint
 
 Then follow the steps to authenticate. drg will generate a config file to save your configuration.
 
 You can also use a refresh token to authenticate, suitable when the browser can't be accessed:
     
-    drg login https://drogue-cloud-registry-endpoint --token <refresh_token>
+    drg login https://drogue-cloud-api-endpoint --token <refresh_token>
 
 
 ## Managing resources 
