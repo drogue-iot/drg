@@ -186,7 +186,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
-                        .about("create an app.")
+                        .about("delete an app.")
                         .arg(&resource_id_arg),
                 ),
         )
