@@ -22,11 +22,17 @@ fn generate_certificate(
     cert_type: CertificateType,
     common_name: &str,
     organizational_unit: &str,
-    days: i64,
+    days: Option<&str>,
 ) -> Result<Certificate> {
     let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
+
+    let valid_for: i64 = match days {
+        Some(d) => d.parse().unwrap(),
+        _ => CERT_VALIDITY_DAYS,
+    };
+
     params.not_before = Utc::now();
-    params.not_after = Utc::now() + Duration::days(days);
+    params.not_after = Utc::now() + Duration::days(valid_for);
     params
         .distinguished_name
         .push(DnType::OrganizationName, "Drogue IoT".to_owned());
@@ -57,7 +63,11 @@ fn generate_certificate(
         .map_err(|e| anyhow!("Error Generating certificate for {} : {}", common_name, e))
 }
 
-pub fn create_trust_anchor(app_id: &str, keyout: Option<&str>, days: i64) -> Result<Value> {
+pub fn create_trust_anchor(
+    app_id: &str,
+    keyout: Option<&str>,
+    days: Option<&str>,
+) -> Result<Value> {
     const OU: &str = "Cloud";
     let app_certificate = generate_certificate(CertificateType::app, app_id, OU, days)?;
 
@@ -94,7 +104,7 @@ pub fn create_device_certificate(
     ca_cert: &str,
     cert_key: Option<&str>,
     cert_out: Option<&str>,
-    days: i64,
+    days: Option<&str>,
 ) -> Result<()> {
     let ca_key_content = KeyPair::from_pem(&read_from_file(ca_key))
         .map_err(|e| anyhow!("Error reading CA key file. {}", e))?;

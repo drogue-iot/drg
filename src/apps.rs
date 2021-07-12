@@ -140,18 +140,18 @@ pub fn add_trust_anchor(
     config: &Context,
     app: &str,
     keyout: Option<&str>,
-    days: i64,
+    days: Option<&str>,
 ) -> Result<()> {
     let res = get(config, &app);
     match res {
         Ok(r) => match r.status() {
             StatusCode::OK => {
-                let resp = r.text().unwrap_or_else(|_| "{}".to_string());
-                let device_obj: Value = serde_json::from_str(&resp).unwrap();
+                let app_obj = r.text().unwrap_or_else(|_| "{}".to_string());
+                let app_obj_json: Value = serde_json::from_str(&app_obj)?;
 
                 // Todo : use json_value_merge
                 let body = json!({
-                    "metadata": device_obj["metadata"],
+                    "metadata": app_obj_json["metadata"],
                     "spec": trust::create_trust_anchor(app, keyout, days)?
                 });
 
@@ -175,9 +175,10 @@ pub fn get_trust_anchor(config: &Context, app: &str) -> Result<String> {
     match res {
         Ok(r) => match r.status() {
             StatusCode::OK => {
-                let body = r.text().unwrap_or_else(|_| "{}".to_string());
-                let body_json: Value = serde_json::from_str(&body).unwrap();
-                let cert = body_json["spec"]["trustAnchors"]["anchors"][0]["certificate"].clone();
+                let app_obj = r.text().unwrap_or_else(|_| "{}".to_string());
+                let app_obj_json: Value = serde_json::from_str(&app_obj)?;
+                let cert =
+                    app_obj_json["spec"]["trustAnchors"]["anchors"][0]["certificate"].clone();
 
                 if cert == Value::Null {
                     log::error!("No trust anchor found in this application.");

@@ -132,10 +132,7 @@ fn main() -> Result<()> {
         let (v, command) = submatches.unwrap().subcommand();
         let verb = Trust_subcommands::from_str(v);
         let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-        let days: i64 = match command.unwrap().value_of(&Parameters::days) {
-            Some(d) => d.parse().unwrap(),
-            _ => trust::CERT_VALIDITY_DAYS,
-        };
+        let days = command.unwrap().value_of(&Parameters::days);
 
         match verb? {
             Trust_subcommands::create => {
