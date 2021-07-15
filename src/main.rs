@@ -146,11 +146,13 @@ fn main() -> Result<()> {
                     .unwrap()
                     .to_string();
 
-                let device_id = &command
+                let device_name = &command
                     .unwrap()
                     .value_of(&Resources::device)
                     .unwrap()
                     .to_string();
+
+                let device_id = trust::validate_device_name(&device_name, &app_id)?;
 
                 let device_cert = command.unwrap().value_of(&Parameters::out);
 
