@@ -144,26 +144,6 @@ pub fn create_device_certificate(
     Ok(())
 }
 
-pub fn validate_device_name(device_name: &str, app_id: &str) -> Result<String> {
-    let subject: Vec<&str> = device_name.split(", ").collect();
-
-    if subject.len() != 3 {
-        return Err(anyhow!(
-            "Invalid format: should be CN=<deviceID>, O=Drogue IoT, OU=<appID>"
-        ));
-    } else if !subject[0].starts_with("CN=") || subject[0] == "CN=" {
-        return Err(anyhow!("Invalid format: incorrect Comman name (CN)"));
-    } else if subject[1] != "O=Drogue IoT" {
-        return Err(anyhow!("Invalid format: incorrect Organization name (O)"));
-    } else if subject[2] != format!("OU={}", app_id) {
-        return Err(anyhow!(
-            "Invalid format: incorrect Organization Unit name. (OU)"
-        ));
-    }
-
-    Ok(subject[0].replace("CN=", ""))
-}
-
 fn write_to_file(file_name: &str, content: &str, resource_type: &str) {
     let mut file = File::create(file_name);
     match file.as_mut() {
