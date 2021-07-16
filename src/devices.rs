@@ -158,16 +158,16 @@ pub fn set_password(
     username: Option<&str>,
 ) -> Result<()> {
     let credential = match username {
-        Some(user) => json!({ "username": user, "password": password}),
-        None => json!({ "password": password }),
+        Some(user) => json!({"user": {"username": user, "password": password}}),
+        None => json!({ "pass": password }),
     };
 
     // prepare json data to merge
     let data = json!({"spec": {
     "credentials": {
-        "credentials": [{
-        "user": credential
-        }]
+        "credentials": [
+          credential
+        ]
     }
     }});
 
