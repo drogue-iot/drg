@@ -91,6 +91,13 @@ pub enum Trust_subcommands {
     add,
 }
 
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Other_flags {
+    verbosity,
+    cert,
+}
+
 pub fn parse_arguments() -> ArgMatches<'static> {
     let resource_id_arg = Arg::with_name(Parameters::id.as_ref())
         .required(true)
@@ -155,7 +162,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .value_name("FILE")
         .help("Path to the drgconfig file. If not specified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
 
-    let verbose = Arg::with_name("verbose")
+    let verbose = Arg::with_name(Other_flags::verbosity.as_ref())
         .short("v")
         .takes_value(false)
         .multiple(true)
@@ -213,6 +220,16 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .required(false)
         .help("Output device certificate to file.");
 
+    let device_name_subj = Arg::with_name(&Other_flags::cert.as_ref())
+        .long(&Other_flags::cert.as_ref())
+        .takes_value(false)
+        .help("Creates device with the same name as the subject of device certificate.")
+        .long_help(
+            "X.509 authentication requires that the name of the device should \
+            to be equal to the subject of the device's certificate. This flag \
+            converts the given device name into the required format.",
+        );
+
     // Default value comes from trust::CERT_VALIDITY_DAYS
     let cert_valid_days = Arg::with_name(&Parameters::days.as_ref())
         .long(&Parameters::days.as_ref())
@@ -243,7 +260,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(&resource_id_arg)
                         .arg(&app_id_arg)
                         .arg(&spec_arg)
-                        .arg(&file_arg),
+                        .arg(&file_arg)
+                        .arg(&device_name_subj),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())

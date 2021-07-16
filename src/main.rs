@@ -7,12 +7,13 @@ mod trust;
 mod util;
 
 use arguments::{
-    Context_subcommands, Other_commands, Parameters, Resources, Set_args, Set_targets,
+    Context_subcommands, Other_commands, Other_flags, Parameters, Resources, Set_args, Set_targets,
     Trust_subcommands, Verbs,
 };
 
 use crate::config::{Config, ContextId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
+use serde_json::json;
 use std::process::exit;
 use std::str::FromStr;
 
@@ -143,13 +144,11 @@ fn main() -> Result<()> {
                     .unwrap()
                     .to_string();
 
-                let device_name = &command
+                let device_id = &command
                     .unwrap()
                     .value_of(&Resources::device)
                     .unwrap()
                     .to_string();
-
-                let device_id = trust::validate_device_name(&device_name, &app_id)?;
 
                 let device_cert = command.unwrap().value_of(&Parameters::out);
 
@@ -178,8 +177,8 @@ fn main() -> Result<()> {
     match verb? {
         Verbs::create => {
             let (res, command) = cmd.subcommand();
-            let data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
-            let id = command
+            let mut data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
+            let mut id = command
                 .unwrap()
                 .value_of(Parameters::id)
                 .unwrap()
@@ -192,6 +191,15 @@ fn main() -> Result<()> {
                 Resources::app => apps::create(&context, id, data, file),
                 Resources::device => {
                     let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+
+                    if command.unwrap().is_present(&Other_flags::cert) {
+                        id = format!("CN={}, O=Drogue IoT, OU={}", id, app_id);
+
+                        if data == json!({}) {
+                            data = json!({"credentials": {}})
+                        }
+                    }
+
                     devices::create(&context, id, data, app_id, file)
                 }
                 // ignore apps and devices keywords
