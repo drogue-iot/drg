@@ -349,11 +349,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .arg(&url_arg)
                 .arg(&login_keep_current),
         )
-        // todo : deprecated
-        .subcommand(
-            SubCommand::with_name(Other_commands::token.as_ref())
-                .about("--token is deprecated, use 'drg whoami --token' instead"),
-        )
         .subcommand(
             SubCommand::with_name(Other_commands::whoami.as_ref())
                 .about("Print cluster adress, version and default app(if any)")
