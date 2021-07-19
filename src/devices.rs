@@ -48,6 +48,12 @@ pub fn create(
     app_id: AppId,
     file: Option<&str>,
 ) -> Result<()> {
+    let data = if data == json!({}) {
+        json!({"credentials": {}})
+    } else {
+        data
+    };
+
     let body = match file {
         Some(f) => util::get_data_from_file(f)?,
         None => {

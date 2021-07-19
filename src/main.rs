@@ -13,7 +13,6 @@ use arguments::{
 
 use crate::config::{Config, ContextId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
-use serde_json::json;
 use std::process::exit;
 use std::str::FromStr;
 
@@ -177,8 +176,8 @@ fn main() -> Result<()> {
     match verb? {
         Verbs::create => {
             let (res, command) = cmd.subcommand();
-            let mut data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
-            let mut id = command
+            let data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
+            let id = command
                 .unwrap()
                 .value_of(Parameters::id)
                 .unwrap()
@@ -192,13 +191,11 @@ fn main() -> Result<()> {
                 Resources::device => {
                     let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
 
-                    if command.unwrap().is_present(&Other_flags::cert) {
-                        id = format!("CN={}, O=Drogue IoT, OU={}", id, app_id);
-
-                        if data == json!({}) {
-                            data = json!({"credentials": {}})
-                        }
-                    }
+                    let id = if command.unwrap().is_present(&Other_flags::cert) {
+                        format!("CN={}, O=Drogue IoT, OU={}", id, app_id)
+                    } else {
+                        id
+                    };
 
                     devices::create(&context, id, data, app_id, file)
                 }
