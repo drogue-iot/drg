@@ -116,6 +116,9 @@ pub fn create_device_certificate(
     let device_csr = generate_certificate(CertificateType::device, &device_id, &app_id, days)?;
     let ca_cert_fin = Certificate::from_params(ca_certificate)?;
 
+    // Checking equality of public keys of Cert from application object and supplied CA key
+    verify_public_key(ca_cert_pem, &ca_cert_fin.serialize_der()?)?;
+
     // Signing the device certificate with CA
     let device_cert = device_csr.serialize_pem_with_signer(&ca_cert_fin)?;
 
@@ -140,6 +143,29 @@ pub fn create_device_certificate(
     };
 
     Ok(())
+}
+
+fn verify_public_key(ca_cert: &str, local_cert: &[u8]) -> Result<()> {
+    let ca_x509 = x509_parser::pem::parse_x509_pem(&ca_cert.as_bytes())?.1;
+    let ca_x509_der = x509_parser::parse_x509_certificate(&ca_x509.contents)?.1;
+
+    let local_certificate = x509_parser::parse_x509_certificate(&local_cert)?.1;
+
+    let ca_public_key = ca_x509_der
+        .tbs_certificate
+        .subject_pki
+        .subject_public_key
+        .data;
+    let local_public_key = local_certificate
+        .tbs_certificate
+        .subject_pki
+        .subject_public_key
+        .data;
+
+    match ca_public_key.eq(local_public_key) {
+        false => Err(anyhow!("Wrong CA key")),
+        _ => Ok(()),
+    }
 }
 
 fn write_to_file(file_name: &str, content: &str, resource_type: &str) {
