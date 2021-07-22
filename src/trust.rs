@@ -87,13 +87,11 @@ pub fn create_trust_anchor(
     };
 
     Ok(json!({
-        "trustAnchors": {
-            "anchors": [
-                {
-                    "certificate": encode(pem_cert)
-                }
-            ]
-        }
+        "anchors": [
+            {
+                "certificate": encode(pem_cert)
+            }
+        ]
     }))
 }
 
