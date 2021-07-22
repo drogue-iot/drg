@@ -1,7 +1,6 @@
 use crate::config::Context;
 use crate::{trust, util, AppId, Verbs};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
-use json_value_merge::Merge;
 use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
@@ -149,9 +148,7 @@ pub fn add_trust_anchor(
             StatusCode::OK => {
                 let app_obj = r.text().unwrap_or_else(|_| "{}".to_string());
                 let mut app_obj: Value = serde_json::from_str(&app_obj)?;
-                app_obj.merge(json!({
-                    "spec": trust::create_trust_anchor(app, keyout, days)?
-                }));
+                app_obj["spec"]["trustAnchors"] = trust::create_trust_anchor(app, keyout, days)?;
 
                 put(config, app, app_obj)
                     .map(|p| util::print_result(p, format!("App {}", &app), Verbs::edit))
