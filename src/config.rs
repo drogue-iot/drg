@@ -26,6 +26,7 @@ pub struct Context {
     pub name: ContextId,
     pub drogue_cloud_url: Url,
     pub default_app: Option<AppId>,
+    pub default_algo: Option<String>,
     pub auth_url: Url,
     pub token_url: Url,
     pub registry_url: Url,
@@ -224,6 +225,10 @@ impl Context {
 
     pub fn set_default_app(&mut self, app: AppId) {
         self.default_app = Some(app);
+    }
+
+    pub fn set_default_algo(&mut self, algo: String) {
+        self.default_algo = Some(algo.to_string())
     }
 }
 
