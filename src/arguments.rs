@@ -1,4 +1,4 @@
-use crate::{util, AppId};
+use crate::{trust, util, AppId};
 
 use crate::config::Context;
 use anyhow::{anyhow, Result};
@@ -57,6 +57,7 @@ pub enum Parameters {
     ca_key,
     out,
     days,
+    algo,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -82,6 +83,8 @@ pub enum Context_subcommands {
     #[strum(serialize = "set-default-app")]
     set_default_app,
     rename,
+    #[strum(serialize = "set-default-algo")]
+    set_default_algo,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -240,6 +243,18 @@ pub fn parse_arguments() -> ArgMatches<'static> {
             Err(_) => Err(String::from("The value is not an integer")),
             Ok(_) => Ok(()),
         });
+
+    let algo_param = Arg::with_name(&Parameters::algo.as_ref())
+        .required(true)
+        .help("Algorithm used to generate key pair.")
+        .possible_value(trust::SignAlgo::ECDSA.as_ref())
+        .possible_value(trust::SignAlgo::EdDSA.as_ref());
+
+    let key_pair_algorithm = algo_param
+        .clone()
+        .required(false)
+        .takes_value(true)
+        .long(&Parameters::algo.as_ref());
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
@@ -420,6 +435,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                                 .required(true)
                                 .help("The new context name"),
                         ),
+                )
+                .subcommand(
+                    SubCommand::with_name(Context_subcommands::set_default_algo.as_ref())
+                        .about("Set a default key generation algorithm for a context.")
+                        .arg(&algo_param),
                 ),
         )
         .subcommand(
@@ -431,6 +451,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .about("Create a trust-anchor for an application.")
                         .arg(&app_id_arg)
                         .arg(&keyout)
+                        .arg(&key_pair_algorithm)
                         .arg(&cert_valid_days),
                 )
                 .subcommand(
@@ -441,6 +462,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(&ca_key)
                         .arg(&cert_out)
                         .arg(&keyout)
+                        .arg(&key_pair_algorithm)
                         .arg(&cert_valid_days),
                 ),
         )

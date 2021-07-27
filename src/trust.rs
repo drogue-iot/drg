@@ -3,14 +3,21 @@ use base64::encode;
 use chrono::{Duration, Utc};
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa,
-    KeyIdMethod, KeyPair,
+    KeyIdMethod, KeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519,
 };
 use serde_json::{json, Value};
 use std::fs::File;
 use std::io::Write;
-use std::{fs, process::exit, str::from_utf8};
+use std::{fs, process::exit, str::from_utf8, str::FromStr};
+use strum_macros::{AsRefStr, EnumString};
 
 pub const CERT_VALIDITY_DAYS: i64 = 365;
+
+#[derive(AsRefStr, EnumString)]
+pub enum SignAlgo {
+    ECDSA,
+    EdDSA,
+}
 
 #[allow(non_camel_case_types)]
 enum CertificateType {
@@ -22,6 +29,7 @@ fn generate_certificate(
     cert_type: CertificateType,
     common_name: &str,
     organizational_unit: &str,
+    key_pair_algorithm: Option<&str>,
     days: Option<&str>,
 ) -> Result<Certificate> {
     let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
@@ -43,6 +51,14 @@ fn generate_certificate(
     params
         .distinguished_name
         .push(DnType::CommonName, common_name.to_owned());
+
+    params.alg = match key_pair_algorithm {
+        Some(algo_name) => match SignAlgo::from_str(algo_name)? {
+            SignAlgo::ECDSA => &PKCS_ECDSA_P256_SHA256,
+            SignAlgo::EdDSA => &PKCS_ED25519,
+        },
+        _ => &PKCS_ECDSA_P256_SHA256, // Default Signature algorithm
+    };
 
     match cert_type {
         CertificateType::app => {
@@ -66,10 +82,12 @@ fn generate_certificate(
 pub fn create_trust_anchor(
     app_id: &str,
     keyout: Option<&str>,
+    key_pair_algorithm: Option<&str>,
     days: Option<&str>,
 ) -> Result<Value> {
     const OU: &str = "Cloud";
-    let app_certificate = generate_certificate(CertificateType::app, app_id, OU, days)?;
+    let app_certificate =
+        generate_certificate(CertificateType::app, app_id, OU, key_pair_algorithm, days)?;
 
     let pem_cert = &app_certificate.serialize_pem()?;
     log::debug!("Self-signed certificate generated.");
@@ -102,6 +120,7 @@ pub fn create_device_certificate(
     ca_cert: &str,
     cert_key: Option<&str>,
     cert_out: Option<&str>,
+    key_pair_algorithm: Option<&str>,
     days: Option<&str>,
 ) -> Result<()> {
     let ca_key_content = KeyPair::from_pem(&read_from_file(ca_key))
@@ -118,7 +137,13 @@ pub fn create_device_certificate(
     // Checking equality of public keys of Cert from application object and supplied CA key
     verify_public_key(ca_cert_pem, &ca_cert_fin.serialize_der()?)?;
 
-    let device_csr = generate_certificate(CertificateType::device, &device_id, &app_id, days)?;
+    let device_csr = generate_certificate(
+        CertificateType::device,
+        &device_id,
+        &app_id,
+        key_pair_algorithm,
+        days,
+    )?;
 
     // Signing the device certificate with CA
     let device_cert = device_csr.serialize_pem_with_signer(&ca_cert_fin)?;

@@ -104,6 +104,13 @@ fn main() -> Result<()> {
                 config.rename_context(ctx_id.unwrap(), new_ctx)?;
                 config.write(config_path)?;
             }
+            Context_subcommands::set_default_algo => {
+                let algo = c.unwrap().value_of(&Parameters::algo).unwrap().to_string();
+                let context = config.get_context_mut(&ctx_id)?;
+
+                context.set_default_algo(algo);
+                config.write(config_path)?;
+            }
         }
         exit(0);
     }
@@ -130,11 +137,17 @@ fn main() -> Result<()> {
         let verb = Trust_subcommands::from_str(v);
         let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
         let days = command.unwrap().value_of(&Parameters::days);
+        let key_pair_algorithm = command.unwrap().value_of(&Parameters::algo).or_else(|| {
+            context.default_algo.as_deref().map(|a| {
+                println!("Using default signature algorithm: {}", a);
+                a
+            })
+        });
 
         match verb? {
             Trust_subcommands::create => {
                 let keyout = command.unwrap().value_of(&Parameters::key_output);
-                apps::add_trust_anchor(&context, &app_id, keyout, days)
+                apps::add_trust_anchor(&context, &app_id, keyout, key_pair_algorithm, days)
             }
             Trust_subcommands::add => {
                 let ca_key = &command
@@ -162,6 +175,7 @@ fn main() -> Result<()> {
                     &cert,
                     device_key,
                     device_cert,
+                    key_pair_algorithm,
                     days,
                 )
             }

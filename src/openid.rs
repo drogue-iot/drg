@@ -48,6 +48,7 @@ pub fn login(
         name: context_name,
         drogue_cloud_url: api_endpoint,
         default_app: None,
+        default_algo: None,
         token,
         token_url,
         auth_url,
