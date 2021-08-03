@@ -175,7 +175,10 @@ fn exchange_token(
     client
         .exchange_refresh_token(refresh_token_val)
         .request(http_client)
-        .map_err(|_| Error::msg("Invalid refresh token"))
+        .map_err(|e| {
+            log::debug!("{:?}", e);
+            Error::msg("Invalid refresh token.")
+        })
 }
 
 fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTime<Utc>> {
