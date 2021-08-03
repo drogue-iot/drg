@@ -58,6 +58,8 @@ pub enum Parameters {
     out,
     days,
     algo,
+    #[strum(serialize = "key-input")]
+    key_input,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -256,6 +258,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .required(false)
         .takes_value(true)
         .long(&Parameters::algo.as_ref());
+    let key_input = Arg::with_name(&Parameters::key_input.as_ref())
+        .long(&Parameters::key_input.as_ref())
+        .takes_value(true)
+        .required(false)
+        .help("Keys used to generate certificate.");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)

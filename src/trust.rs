@@ -34,6 +34,7 @@ fn generate_certificate(
     organizational_unit: &str,
     key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
+    key_input: Option<KeyPair>,
 ) -> Result<Certificate> {
     let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
 
@@ -91,6 +92,7 @@ pub fn create_trust_anchor(
     keyout: Option<&str>,
     key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
+    key_input: Option<KeyPair>,
 ) -> Result<Value> {
     const OU: &str = "Cloud";
     let app_certificate =
@@ -103,11 +105,13 @@ pub fn create_trust_anchor(
     log::debug!("Private key extracted.");
 
     // Private key printed to terminal, when keyout argument not specified.
-    match keyout {
-        Some(file_name) => write_to_file(file_name, &private_key, "App private key"),
-        _ => {
-            println!("Private key for an application is used to sign device certificates, see `drg trust add --help`\n");
-            println!("{}", &private_key)
+    if !is_input_key {
+        match keyout {
+            Some(file_name) => write_to_file(file_name, &private_key, "App private key"),
+            _ => {
+                println!("Private key for an application is used to sign device certificates, see `drg trust add --help`\n");
+                println!("{}", &private_key)
+            }
         }
     };
 
@@ -129,6 +133,7 @@ pub fn create_device_certificate(
     cert_out: Option<&str>,
     key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
+    key_input: Option<KeyPair>,
 ) -> Result<()> {
     let ca_key_content = KeyPair::from_pem(&read_from_file(ca_key))
         .map_err(|e| anyhow!("Error reading CA key file. {}", e))?;
@@ -227,6 +232,16 @@ fn write_to_file(file_name: &str, content: &str, resource_type: &str) {
         },
         Err(e) => log::error!("Error opening the file: {}", e),
     };
+}
+
+fn read_from_der(file_name: &str) -> Vec<u8> {
+    match fs::read(file_name) {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("Error reading from {}: {}", file_name, e);
+            exit(1);
+        }
+    }
 }
 
 fn read_from_file(file_name: &str) -> String {

@@ -151,6 +151,10 @@ fn main() -> Result<()> {
                 })
             })
             .map(|algo| trust::SignAlgo::from_str(algo).unwrap());
+        let key_input = match command.unwrap().value_of(&Parameters::key_input) {
+            Some(f) => Some(trust::verify_input_key(f)?),
+            _ => None,
+        };
 
         match verb? {
             Trust_subcommands::create => {
@@ -185,6 +189,7 @@ fn main() -> Result<()> {
                     device_cert,
                     key_pair_algorithm,
                     days,
+                    key_input,
                 )
             }
         }?;
