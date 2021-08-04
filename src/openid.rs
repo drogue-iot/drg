@@ -103,9 +103,6 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
     let state = querry.get("state").unwrap();
     let code = querry.get("code").unwrap();
 
-    let _ = request.respond(Response::from_string(
-        "Authentication code retrieved. This browser can be closed.",
-    ));
     log::info!("Authentication code retrieved.");
     log::debug!("Trading auth code with token using url : {}", token_url);
 
@@ -119,8 +116,19 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
         .set_pkce_verifier(pkce_verifier)
         .request(http_client);
 
+    let browser_msg = match token_result {
+        Ok(_) => "Authentication success. This browser can be closed.",
+        Err(_) => "Authentication failed! This browser can be closed.",
+    };
+    let _ = request.respond(Response::from_string(browser_msg));
+
     // Unwrapping token_result will either produce a Token or a RequestTokenError.
-    token_result.map_err(|_| Error::msg("error retrieving the authentication token"))
+    token_result.map_err(|e| {
+        Error::msg(format!(
+            "error while requesting a token: \n{}",
+            e.to_string()
+        ))
+    })
 }
 
 pub fn verify_token_validity(context: &mut Context) -> Result<bool> {
