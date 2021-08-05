@@ -230,9 +230,7 @@ impl Context {
     }
 
     pub fn set_default_algo(&mut self, algo: SignAlgo) {
-        self.default_algo = Some(match algo {
-            i => i.as_ref().to_string(),
-        })
+        self.default_algo = Some(algo.as_ref().to_string())
     }
 }
 

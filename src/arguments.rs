@@ -248,7 +248,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .required(true)
         .help("Algorithm used to generate key pair.")
         .possible_value(trust::SignAlgo::ECDSA.as_ref())
-        .possible_value(trust::SignAlgo::EdDSA.as_ref());
+        .possible_value(trust::SignAlgo::EdDSA.as_ref())
+        .possible_value(trust::SignAlgo::RSA.as_ref());
 
     let key_pair_algorithm = algo_param
         .clone()
