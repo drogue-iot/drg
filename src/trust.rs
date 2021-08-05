@@ -8,7 +8,7 @@ use rcgen::{
 use serde_json::{json, Value};
 use std::fs::File;
 use std::io::Write;
-use std::{fs, process::exit, str::from_utf8, str::FromStr};
+use std::{fs, process::exit, str::from_utf8};
 use strum_macros::{AsRefStr, EnumString};
 
 pub const CERT_VALIDITY_DAYS: i64 = 365;
@@ -29,7 +29,7 @@ fn generate_certificate(
     cert_type: CertificateType,
     common_name: &str,
     organizational_unit: &str,
-    key_pair_algorithm: Option<&str>,
+    key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
 ) -> Result<Certificate> {
     let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
@@ -53,7 +53,7 @@ fn generate_certificate(
         .push(DnType::CommonName, common_name.to_owned());
 
     params.alg = match key_pair_algorithm {
-        Some(algo_name) => match SignAlgo::from_str(algo_name)? {
+        Some(algo_name) => match algo_name {
             SignAlgo::ECDSA => &PKCS_ECDSA_P256_SHA256,
             SignAlgo::EdDSA => &PKCS_ED25519,
         },
@@ -82,7 +82,7 @@ fn generate_certificate(
 pub fn create_trust_anchor(
     app_id: &str,
     keyout: Option<&str>,
-    key_pair_algorithm: Option<&str>,
+    key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
 ) -> Result<Value> {
     const OU: &str = "Cloud";
@@ -120,7 +120,7 @@ pub fn create_device_certificate(
     ca_cert: &str,
     cert_key: Option<&str>,
     cert_out: Option<&str>,
-    key_pair_algorithm: Option<&str>,
+    key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
 ) -> Result<()> {
     let ca_key_content = KeyPair::from_pem(&read_from_file(ca_key))

@@ -1,3 +1,5 @@
+use crate::trust::SignAlgo;
+
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use serde::{Deserialize, Serialize};
 use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exit};
@@ -227,8 +229,10 @@ impl Context {
         self.default_app = Some(app);
     }
 
-    pub fn set_default_algo(&mut self, algo: String) {
-        self.default_algo = Some(algo.to_string())
+    pub fn set_default_algo(&mut self, algo: SignAlgo) {
+        self.default_algo = Some(match algo {
+            i => i.as_ref().to_string(),
+        })
     }
 }
 
