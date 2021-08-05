@@ -1,10 +1,12 @@
 use anyhow::{anyhow, Result};
 use base64::encode;
 use chrono::{Duration, Utc};
+use rand::rngs::OsRng;
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa,
-    KeyIdMethod, KeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519,
+    KeyIdMethod, KeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519, PKCS_RSA_SHA256,
 };
+use rsa::{pkcs8::ToPrivateKey, RsaPrivateKey};
 use serde_json::{json, Value};
 use std::fs::File;
 use std::io::Write;
@@ -17,6 +19,7 @@ pub const CERT_VALIDITY_DAYS: i64 = 365;
 pub enum SignAlgo {
     ECDSA,
     EdDSA,
+    RSA,
 }
 
 #[allow(non_camel_case_types)]
@@ -56,6 +59,10 @@ fn generate_certificate(
         Some(algo_name) => match algo_name {
             SignAlgo::ECDSA => &PKCS_ECDSA_P256_SHA256,
             SignAlgo::EdDSA => &PKCS_ED25519,
+            SignAlgo::RSA => {
+                params.key_pair = Some(generate_rsa_key()?);
+                &PKCS_RSA_SHA256
+            }
         },
         _ => &PKCS_ECDSA_P256_SHA256, // Default Signature algorithm
     };
@@ -169,6 +176,16 @@ pub fn create_device_certificate(
     };
 
     Ok(())
+}
+
+fn generate_rsa_key() -> Result<KeyPair> {
+    const RSA_BIT_SIZE: usize = 2048;
+
+    let mut rng = OsRng;
+    let private_key = RsaPrivateKey::new(&mut rng, RSA_BIT_SIZE)?;
+    let pkcs8_key = &private_key.to_pkcs8_der()?;
+
+    KeyPair::from_der(pkcs8_key.as_ref()).map_err(|e| anyhow!("RSA key generation failed: {}", e))
 }
 
 fn verify_public_key(ca_cert: &str, local_cert: &[u8]) -> Result<()> {
