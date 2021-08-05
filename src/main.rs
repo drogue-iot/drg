@@ -105,7 +105,11 @@ fn main() -> Result<()> {
                 config.write(config_path)?;
             }
             Context_subcommands::set_default_algo => {
-                let algo = c.unwrap().value_of(&Parameters::algo).unwrap().to_string();
+                let algo = c
+                    .unwrap()
+                    .value_of(&Parameters::algo)
+                    .map(|a| trust::SignAlgo::from_str(a).unwrap())
+                    .unwrap();
                 let context = config.get_context_mut(&ctx_id)?;
 
                 context.set_default_algo(algo);
@@ -137,12 +141,16 @@ fn main() -> Result<()> {
         let verb = Trust_subcommands::from_str(v);
         let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
         let days = command.unwrap().value_of(&Parameters::days);
-        let key_pair_algorithm = command.unwrap().value_of(&Parameters::algo).or_else(|| {
-            context.default_algo.as_deref().map(|a| {
-                println!("Using default signature algorithm: {}", a);
-                a
+        let key_pair_algorithm = command
+            .unwrap()
+            .value_of(&Parameters::algo)
+            .or_else(|| {
+                context.default_algo.as_deref().map(|a| {
+                    println!("Using default signature algorithm: {}", a);
+                    a
+                })
             })
-        });
+            .map(|algo| trust::SignAlgo::from_str(algo).unwrap());
 
         match verb? {
             Trust_subcommands::create => {

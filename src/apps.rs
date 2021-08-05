@@ -140,7 +140,7 @@ pub fn add_trust_anchor(
     config: &Context,
     app: &str,
     keyout: Option<&str>,
-    key_pair_algorithm: Option<&str>,
+    key_pair_algorithm: Option<trust::SignAlgo>,
     days: Option<&str>,
 ) -> Result<()> {
     let res = get(config, &app);
