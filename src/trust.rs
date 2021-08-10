@@ -238,3 +238,80 @@ fn read_from_file(file_name: &str) -> String {
         }
     }
 }
+
+#[cfg(test)]
+mod trust_test {
+    use super::*;
+    use std::path::Path;
+
+    const CERT: &str = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tDQpNSUlCb2pDQ0FVaWdBd0lCQWdJQktqQUtCZ2dxaGtqT1BRUURBakExTVE0d0RBWURWUVFEREFWaGNIQTBNVEVUDQpNQkVHQTFVRUNnd0tSSEp2WjNWbElFbHZWREVPTUF3R0ExVUVDd3dGUTJ4dmRXUXdIaGNOTWpFd09EQTVNRGN4DQpNelF3V2hjTk1qSXdPREE1TURjeE16UXdXakExTVE0d0RBWURWUVFEREFWaGNIQTBNVEVUTUJFR0ExVUVDZ3dLDQpSSEp2WjNWbElFbHZWREVPTUF3R0ExVUVDd3dGUTJ4dmRXUXdXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CDQpCd05DQUFRRkNmcXh1bWZGU1pzTFFrelVrYVMzZUtyQ3RFcjhqbUtjWnJ1NGZWR2lXV1ZXSHdDbzZPQTdxbURwDQpPNlJscURWSERUUHpKYU9paEg2d0NmL21qc0habzBrd1J6QVZCZ05WSFJFRURqQU1nZ3BFY205bmRXVWdTVzkwDQpNQjBHQTFVZERnUVdCQlFzV3A3cnlNZ2lUdFVnYWk5WkNEOXBxTlAraWpBUEJnTlZIUk1CQWY4RUJUQURBUUgvDQpNQW9HQ0NxR1NNNDlCQU1DQTBnQU1FVUNJRmFpZFltZWdpRWhUV1pRTXQxYXhoKzd5SElXdTRIRVdtdjlPbmVKDQp6ZXRxQWlFQWhBS3EyWjhZZWVGa0pqTC95UnJ0ZlVxd0w1N3lDL2dQVHUwemZRNEJwczA9DQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tDQo=";
+
+    #[test]
+    fn test_create_trust_anchor() {
+        let resp = create_trust_anchor("app10", Some("key.pem"), None).unwrap();
+        assert!(
+            resp["anchors"][0]["certificate"].is_string(),
+            "Invalid JSON response."
+        );
+        assert!(
+            Path::new("key.pem").is_file(),
+            "Error exporting private key to file."
+        );
+
+        let cert_ca = resp["anchors"][0]["certificate"]
+            .to_string()
+            .replace("\"", "");
+
+        let resp_cert_base64 = base64::decode(&cert_ca).unwrap();
+        let resp_cert_pem = from_utf8(&resp_cert_base64).unwrap();
+
+        assert!(
+            x509_parser::pem::parse_x509_pem(resp_cert_pem.as_bytes()).is_ok(),
+            "Invalid x509 certificate"
+        );
+    }
+
+    #[test]
+    fn test_create_device_certificate() {
+        assert!(
+            create_device_certificate(
+                "app10",
+                "d5",
+                "keys/test-app-key.pem",
+                CERT,
+                Some("device-key.pem"),
+                Some("device-cert.pem"),
+                None,
+            )
+            .is_ok(),
+            "Unable to generate device certificate."
+        );
+
+        assert!(
+            Path::new("device-key.pem").is_file(),
+            "Error exporting private key to file."
+        );
+
+        assert!(
+            Path::new("device-cert.pem").is_file(),
+            "Error exporting certificate to file."
+        );
+    }
+
+    #[test]
+    fn test_key_certificate_mismatch() {
+        assert!(
+            create_device_certificate(
+                "app10",
+                "d5",
+                "keys/test-incorrect-key.pem",
+                CERT,
+                None,
+                None,
+                None
+            )
+            .is_err(),
+            "CA key and certificate mismatch should terminate with an error."
+        );
+    }
+}
