@@ -151,15 +151,24 @@ fn main() -> Result<()> {
                 })
             })
             .map(|algo| trust::SignAlgo::from_str(algo).unwrap());
-        let key_input = match command.unwrap().value_of(&Parameters::key_input) {
-            Some(f) => Some(trust::verify_input_key(f)?),
-            _ => None,
-        };
+
+        let (key_input, key_pair_algorithm) =
+            match command.unwrap().value_of(&Parameters::key_input) {
+                Some(f) => trust::verify_input_key(f).map(|s| (Some(s.0), Some(s.1)))?,
+                _ => (None, key_pair_algorithm),
+            };
 
         match verb? {
             Trust_subcommands::create => {
                 let keyout = command.unwrap().value_of(&Parameters::key_output);
-                apps::add_trust_anchor(&context, &app_id, keyout, key_pair_algorithm, days)
+                apps::add_trust_anchor(
+                    &context,
+                    &app_id,
+                    keyout,
+                    key_pair_algorithm,
+                    days,
+                    key_input,
+                )
             }
             Trust_subcommands::add => {
                 let ca_key = &command

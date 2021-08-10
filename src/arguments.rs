@@ -203,7 +203,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .required(false)
         .long(Parameters::key_output.as_ref())
-        .help("Output file containing the private key. Later to be used to sign device certificates, or device authentication.");
+        .help("Generate and Output file containing the private key. Later to be used to sign device certificates, or device authentication.");
 
     let device_id_arg = Arg::with_name(&Resources::device.as_ref())
         .short("d")
@@ -258,11 +258,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .required(false)
         .takes_value(true)
         .long(&Parameters::algo.as_ref());
+
     let key_input = Arg::with_name(&Parameters::key_input.as_ref())
         .long(&Parameters::key_input.as_ref())
         .takes_value(true)
         .required(false)
-        .help("Keys used to generate certificate.");
+        .help("Input private key to be used to sign CA/device certificates.");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
@@ -460,7 +461,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(&app_id_arg)
                         .arg(&keyout)
                         .arg(&key_pair_algorithm)
-                        .arg(&cert_valid_days),
+                        .arg(&cert_valid_days)
+                        .arg(&key_input),
                 )
                 .subcommand(
                     SubCommand::with_name(Trust_subcommands::add.as_ref())
@@ -471,7 +473,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(&cert_out)
                         .arg(&keyout)
                         .arg(&key_pair_algorithm)
-                        .arg(&cert_valid_days),
+                        .arg(&cert_valid_days)
+                        .arg(&key_input),
                 ),
         )
         .get_matches()
