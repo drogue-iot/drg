@@ -142,6 +142,7 @@ pub fn add_trust_anchor(
     keyout: Option<&str>,
     key_pair_algorithm: Option<trust::SignAlgo>,
     days: Option<&str>,
+    key_input: Option<rcgen::KeyPair>,
 ) -> Result<()> {
     let res = get(config, &app);
     match res {
@@ -150,7 +151,7 @@ pub fn add_trust_anchor(
                 let app_obj = r.text().unwrap_or_else(|_| "{}".to_string());
                 let mut app_obj: Value = serde_json::from_str(&app_obj)?;
                 app_obj["spec"]["trustAnchors"] =
-                    trust::create_trust_anchor(app, keyout, key_pair_algorithm, days)?;
+                    trust::create_trust_anchor(app, keyout, key_pair_algorithm, days, key_input)?;
 
                 put(config, app, app_obj)
                     .map(|p| util::print_result(p, format!("App {}", &app), Verbs::edit))

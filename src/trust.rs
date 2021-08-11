@@ -4,7 +4,8 @@ use chrono::{Duration, Utc};
 use rand::rngs::OsRng;
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa,
-    KeyIdMethod, KeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519, PKCS_RSA_SHA256,
+    KeyIdMethod, KeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ECDSA_P384_SHA384, PKCS_ED25519,
+    PKCS_RSA_SHA256,
 };
 use rsa::{pkcs8::ToPrivateKey, RsaPrivateKey};
 use serde_json::{json, Value};
@@ -20,6 +21,7 @@ pub enum SignAlgo {
     ECDSA,
     EdDSA,
     RSA,
+    EdDSA384, // Not a key generation choice, only to support custom key of this type
 }
 
 #[allow(non_camel_case_types)]
@@ -34,6 +36,7 @@ fn generate_certificate(
     organizational_unit: &str,
     key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
+    key_input: Option<KeyPair>,
 ) -> Result<Certificate> {
     let mut params = CertificateParams::new(vec!["Drogue Iot".to_owned()]);
 
@@ -55,12 +58,15 @@ fn generate_certificate(
         .distinguished_name
         .push(DnType::CommonName, common_name.to_owned());
 
+    params.key_pair = key_input;
+
     params.alg = match key_pair_algorithm {
         Some(algo_name) => match algo_name {
             SignAlgo::ECDSA => &PKCS_ECDSA_P256_SHA256,
             SignAlgo::EdDSA => &PKCS_ED25519,
+            SignAlgo::EdDSA384 => &PKCS_ECDSA_P384_SHA384,
             SignAlgo::RSA => {
-                params.key_pair = Some(generate_rsa_key()?);
+                params.key_pair = params.key_pair.or(Some(generate_rsa_key()?));
                 &PKCS_RSA_SHA256
             }
         },
@@ -91,10 +97,19 @@ pub fn create_trust_anchor(
     keyout: Option<&str>,
     key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
+    key_input: Option<KeyPair>,
 ) -> Result<Value> {
     const OU: &str = "Cloud";
-    let app_certificate =
-        generate_certificate(CertificateType::app, app_id, OU, key_pair_algorithm, days)?;
+    let is_input_key = key_input.is_some();
+
+    let app_certificate = generate_certificate(
+        CertificateType::app,
+        app_id,
+        OU,
+        key_pair_algorithm,
+        days,
+        key_input,
+    )?;
 
     let pem_cert = &app_certificate.serialize_pem()?;
     log::debug!("Self-signed certificate generated.");
@@ -103,11 +118,13 @@ pub fn create_trust_anchor(
     log::debug!("Private key extracted.");
 
     // Private key printed to terminal, when keyout argument not specified.
-    match keyout {
-        Some(file_name) => write_to_file(file_name, &private_key, "App private key"),
-        _ => {
-            println!("Private key for an application is used to sign device certificates, see `drg trust add --help`\n");
-            println!("{}", &private_key)
+    if !is_input_key {
+        match keyout {
+            Some(file_name) => write_to_file(file_name, &private_key, "App private key"),
+            _ => {
+                println!("Private key for an application is used to sign device certificates, see `drg trust add --help`\n");
+                println!("{}", &private_key)
+            }
         }
     };
 
@@ -129,8 +146,10 @@ pub fn create_device_certificate(
     cert_out: Option<&str>,
     key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
+    key_input: Option<KeyPair>,
 ) -> Result<()> {
-    let ca_key_content = KeyPair::from_pem(&read_from_file(ca_key))
+    let ca_key_content = KeyPair::from_pem(from_utf8(&read_from_file(ca_key)).unwrap_or_default())
+        .or_else(|_| KeyPair::from_der(&read_from_file(ca_key)))
         .map_err(|e| anyhow!("Error reading CA key file. {}", e))?;
 
     let ca_base64 = base64::decode(&ca_cert)?;
@@ -144,12 +163,15 @@ pub fn create_device_certificate(
     // Checking equality of public keys of Cert from application object and supplied CA key
     verify_public_key(ca_cert_pem, &ca_cert_fin.serialize_der()?)?;
 
+    let is_input_key = key_input.is_some();
+
     let device_csr = generate_certificate(
         CertificateType::device,
         &device_id,
         &app_id,
         key_pair_algorithm,
         days,
+        key_input,
     )?;
 
     // Signing the device certificate with CA
@@ -163,15 +185,19 @@ pub fn create_device_certificate(
         }
     };
 
-    match cert_key {
-        Some(file_name) => write_to_file(
-            file_name,
-            &device_csr.serialize_private_key_pem(),
-            "Device private key",
-        ),
-        _ => {
-            println!("Device private key needs to be presented at the time of authentication.\n");
-            println!("{}", &device_csr.serialize_private_key_pem())
+    if !is_input_key {
+        match cert_key {
+            Some(file_name) => write_to_file(
+                file_name,
+                &device_csr.serialize_private_key_pem(),
+                "Device private key",
+            ),
+            _ => {
+                println!(
+                    "Device private key needs to be presented at the time of authentication.\n"
+                );
+                println!("{}", &device_csr.serialize_private_key_pem())
+            }
         }
     };
 
@@ -186,6 +212,24 @@ fn generate_rsa_key() -> Result<KeyPair> {
     let pkcs8_key = &private_key.to_pkcs8_der()?;
 
     KeyPair::from_der(pkcs8_key.as_ref()).map_err(|e| anyhow!("RSA key generation failed: {}", e))
+}
+
+pub fn verify_input_key(key_input: &str) -> Result<(KeyPair, SignAlgo)> {
+    let key = KeyPair::from_der(&read_from_file(key_input))?;
+
+    let alg = if key.is_compatible(&PKCS_RSA_SHA256) {
+        SignAlgo::RSA
+    } else if key.is_compatible(&PKCS_ECDSA_P256_SHA256) {
+        SignAlgo::ECDSA
+    } else if key.is_compatible(&PKCS_ED25519) {
+        SignAlgo::EdDSA
+    } else if key.is_compatible(&PKCS_ECDSA_P384_SHA384) {
+        SignAlgo::EdDSA384
+    } else {
+        return Err(anyhow!("Unknown signature algorithm."));
+    };
+
+    Ok((key, alg))
 }
 
 fn verify_public_key(ca_cert: &str, local_cert: &[u8]) -> Result<()> {
@@ -229,14 +273,13 @@ fn write_to_file(file_name: &str, content: &str, resource_type: &str) {
     };
 }
 
-fn read_from_file(file_name: &str) -> String {
-    match fs::read_to_string(file_name) {
-        Ok(s) => s,
-        Err(e) => {
+fn read_from_file(file_name: &str) -> Vec<u8> {
+    fs::read(file_name)
+        .map_err(|e| {
             log::error!("Error reading from {}: {}", file_name, e);
             exit(1);
-        }
-    }
+        })
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -248,7 +291,7 @@ mod trust_test {
 
     #[test]
     fn test_create_trust_anchor() {
-        let resp = create_trust_anchor("app10", Some("key.pem"), None).unwrap();
+        let resp = create_trust_anchor("app10", Some("key.pem"), None, None, None).unwrap();
         assert!(
             resp["anchors"][0]["certificate"].is_string(),
             "Invalid JSON response."
@@ -282,6 +325,8 @@ mod trust_test {
                 Some("device-key.pem"),
                 Some("device-cert.pem"),
                 None,
+                None,
+                None
             )
             .is_ok(),
             "Unable to generate device certificate."
@@ -308,10 +353,36 @@ mod trust_test {
                 CERT,
                 None,
                 None,
+                None,
+                None,
                 None
             )
             .is_err(),
             "CA key and certificate mismatch should terminate with an error."
+        );
+    }
+
+    #[test]
+    fn test_rsa_key_cert_load() {
+        let key_input = verify_input_key("keys/test-rsa-gen.pk8").unwrap();
+        assert!(
+            create_trust_anchor(
+                "app40",
+                None,
+                Some(key_input.1),
+                Some("256"),
+                Some(key_input.0)
+            )
+            .is_ok(),
+            "Adding custom RSA key failed."
+        );
+    }
+
+    #[test]
+    fn test_rsa_key_gen() {
+        assert!(
+            create_trust_anchor("app40", None, Some(SignAlgo::RSA), None, None).is_ok(),
+            "RSA Key generation failed."
         );
     }
 }
