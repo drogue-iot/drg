@@ -69,6 +69,7 @@ pub enum Other_commands {
     whoami,
     context,
     trust,
+    stream,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -97,7 +98,7 @@ pub enum Trust_subcommands {
 #[derive(AsRefStr, EnumString)]
 #[allow(non_camel_case_types)]
 pub enum Other_flags {
-    verbosity,
+    verbose,
     cert,
 }
 
@@ -165,12 +166,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .value_name("FILE")
         .help("Path to the drgconfig file. If not specified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
 
-    let verbose = Arg::with_name(Other_flags::verbosity.as_ref())
+    let verbose = Arg::with_name(Other_flags::verbose.as_ref())
         .short("v")
         .takes_value(false)
         .multiple(true)
         .global(true)
-        .help("Enable verbose output. Multiple occurences increase verbosity.");
+        .help("Enable verbose output. Multiple occurrences increase verbosity.");
 
     let context_arg = Arg::with_name(Parameters::context.as_ref())
         .long(Parameters::context.as_ref())
@@ -466,6 +467,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(&key_pair_algorithm)
                         .arg(&cert_valid_days),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name(Other_commands::stream.as_ref())
+                .about("Stream application events")
+                .arg(&app_id_arg),
         )
         .get_matches()
 }

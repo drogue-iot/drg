@@ -1,11 +1,13 @@
-use crate::config::Config;
+use crate::config::{Config, Context};
 use crate::Verbs;
+use crate::Other_flags;
 use anyhow::{Context as AnyhowContext, Result};
 use chrono::{Duration, Utc};
 use clap::crate_version;
 use clap::ArgMatches;
 use colored_json::write_colored_json;
 use log::LevelFilter;
+use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
 use serde_json::{from_str, Value};
@@ -41,12 +43,13 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     }
 }
 
-fn show_json<S: Into<String>>(payload: S) {
+pub fn show_json<S: Into<String>>(payload: S) {
     let payload = payload.into();
     match serde_json::from_str(&payload) {
         // show as JSON
         Ok(json) => {
             write_colored_json(&json, &mut stdout().lock()).ok();
+            println!();
         }
         // fall back to plain text output
         Err(_) => println!("{}", payload),
@@ -143,7 +146,7 @@ pub fn print_version(config: &Result<Config>) {
 }
 
 // use drogue's well known endpoint to retrieve endpoints.
-pub fn get_drogue_services_endpoint(url: Url) -> Result<(Url, Url)> {
+pub fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
     let client = Client::new();
 
     let url = url.join(".well-known/drogue-endpoints")?;
@@ -169,6 +172,26 @@ pub fn get_drogue_services_endpoint(url: Url) -> Result<(Url, Url)> {
         url_validation(format!("{}/", sso).as_str())?,
         url_validation(format!("{}/", registry).as_str())?,
     ))
+}
+
+pub fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
+    let client = Client::new();
+    let url = format!("{}api/console/v1alpha1/info", &context.registry_url);
+    let res = client
+        .get(url)
+        .bearer_auth(&context.token.access_token().secret())
+        .send()
+        .context("Can't retrieve drogue services details")?;
+
+    let endpoints: Value = res
+        .json()
+        .context("Cannot deserialize drogue endpoints details")?;
+
+    let ws = endpoints["websocket_integration"]["url"]
+        .as_str()
+        .context("No `websocket_integration` service in drogue endpoints list")?;
+
+    Ok(url_validation(format!("{}", ws).as_str())?)
 }
 
 // use keycloak's well known endpoint to retrieve endpoints.
@@ -199,11 +222,20 @@ pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
 }
 
 pub fn log_level(matches: &ArgMatches) -> LevelFilter {
-    match matches.occurrences_of("verbose") {
+    match matches.occurrences_of(Other_flags::verbose) {
         0 => LevelFilter::Error,
-        1 => LevelFilter::Warn,
-        2 => LevelFilter::Info,
-        _ => LevelFilter::Debug,
+        1 =>  {
+            println!("Log level: WARN");
+            LevelFilter::Warn
+        },
+        2 => {
+            println!("Log level: INFO");
+            LevelFilter::Info
+        }
+        _ => {
+            println!("Log level: DEBUG");
+            LevelFilter::Debug
+        },
     }
 }
 
