@@ -361,4 +361,28 @@ mod trust_test {
             "CA key and certificate mismatch should terminate with an error."
         );
     }
+
+    #[test]
+    fn test_rsa_key_cert_load() {
+        let key_input = verify_input_key("keys/test-rsa-gen.pk8").unwrap();
+        assert!(
+            create_trust_anchor(
+                "app40",
+                None,
+                Some(key_input.1),
+                Some("256"),
+                Some(key_input.0)
+            )
+            .is_ok(),
+            "Adding custom RSA key failed."
+        );
+    }
+
+    #[test]
+    fn test_rsa_key_gen() {
+        assert!(
+            create_trust_anchor("app40", None, Some(SignAlgo::RSA), None, None).is_ok(),
+            "RSA Key generation failed."
+        );
+    }
 }
