@@ -185,8 +185,8 @@ fn exchange_token(
         .exchange_refresh_token(refresh_token_val)
         .request(http_client)
         .map_err(|e| {
-            log::debug!("{:?}", e);
-            Error::msg("Invalid refresh token.")
+            log::warn!("{:?}", e);
+            Error::msg(format!("While refreshing token : {}", e))
         })
 }
 

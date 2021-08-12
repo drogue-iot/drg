@@ -1,6 +1,6 @@
 use crate::config::{Config, Context};
-use crate::Verbs;
 use crate::Other_flags;
+use crate::Verbs;
 use anyhow::{Context as AnyhowContext, Result};
 use chrono::{Duration, Utc};
 use clap::crate_version;
@@ -191,7 +191,7 @@ pub fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
         .as_str()
         .context("No `websocket_integration` service in drogue endpoints list")?;
 
-    Ok(url_validation(format!("{}", ws).as_str())?)
+    url_validation(ws)
 }
 
 // use keycloak's well known endpoint to retrieve endpoints.
@@ -224,10 +224,10 @@ pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
 pub fn log_level(matches: &ArgMatches) -> LevelFilter {
     match matches.occurrences_of(Other_flags::verbose) {
         0 => LevelFilter::Error,
-        1 =>  {
+        1 => {
             println!("Log level: WARN");
             LevelFilter::Warn
-        },
+        }
         2 => {
             println!("Log level: INFO");
             LevelFilter::Info
@@ -235,7 +235,7 @@ pub fn log_level(matches: &ArgMatches) -> LevelFilter {
         _ => {
             println!("Log level: DEBUG");
             LevelFilter::Debug
-        },
+        }
     }
 }
 

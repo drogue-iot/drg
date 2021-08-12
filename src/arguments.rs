@@ -471,7 +471,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .subcommand(
             SubCommand::with_name(Other_commands::stream.as_ref())
                 .about("Stream application events")
-                .arg(&app_id_arg),
+                .arg(
+                    Arg::with_name(Resources::app.as_ref())
+                        .required(false)
+                        .help("The id of the application to subscribe to."),
+                ),
         )
         .get_matches()
 }
