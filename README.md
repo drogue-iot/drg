@@ -163,8 +163,16 @@ Here, `--ca-key` is the input file for root CA private key file.
         `--out` is the output file for device certificate.
         `--key-output` is the output file for device private key.
 
+### Consume events from drogue-cloud
+
+You can see the stream of events for a drogue-cloud application using :
+```
+drg stream <appId>
+# or if you have a default application set in your context :
+drg stream
+```
+
 # Roadmap
 
 In no particular order here are the following things that we would like to add to `drg` :
- * Trust anchors support
  * Json patch operations
