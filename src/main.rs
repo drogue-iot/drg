@@ -3,6 +3,7 @@ mod arguments;
 mod config;
 mod devices;
 mod openid;
+mod stream;
 mod trust;
 mod util;
 
@@ -133,6 +134,14 @@ fn main() -> Result<()> {
             openid::print_whoami(&context);
             util::print_version(&Ok(config));
         }
+        exit(0)
+    }
+
+    if command == Other_commands::stream.as_ref() {
+        let (_, matches) = matches.subcommand();
+        let app_id = arguments::get_app_id(&matches.unwrap(), &context)?;
+
+        stream::stream_app(&context, &app_id)?;
         exit(0)
     }
 

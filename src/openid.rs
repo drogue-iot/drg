@@ -27,7 +27,7 @@ pub fn login(
 ) -> Result<Context> {
     log::info!("Starting authentication process with {}", api_endpoint);
 
-    let (sso_url, registry_url) = util::get_drogue_services_endpoint(api_endpoint.clone())?;
+    let (sso_url, registry_url) = util::get_drogue_services_endpoints(api_endpoint.clone())?;
     let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
 
     let token = match refresh_token_val {
@@ -185,8 +185,8 @@ fn exchange_token(
         .exchange_refresh_token(refresh_token_val)
         .request(http_client)
         .map_err(|e| {
-            log::debug!("{:?}", e);
-            Error::msg("Invalid refresh token.")
+            log::warn!("{:?}", e);
+            Error::msg(format!("While refreshing token : {}", e))
         })
 }
 
