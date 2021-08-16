@@ -249,12 +249,13 @@ fn verify_public_key(ca_cert: &str, local_cert: &[u8]) -> Result<()> {
         .subject_public_key
         .data;
 
-    ca_public_key
-        .eq(local_public_key)
-        .then(|| ())
-        .ok_or(anyhow!(
+    if ca_public_key.eq(local_public_key) {
+        Ok(())
+    } else {
+        Err(anyhow!(
             "Invalid CA key: trust anchor and private key mismatch"
         ))
+    }
 }
 
 fn write_to_file(file_name: &str, content: &str, resource_type: &str) {

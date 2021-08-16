@@ -296,17 +296,15 @@ pub fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
     let endpoints = endpoints.as_object().unwrap();
 
     if let Some(service) = service {
-        let details = endpoints.get(service).ok_or(anyhow!("Service not found in endpoints list."))?;
+        let details = endpoints
+            .get(service)
+            .ok_or_else(|| anyhow!("Service not found in endpoints list."))?;
         let (host, port) = deserialize_endpoint(details);
 
         println!("{}{}", host.unwrap(), port);
     } else {
         let mut table = Table::new("{:<} {:<}");
-        table.add_row(
-            Row::new()
-                .with_cell("NAME")
-                .with_cell("URL")
-        );
+        table.add_row(Row::new().with_cell("NAME").with_cell("URL"));
 
         for (name, details) in endpoints {
             let (host, port) = deserialize_endpoint(details);
@@ -314,7 +312,7 @@ pub fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
                 table.add_row(
                     Row::new()
                         .with_cell(name)
-                        .with_cell(format!("{}{}", h, port))
+                        .with_cell(format!("{}{}", h, port)),
                 )
             });
         }
@@ -328,7 +326,9 @@ fn deserialize_endpoint(details: &Value) -> (Option<String>, String) {
     let (host, port) = match details {
         serde_string(s) => (Some(s.clone()), None),
         Value::Object(v) => (
-            v.get("url").or(v.get("host")).map(|h| h.as_str().unwrap().to_string()),
+            v.get("url")
+                .or_else(|| v.get("host"))
+                .map(|h| h.as_str().unwrap().to_string()),
             v.get("port").map(|s| s.as_i64().unwrap()),
         ),
         _ => (None, None),

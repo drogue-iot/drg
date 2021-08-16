@@ -1,11 +1,11 @@
 use crate::{trust, util, AppId};
 
+use crate::arguments::Other_commands::endpoints;
 use crate::config::Context;
 use anyhow::{anyhow, Result};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
-use crate::arguments::Other_commands::endpoints;
 
 #[derive(AsRefStr, EnumString)]
 #[allow(non_camel_case_types)]
@@ -411,10 +411,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .conflicts_with(endpoints.as_ref()),
                 )
                 .arg(&endpoints_arg)
-                .arg(Arg::with_name("endpoint_name")
-                    .required(false)
-                    .takes_value(true)
-                    .help("The name of a specific drogue-cloud service. Omit to get a list."))
+                .arg(
+                    Arg::with_name("endpoint_name")
+                        .required(false)
+                        .takes_value(true)
+                        .help("The name of a specific drogue-cloud service. Omit to get a list."),
+                ),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())
