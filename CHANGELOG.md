@@ -6,6 +6,7 @@
  - Added a `set` operation to easily add credentials or a gateway to a device. 
  - Devices and apps can now be listed if not ID is specified :  `drg get apps` will list existing apps. 
  Plural and singular forms of a resource can be used interchangeably.
+ - Endpoints information in whoami -e. It's also possible to specify a service name to get only the url.
  
  
 ## Bug fixes
