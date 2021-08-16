@@ -5,6 +5,7 @@ use anyhow::{anyhow, Result};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
+use crate::arguments::Other_commands::endpoints;
 
 #[derive(AsRefStr, EnumString)]
 #[allow(non_camel_case_types)]
@@ -406,7 +407,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     token_arg
                         .clone()
                         .takes_value(false)
-                        .help("print a valid bearer token for the drogue cloud instance."),
+                        .help("print a valid bearer token for the drogue cloud instance.")
+                        .conflicts_with(endpoints.as_ref()),
                 )
                 .arg(&endpoints_arg),
         )
