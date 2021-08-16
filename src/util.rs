@@ -1,7 +1,7 @@
 use crate::config::{Config, Context};
 use crate::Other_flags;
 use crate::Verbs;
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::{anyhow, Context as AnyhowContext, Result};
 use chrono::{Duration, Utc};
 use clap::crate_version;
 use clap::ArgMatches;
@@ -291,39 +291,49 @@ pub fn age(str_timestamp: &str) -> Result<String> {
     }
 }
 
-pub fn print_endpoints(context: &Context) -> Result<()> {
+pub fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
     let endpoints = get_drogue_endpoints_authenticated(context)?;
     let endpoints = endpoints.as_object().unwrap();
 
-    let mut table = Table::new("{:<} {:<} {:<}");
-    table.add_row(
-        Row::new()
-            .with_cell("NAME")
-            .with_cell("URL")
-            .with_cell("PORT"),
-    );
+    if let Some(service) = service {
+        let details = endpoints.get(service).ok_or(anyhow!("Service not found in endpoints list."))?;
+        let (host, port) = deserialize_endpoint(details);
 
-    for (name, details) in endpoints {
-        let (host, port) = match details {
-            serde_string(s) => (Some(s.as_str()), None),
-            Value::Object(v) => (
-                v.get("url").or(v.get("host")).map(|h| h.as_str().unwrap()),
-                v.get("port").map(|s| s.as_i64().unwrap()),
-            ),
-            _ => (None, None),
-        };
+        println!("{}{}", host.unwrap(), port);
+    } else {
+        let mut table = Table::new("{:<} {:<}");
+        table.add_row(
+            Row::new()
+                .with_cell("NAME")
+                .with_cell("URL")
+        );
 
-        host.map(|h| {
-            table.add_row(
-                Row::new()
-                    .with_cell(name)
-                    .with_cell(h)
-                    .with_cell(port.map_or("".to_string(), |p| p.to_string())),
-            )
-        });
+        for (name, details) in endpoints {
+            let (host, port) = deserialize_endpoint(details);
+            host.map(|h| {
+                table.add_row(
+                    Row::new()
+                        .with_cell(name)
+                        .with_cell(format!("{}{}", h, port))
+                )
+            });
+        }
+        print!("{}", table);
     }
 
-    print!("{}", table);
-
     Ok(())
+}
+
+fn deserialize_endpoint(details: &Value) -> (Option<String>, String) {
+    let (host, port) = match details {
+        serde_string(s) => (Some(s.clone()), None),
+        Value::Object(v) => (
+            v.get("url").or(v.get("host")).map(|h| h.as_str().unwrap().to_string()),
+            v.get("port").map(|s| s.as_i64().unwrap()),
+        ),
+        _ => (None, None),
+    };
+
+    let port = port.map_or("".to_string(), |p| format!(":{}", p));
+    (host, port)
 }

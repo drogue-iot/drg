@@ -410,7 +410,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .help("print a valid bearer token for the drogue cloud instance.")
                         .conflicts_with(endpoints.as_ref()),
                 )
-                .arg(&endpoints_arg),
+                .arg(&endpoints_arg)
+                .arg(Arg::with_name("endpoint_name")
+                    .required(false)
+                    .takes_value(true)
+                    .help("The name of a specific drogue-cloud service. Omit to get a list."))
         )
         .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())
