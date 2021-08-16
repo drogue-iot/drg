@@ -72,6 +72,7 @@ pub enum Other_commands {
     context,
     trust,
     stream,
+    endpoints,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -159,6 +160,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .long(Other_commands::token.as_ref())
         .help("Refresh token for authentication.");
+
+    let endpoints_arg = Arg::with_name(Other_commands::endpoints.as_ref())
+        .short("e")
+        .takes_value(false)
+        .long(Other_commands::endpoints.as_ref())
+        .help("Retrieve drogue-cloud available endpoints");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
@@ -400,7 +407,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .clone()
                         .takes_value(false)
                         .help("print a valid bearer token for the drogue cloud instance."),
-                ),
+                )
+                .arg(&endpoints_arg),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())

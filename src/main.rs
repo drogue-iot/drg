@@ -128,8 +128,10 @@ fn main() -> Result<()> {
 
     if command == Other_commands::whoami.as_ref() {
         let (_, submatches) = matches.subcommand();
-        if submatches.unwrap().is_present("token") {
+        if submatches.unwrap().is_present(Other_commands::token) {
             openid::print_token(&context);
+        } else if submatches.unwrap().is_present(Other_commands::endpoints) {
+            util::print_endpoints(&context)?;
         } else {
             openid::print_whoami(&context);
             util::print_version(&Ok(config));

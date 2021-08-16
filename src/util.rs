@@ -10,11 +10,13 @@ use log::LevelFilter;
 use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
+use serde_json::Value::String as serde_string;
 use serde_json::{from_str, Value};
 use std::fs;
 use std::io::stdout;
 use std::io::{Read, Write};
 use std::process::exit;
+use tabular::{Row, Table};
 use tempfile::Builder;
 use url::Url;
 
@@ -174,7 +176,7 @@ pub fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
     ))
 }
 
-pub fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
+fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Value> {
     let client = Client::new();
     let url = format!("{}api/console/v1alpha1/info", &context.registry_url);
     let res = client
@@ -183,10 +185,12 @@ pub fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
         .send()
         .context("Can't retrieve drogue services details")?;
 
-    let endpoints: Value = res
-        .json()
-        .context("Cannot deserialize drogue endpoints details")?;
+    res.json()
+        .context("Cannot deserialize drogue endpoints details")
+}
 
+pub fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
+    let endpoints = get_drogue_endpoints_authenticated(context)?;
     let ws = endpoints["websocket_integration"]["url"]
         .as_str()
         .context("No `websocket_integration` service in drogue endpoints list")?;
@@ -285,4 +289,41 @@ pub fn age(str_timestamp: &str) -> Result<String> {
     } else {
         Ok(format!("{}s", age.num_seconds()))
     }
+}
+
+pub fn print_endpoints(context: &Context) -> Result<()> {
+    let endpoints = get_drogue_endpoints_authenticated(context)?;
+    let endpoints = endpoints.as_object().unwrap();
+
+    let mut table = Table::new("{:<} {:<} {:<}");
+    table.add_row(
+        Row::new()
+            .with_cell("NAME")
+            .with_cell("URL")
+            .with_cell("PORT"),
+    );
+
+    for (name, details) in endpoints {
+        let (host, port) = match details {
+            serde_string(s) => (Some(s.as_str()), None),
+            Value::Object(v) => (
+                v.get("url").or(v.get("host")).map(|h| h.as_str().unwrap()),
+                v.get("port").map(|s| s.as_i64().unwrap()),
+            ),
+            _ => (None, None),
+        };
+
+        host.map(|h| {
+            table.add_row(
+                Row::new()
+                    .with_cell(name)
+                    .with_cell(h)
+                    .with_cell(port.map_or("".to_string(), |p| p.to_string())),
+            )
+        });
+    }
+
+    print!("{}", table);
+
+    Ok(())
 }
