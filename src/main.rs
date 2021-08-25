@@ -15,8 +15,10 @@ use arguments::{
 
 use crate::config::{Config, ContextId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
+use json_value_merge::Merge;
 use std::process::exit;
 use std::str::FromStr;
+use serde_json::json;
 
 type AppId = String;
 type DeviceId = String;
@@ -190,7 +192,7 @@ fn main() -> Result<()> {
                     .unwrap()
                     .to_string();
 
-                let device_id = &command
+                let device_id = command
                     .unwrap()
                     .value_of(&Resources::device)
                     .unwrap()
@@ -213,6 +215,10 @@ fn main() -> Result<()> {
                     days,
                     key_input,
                 )
+                .and_then(|_| {
+                    let alias = format!("CN={}, O=Drogue IoT, OU={}", device_id, app_id);
+                    devices::add_alias(&context, app_id, device_id, alias)
+                })
             }
         }?;
         exit(0);
@@ -225,7 +231,7 @@ fn main() -> Result<()> {
     match verb? {
         Verbs::create => {
             let (res, command) = cmd.subcommand();
-            let data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
+            let mut data = util::json_parse(command.unwrap().value_of(Parameters::spec))?;
             let id = command
                 .unwrap()
                 .value_of(Parameters::id)
@@ -240,11 +246,15 @@ fn main() -> Result<()> {
                 Resources::device => {
                     let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
 
-                    let id = if command.unwrap().is_present(&Other_flags::cert) {
-                        format!("CN={}, O=Drogue IoT, OU={}", id, app_id)
-                    } else {
-                        id
-                    };
+                    // add an alias with the correct subject dn.
+                    if command.unwrap().is_present(&Other_flags::cert) {
+                        let alias = format!("CN={}, O=Drogue IoT, OU={}", id, app_id);
+                        let alias_spec = json!([
+                              alias
+                            ]
+                        );
+                        data.merge_in("/alias/aliases", alias_spec)
+                    }
 
                     devices::create(&context, id, data, app_id, file)
                 }
@@ -337,6 +347,9 @@ fn main() -> Result<()> {
                 Set_targets::password => {
                     let username = command.unwrap().value_of(Set_args::username);
                     devices::set_password(&context, app_id, device as DeviceId, value, username)?;
+                }
+                Set_targets::alias => {
+                    devices::add_alias(&context, app_id, device as DeviceId, value)?;
                 }
             }
         }

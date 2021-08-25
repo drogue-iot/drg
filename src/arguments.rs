@@ -23,6 +23,7 @@ pub enum Verbs {
 pub enum Set_targets {
     gateway,
     password,
+    alias,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -118,6 +119,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .multiple(true)
         .number_of_values(2)
         .value_names(&["device","value"])
+        //fixme
         .help("For gateway value is the device id of the gateway, for setting a password credential, value is the password");
 
     let cmd_arg = Arg::with_name(Verbs::cmd.as_ref())
@@ -402,6 +404,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .arg(&set_arg)
                         .arg(&app_id_arg)
                         .arg(&set_password_username),
+                )
+                .subcommand(
+                    SubCommand::with_name(Set_targets::alias.as_ref())
+                        .about("Add an alias for a device")
+                        .arg(&set_arg)
+                        .arg(&app_id_arg),
                 ),
         )
         .subcommand(

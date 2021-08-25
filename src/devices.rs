@@ -180,6 +180,24 @@ pub fn set_password(
     set(config, app, device_id, data)
 }
 
+pub fn add_alias(
+    config: &Context,
+    app: AppId,
+    device_id: DeviceId,
+    new_alias: String,
+) -> Result<()> {
+    // prepare json data to merge
+    let data = json!({"spec": {
+    "alias": {
+        "aliases": [
+          new_alias
+        ]
+    }
+    }});
+
+    set(config, app, device_id, data)
+}
+
 // The "set" operation merges the data with what already exists on the server side
 fn set(config: &Context, app: AppId, device_id: DeviceId, data: Value) -> Result<()> {
     //read device data
