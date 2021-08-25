@@ -16,9 +16,9 @@ use arguments::{
 use crate::config::{Config, ContextId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use json_value_merge::Merge;
+use serde_json::json;
 use std::process::exit;
 use std::str::FromStr;
-use serde_json::json;
 
 type AppId = String;
 type DeviceId = String;
@@ -249,10 +249,7 @@ fn main() -> Result<()> {
                     // add an alias with the correct subject dn.
                     if command.unwrap().is_present(&Other_flags::cert) {
                         let alias = format!("CN={}, O=Drogue IoT, OU={}", id, app_id);
-                        let alias_spec = json!([
-                              alias
-                            ]
-                        );
+                        let alias_spec = json!([alias]);
                         data.merge_in("/alias/aliases", alias_spec)
                     }
 
