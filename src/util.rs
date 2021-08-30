@@ -22,7 +22,8 @@ use url::Url;
 
 pub const VERSION: &str = crate_version!();
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.5.0";
-pub const API_PATH: &str = "api/registry/v1alpha1";
+pub const REGISTRY_API_PATH: &str = "api/registry/v1alpha1";
+pub const COMMAND_API_PATH: &str = "api/command/v1alpha1";
 
 pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     match op {
@@ -42,6 +43,8 @@ pub fn print_result(r: Response, resource_name: String, op: Verbs) {
             StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
             r => exit_with_code(r),
         },
+        //should never happen.
+        Verbs::cmd => {}
     }
 }
 

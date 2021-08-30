@@ -18,7 +18,7 @@ fn craft_url(base: &Url, app_id: &str, device_id: Option<&str>) -> String {
     format!(
         "{}{}/apps/{}/devices{}",
         base,
-        util::API_PATH,
+        util::REGISTRY_API_PATH,
         app_id,
         device
     )

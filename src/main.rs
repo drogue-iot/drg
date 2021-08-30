@@ -1,5 +1,6 @@
 mod apps;
 mod arguments;
+mod command;
 mod config;
 mod devices;
 mod openid;
@@ -322,14 +323,14 @@ fn main() -> Result<()> {
             }
         }
         Verbs::set => {
-            let (res, command) = cmd.subcommand();
+            let (target, command) = cmd.subcommand();
             let args: Vec<&str> = command.unwrap().values_of(Verbs::set).unwrap().collect();
 
             // clap already makes sure vals contains two values
             let (device, value) = (args[0].to_string(), args[1].to_string());
             let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
 
-            match Set_targets::from_str(res)? {
+            match Set_targets::from_str(target)? {
                 Set_targets::gateway => {
                     devices::set_gateway(&context, app_id, device as DeviceId, value)?;
                 }
@@ -338,6 +339,14 @@ fn main() -> Result<()> {
                     devices::set_password(&context, app_id, device as DeviceId, value, username)?;
                 }
             }
+        }
+        Verbs::cmd => {
+            let args: Vec<&str> = cmd.values_of(Verbs::cmd).unwrap().collect();
+            let app_id = arguments::get_app_id(&cmd, &context)?;
+            let body = util::json_parse(cmd.value_of(Parameters::payload))?;
+            let (command, device) = (args[0], args[1]);
+
+            command::send_command(&context, app_id.as_str(), device, command, body)?;
         }
     }
 
