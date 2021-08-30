@@ -343,8 +343,12 @@ fn main() -> Result<()> {
         Verbs::cmd => {
             let args: Vec<&str> = cmd.values_of(Verbs::cmd).unwrap().collect();
             let app_id = arguments::get_app_id(&cmd, &context)?;
-            let body = util::json_parse(cmd.value_of(Parameters::payload))?;
             let (command, device) = (args[0], args[1]);
+
+            let body = match cmd.value_of(Parameters::filename) {
+                Some(f) => util::get_data_from_file(f)?,
+                None => util::json_parse(cmd.value_of(Parameters::payload))?,
+            };
 
             command::send_command(&context, app_id.as_str(), device, command, body)?;
         }

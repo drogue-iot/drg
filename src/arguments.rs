@@ -410,8 +410,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .arg(&cmd_arg)
                 .arg(&app_id_arg)
-                .arg(&payload_arg), //todo support importing a file
-                                    //.arg(&file_arg)
+                .arg(&payload_arg)
+                .arg(
+                    file_arg
+                        .clone()
+                        .conflicts_with(Parameters::payload.as_ref())
+                        .help("File containing the command payload as a JSON object."),
+                ),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::version.as_ref())
