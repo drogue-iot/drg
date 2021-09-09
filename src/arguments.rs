@@ -182,8 +182,12 @@ pub fn parse_arguments() -> ArgMatches<'static> {
     let endpoints_arg = Arg::with_name(Other_commands::endpoints.as_ref())
         .short("e")
         .takes_value(false)
-        .long(Other_commands::endpoints.as_ref())
-        .help("Retrieve drogue-cloud available endpoints");
+        .required(false)
+        .help("Get drogue-cloud available endpoints. Optionally, specify and endpoint name to get only it's address.")
+        .value_name("endpoint_name")
+        .default_value("*")
+        .hide_default_value(true)
+        .long(Other_commands::endpoints.as_ref());
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
@@ -452,6 +456,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     Arg::with_name("endpoint_name")
                         .required(false)
                         .takes_value(true)
+                        .hidden(true)
                         .help("The name of a specific drogue-cloud service. Omit to get a list."),
                 ),
         )

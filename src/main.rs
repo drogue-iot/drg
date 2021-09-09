@@ -134,7 +134,10 @@ fn main() -> Result<()> {
         if submatches.unwrap().is_present(Other_commands::token) {
             openid::print_token(&context);
         } else if submatches.unwrap().is_present(Other_commands::endpoints) {
-            let service = submatches.unwrap().value_of("endpoint_name");
+            let service = match submatches.unwrap().value_of(Other_commands::endpoints) {
+                Some("*") => None,
+                s => s,
+            };
             util::print_endpoints(&context, service)?;
         } else {
             openid::print_whoami(&context);
