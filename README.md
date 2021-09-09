@@ -110,9 +110,10 @@ Note: `list` support adding labels for filtering results:
     # Delete a device 
     drg delete device <deviceId> - <appId>
     
-    # Quickly add a gateway and credentials to a device
+    # Quickly add a gateway, credentials or alias to a device
     drg set gateway foo bar # set device bar as a gateway for device foo
     drg set password foo verysecret --username johndoe #username is optional here
+    drg set alias foo waldo # Add waldo as an alias for device foo.
 
 ### Send commands to devices
 
@@ -171,6 +172,14 @@ Once Trust-anchor is set, we can use it to sign device certificates, for example
 Here, `--ca-key` is the input file for root CA private key file.
         `--out` is the output file for device certificate.
         `--key-output` is the output file for device private key.
+
+When a device certificate is signed, the common name of the certificate will be added for the device. so the certificate can be used for authentication. 
+
+If you know from the get go that you will use a certificate for a deviice you can create it with the `--cert flag:
+```
+drg create device foo --cert
+```
+This will create an alias : "CN=<deviceId>, O=Drogue IoT, OU=<appId>" for the device. 
 
 ### Consume events from drogue-cloud
 
