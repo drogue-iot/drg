@@ -154,7 +154,10 @@ fn main() -> Result<()> {
     if command == Other_commands::trust.as_ref() {
         let (v, command) = submatches.unwrap().subcommand();
         let verb = Trust_subcommands::from_str(v);
-        let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+        let id = command
+            .unwrap()
+            .value_of(Parameters::id)
+            .map(|s| s.to_string());
         let days = command.unwrap().value_of(&Parameters::days);
         let key_pair_algorithm = command
             .unwrap()
@@ -176,6 +179,15 @@ fn main() -> Result<()> {
         match verb? {
             Trust_subcommands::create => {
                 let keyout = command.unwrap().value_of(&Parameters::key_output);
+                let app_id = id.unwrap_or_else(|| {
+                    arguments::get_app_id(&command.unwrap(), &context)
+                        .map_err(|e| {
+                            log::error!("{}", e);
+                            exit(1)
+                        })
+                        .unwrap()
+                });
+
                 apps::add_trust_anchor(
                     &context,
                     &app_id,
@@ -185,16 +197,13 @@ fn main() -> Result<()> {
                     key_input,
                 )
             }
-            Trust_subcommands::add => {
+            Trust_subcommands::enroll => {
+                let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                let device_id = &id.unwrap();
+
                 let ca_key = &command
                     .unwrap()
                     .value_of(&Parameters::ca_key)
-                    .unwrap()
-                    .to_string();
-
-                let device_id = command
-                    .unwrap()
-                    .value_of(&Resources::device)
                     .unwrap()
                     .to_string();
 
@@ -217,7 +226,7 @@ fn main() -> Result<()> {
                 )
                 .and_then(|_| {
                     let alias = format!("CN={}, O=Drogue IoT, OU={}", device_id, app_id);
-                    devices::add_alias(&context, app_id, device_id, alias)
+                    devices::add_alias(&context, app_id, device_id.to_string(), alias)
                 })
             }
         }?;
