@@ -13,7 +13,7 @@ fn craft_url(base: &Url, app_id: Option<&str>) -> String {
         Some(app) => format!("/{}", app),
         None => String::new(),
     };
-    format!("{}{}/apps{}", base, util::API_PATH, app)
+    format!("{}{}/apps{}", base, util::REGISTRY_API_PATH, app)
 }
 
 pub fn create(

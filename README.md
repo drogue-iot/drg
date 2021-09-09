@@ -114,6 +114,15 @@ Note: `list` support adding labels for filtering results:
     drg set gateway foo bar # set device bar as a gateway for device foo
     drg set password foo verysecret --username johndoe #username is optional here
 
+### Send commands to devices
+
+    # Using the context default app
+    drg cmd <command> <deviceId>
+    # Specifying the app and an opionnal payload
+    drg cmd <command> <deviceId> -a myApp -p '{"foo":"bar"}'
+    # Reading the payload from a file 
+    drg cmd <command> <deviceId> -a myApp -f /path/to/json
+
 ## Configuration file
 
 `drg` will load cluster settings from the default context of a configuration file. The `DRGCFG` environment variable can point to a config file location.

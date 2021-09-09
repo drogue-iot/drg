@@ -15,6 +15,7 @@ pub enum Verbs {
     edit,
     get,
     set,
+    cmd,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -61,6 +62,7 @@ pub enum Parameters {
     algo,
     #[strum(serialize = "key-input")]
     key_input,
+    payload,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -118,6 +120,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .value_names(&["device","value"])
         .help("For gateway value is the device id of the gateway, for setting a password credential, value is the password");
 
+    let cmd_arg = Arg::with_name(Verbs::cmd.as_ref())
+        .required(true)
+        .multiple(true)
+        .number_of_values(2)
+        .value_names(&["command", "device"])
+        .help("Send the <command> to the <device>");
+
     let url_arg = Arg::with_name(Parameters::url.as_ref())
         .required(true)
         .value_name("URL")
@@ -141,9 +150,15 @@ pub fn parse_arguments() -> ArgMatches<'static> {
     let spec_arg = Arg::with_name(Parameters::spec.as_ref())
         .short("s")
         .long(Parameters::spec.as_ref())
-        .alias("data")
         .takes_value(true)
         .help("The spec for the resource. --data is deprecated.");
+
+    let payload_arg = Arg::with_name(Parameters::payload.as_ref())
+        .short("p")
+        .long(Parameters::payload.as_ref())
+        .takes_value(true)
+        .required(false)
+        .help("The command body, as a JSON value.");
 
     let file_arg = Arg::with_name(Parameters::filename.as_ref())
         .short("f")
@@ -214,7 +229,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .long(Parameters::key_output.as_ref())
         .help("Generate and Output file containing the private key. Later to be used to sign device certificates, or device authentication.");
 
-    let device_id_arg = Arg::with_name(&Resources::device.as_ref())
+    let device_id_flag = Arg::with_name(&Resources::device.as_ref())
         .short("d")
         .required(true)
         .long(&Resources::device.as_ref())
@@ -390,6 +405,20 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 ),
         )
         .subcommand(
+            SubCommand::with_name(Verbs::cmd.as_ref())
+                .about("Send a command to a device")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .arg(&cmd_arg)
+                .arg(&app_id_arg)
+                .arg(&payload_arg)
+                .arg(
+                    file_arg
+                        .clone()
+                        .conflicts_with(Parameters::payload.as_ref())
+                        .help("File containing the command payload as a JSON object."),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name(Other_commands::version.as_ref())
                 .about("Print version information."),
         )
@@ -444,7 +473,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .subcommand(
                     SubCommand::with_name(Context_subcommands::delete.as_ref())
                         .alias("remove")
-                        .about("Set a context as the active context")
+                        .about("Delete a context")
                         .arg(&context_id_arg),
                 )
                 .subcommand(
@@ -485,7 +514,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     SubCommand::with_name(Trust_subcommands::add.as_ref())
                         .about("Signs device certificate using application's private key.")
                         .arg(&app_id_arg)
-                        .arg(&device_id_arg)
+                        .arg(&device_id_flag)
                         .arg(&ca_key)
                         .arg(&cert_out)
                         .arg(&keyout)
