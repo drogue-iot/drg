@@ -99,7 +99,7 @@ pub enum Context_subcommands {
 #[allow(non_camel_case_types)]
 pub enum Trust_subcommands {
     create,
-    add,
+    enroll,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -234,13 +234,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .required(false)
         .long(Parameters::key_output.as_ref())
         .help("Generate and Output file containing the private key. Later to be used to sign device certificates, or device authentication.");
-
-    let device_id_flag = Arg::with_name(&Resources::device.as_ref())
-        .short("d")
-        .required(true)
-        .long(&Resources::device.as_ref())
-        .takes_value(true)
-        .help("Device id");
 
     let ca_key = Arg::with_name(&Parameters::ca_key.as_ref())
         .long(&Parameters::ca_key.as_ref())
@@ -510,17 +503,17 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                 .subcommand(
                     SubCommand::with_name(Trust_subcommands::create.as_ref())
                         .about("Create a trust-anchor for an application.")
-                        .arg(&app_id_arg)
+                        .arg(&resource_id_arg.clone().required(false))
                         .arg(&keyout)
                         .arg(&key_pair_algorithm)
                         .arg(&cert_valid_days)
                         .arg(&key_input),
                 )
                 .subcommand(
-                    SubCommand::with_name(Trust_subcommands::add.as_ref())
+                    SubCommand::with_name(Trust_subcommands::enroll.as_ref())
                         .about("Signs device certificate using application's private key.")
+                        .arg(&resource_id_arg)
                         .arg(&app_id_arg)
-                        .arg(&device_id_flag)
                         .arg(&ca_key)
                         .arg(&cert_out)
                         .arg(&keyout)
