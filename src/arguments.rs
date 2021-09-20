@@ -107,12 +107,14 @@ pub enum Trust_subcommands {
 pub enum Other_flags {
     verbose,
     cert,
+    #[strum(serialize = "ignore-missing")]
+    ignore_missing,
 }
 
 pub fn parse_arguments() -> ArgMatches<'static> {
     let resource_id_arg = Arg::with_name(Parameters::id.as_ref())
         .required(true)
-        .help("The unique id of the resource.");
+                        .help("The unique id of the resource.");
 
     let set_arg = Arg::with_name(Verbs::set.as_ref())
         .required(true)
@@ -203,6 +205,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .multiple(true)
         .global(true)
         .help("Enable verbose output. Multiple occurrences increase verbosity.");
+
+    let ignore_missing = Arg::with_name(Other_flags::ignore_missing.as_ref())
+        .long(Other_flags::ignore_missing.as_ref())
+        .takes_value(false)
+        .multiple(false)
+        .global(false)
+        .help("Silence the error if the resource does not exist.");
 
     let context_arg = Arg::with_name(Parameters::context.as_ref())
         .long(Parameters::context.as_ref())
@@ -327,12 +336,14 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     SubCommand::with_name(Resources::device.as_ref())
                         .about("delete a device.")
                         .arg(&resource_id_arg)
-                        .arg(&app_id_arg),
+                        .arg(&app_id_arg)
+                        .arg(&ignore_missing)
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("delete an app.")
-                        .arg(&resource_id_arg),
+                        .arg(&resource_id_arg)
+                        .arg(&ignore_missing)
                 ),
         )
         .subcommand(
