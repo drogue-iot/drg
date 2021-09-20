@@ -279,16 +279,23 @@ fn main() -> Result<()> {
                 .unwrap()
                 .to_string();
             let resource = Resources::from_str(res);
+            let ignore_missing = command
+                .unwrap()
+                .is_present(Other_flags::ignore_missing);
 
             match resource? {
-                Resources::app => apps::delete(&context, id),
+                Resources::app => apps::delete(&context, id, ignore_missing),
                 Resources::device => {
                     let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-                    devices::delete(&context, app_id, id)
+                    devices::delete(&context, app_id, id, ignore_missing)
                 }
                 // ignore apps and devices keywords
                 _ => Err(anyhow!("Cannot delete multiple resources")),
-            }?;
+            }.map_err(|e| {
+                println!("yolo");
+                println!("{:?}", e);
+                e
+            })?;
         }
         Verbs::edit => {
             let (res, command) = cmd.subcommand();

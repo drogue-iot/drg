@@ -24,7 +24,7 @@ fn craft_url(base: &Url, app_id: &str, device_id: Option<&str>) -> String {
     )
 }
 
-pub fn delete(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
+pub fn delete(config: &Context, app: AppId, device_id: DeviceId, ignore_missing: bool) -> Result<()> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, &app, Some(&device_id));
 
@@ -33,7 +33,13 @@ pub fn delete(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
         .bearer_auth(&config.token.access_token().secret())
         .send()
         .context("Can't delete device.")
-        .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::delete))
+        .map(|res| {
+            if ignore_missing && res.status() == StatusCode::NOT_FOUND {
+                exit(0);
+            } else {
+                util::print_result(res, format!("Device {}", device_id), Verbs::delete)
+            }
+        })
 }
 
 pub fn read(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {

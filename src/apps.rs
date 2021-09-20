@@ -50,7 +50,7 @@ pub fn read(config: &Context, app: AppId) -> Result<()> {
     get(config, &app).map(|res| util::print_result(res, app.to_string(), Verbs::get))
 }
 
-pub fn delete(config: &Context, app: AppId) -> Result<()> {
+pub fn delete(config: &Context, app: AppId, ignore_missing: bool) -> Result<()> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, Some(&app));
 
@@ -59,7 +59,14 @@ pub fn delete(config: &Context, app: AppId) -> Result<()> {
         .bearer_auth(&config.token.access_token().secret())
         .send()
         .context("Can't get app.")
-        .map(|res| util::print_result(res, format!("App {}", &app), Verbs::delete))
+        .map(|res| {
+            if ignore_missing && res.status() == StatusCode::NOT_FOUND {
+                exit(0);
+            }
+         else {
+             util::print_result(res, format!("App {}", &app), Verbs::delete)
+         }
+        })
 }
 
 pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
