@@ -6,11 +6,11 @@ use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exi
 
 use crate::AppId;
 use chrono::{DateTime, Utc};
+use core::fmt;
 use dirs::config_dir;
 use oauth2::basic::BasicTokenResponse;
 use tabular::{Row, Table};
 use url::Url;
-use core::fmt;
 
 pub type ContextId = String;
 
@@ -42,7 +42,7 @@ impl Config {
         Config {
             active_context: String::new(),
             contexts: Vec::new(),
-//            active_ctx_ref: None,
+            //            active_ctx_ref: None,
         }
     }
     pub fn from(path: Option<&str>) -> Result<Config> {
@@ -55,7 +55,7 @@ impl Config {
         let config: Config =
             serde_yaml::from_reader(file).context("Invalid configuration file.")?;
 
- //       config.active_ctx_ref = config.get_active_context().ok();
+        //       config.active_ctx_ref = config.get_active_context().ok();
         Ok(config)
     }
 
@@ -219,7 +219,12 @@ impl Config {
 
 impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", serde_yaml::to_string(&self).unwrap_or("Cannot deserialize the config. The file may be corrupted.".to_string()))
+        write!(
+            f,
+            "{}",
+            serde_yaml::to_string(&self)
+                .unwrap_or("Cannot deserialize the config. The file may be corrupted.".to_string())
+        )
     }
 }
 

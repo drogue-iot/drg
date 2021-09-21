@@ -327,13 +327,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .about("delete a device.")
                         .arg(&resource_id_arg)
                         .arg(&app_id_arg)
-                        .arg(&ignore_missing)
+                        .arg(&ignore_missing),
                 )
                 .subcommand(
                     SubCommand::with_name(Resources::app.as_ref())
                         .about("delete an app.")
                         .arg(&resource_id_arg)
-                        .arg(&ignore_missing)
+                        .arg(&ignore_missing),
                 ),
         )
         .subcommand(
@@ -449,13 +449,14 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     SubCommand::with_name(Other_commands::endpoints.as_ref())
                         .about("List drogue-cloud available endpoints.")
                         .aliases(&["-e", "endpoint", "--endpoints"])
-                        .arg( Arg::with_name(Other_commands::endpoints.as_ref())
-                            .takes_value(true)
-                            .required(false)
-                            .help("Specify an endpoint name to get only it's address.")
-                            .value_name("endpoint_name")
-                        )
-                )
+                        .arg(
+                            Arg::with_name(Other_commands::endpoints.as_ref())
+                                .takes_value(true)
+                                .required(false)
+                                .help("Specify an endpoint name to get only it's address.")
+                                .value_name("endpoint_name"),
+                        ),
+                ),
         )
         .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())

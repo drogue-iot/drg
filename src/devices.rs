@@ -24,7 +24,12 @@ fn craft_url(base: &Url, app_id: &str, device_id: Option<&str>) -> String {
     )
 }
 
-pub fn delete(config: &Context, app: AppId, device_id: DeviceId, ignore_missing: bool) -> Result<()> {
+pub fn delete(
+    config: &Context,
+    app: AppId,
+    device_id: DeviceId,
+    ignore_missing: bool,
+) -> Result<()> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, &app, Some(&device_id));
 

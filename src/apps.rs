@@ -62,10 +62,9 @@ pub fn delete(config: &Context, app: AppId, ignore_missing: bool) -> Result<()> 
         .map(|res| {
             if ignore_missing && res.status() == StatusCode::NOT_FOUND {
                 exit(0);
+            } else {
+                util::print_result(res, format!("App {}", &app), Verbs::delete)
             }
-         else {
-             util::print_result(res, format!("App {}", &app), Verbs::delete)
-         }
         })
 }
 
