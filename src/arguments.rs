@@ -113,7 +113,7 @@ pub enum Other_flags {
 pub fn parse_arguments() -> ArgMatches<'static> {
     let resource_id_arg = Arg::with_name(Parameters::id.as_ref())
         .required(true)
-                        .help("The unique id of the resource.");
+        .help("The unique id of the resource.");
 
     let set_arg = Arg::with_name(Verbs::set.as_ref())
         .required(true)
@@ -151,6 +151,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .help("The app owning the device. Can be set with DRG_APP environment variable.");
 
     let spec_arg = Arg::with_name(Parameters::spec.as_ref())
+        .alias("data")
         .short("s")
         .long(Parameters::spec.as_ref())
         .takes_value(true)

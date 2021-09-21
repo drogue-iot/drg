@@ -21,4 +21,5 @@
 
 ## Deprecations
  - `drg token` is removed. Please use `drg whoami --token`
+ - `--data` argument is deprecated. Use `--spec` instead.
  
