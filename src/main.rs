@@ -84,7 +84,7 @@ fn main() -> Result<()> {
                 config.list_contexts();
             }
             Context_subcommands::show => {
-                config.show()?;
+                println!("{}", config);
             }
             Context_subcommands::set_active => {
                 config.set_active_context(ctx_id.unwrap())?;
@@ -131,10 +131,11 @@ fn main() -> Result<()> {
 
     if command == Other_commands::whoami.as_ref() {
         let (_, submatches) = matches.subcommand();
+        let (_, endpoints_matches) = submatches.map(|s| s.subcommand()).unwrap_or(("", None));
         if submatches.unwrap().is_present(Other_commands::token) {
             openid::print_token(&context);
-        } else if submatches.unwrap().is_present(Other_commands::endpoints) {
-            let service = match submatches.unwrap().value_of(Other_commands::endpoints) {
+        } else if let Some(endpoints_matches) = endpoints_matches {
+            let service = match endpoints_matches.value_of(Other_commands::endpoints) {
                 Some("*") => None,
                 s => s,
             };
@@ -291,11 +292,7 @@ fn main() -> Result<()> {
                 }
                 // ignore apps and devices keywords
                 _ => Err(anyhow!("Cannot delete multiple resources")),
-            }.map_err(|e| {
-                println!("yolo");
-                println!("{:?}", e);
-                e
-            })?;
+            }?;
         }
         Verbs::edit => {
             let (res, command) = cmd.subcommand();

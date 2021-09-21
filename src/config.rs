@@ -10,6 +10,7 @@ use dirs::config_dir;
 use oauth2::basic::BasicTokenResponse;
 use tabular::{Row, Table};
 use url::Url;
+use core::fmt;
 
 pub type ContextId = String;
 
@@ -20,7 +21,7 @@ pub struct Config {
     //todo : when loading, put a ref to the active context for faster access
     // to avoid looping through the contexts each time.
     // #[serde(skip)]
-    // active_ctx_ref: &Context
+    // active_ctx_ref: Option<&Context>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,6 +42,7 @@ impl Config {
         Config {
             active_context: String::new(),
             contexts: Vec::new(),
+//            active_ctx_ref: None,
         }
     }
     pub fn from(path: Option<&str>) -> Result<Config> {
@@ -53,6 +55,7 @@ impl Config {
         let config: Config =
             serde_yaml::from_reader(file).context("Invalid configuration file.")?;
 
+ //       config.active_ctx_ref = config.get_active_context().ok();
         Ok(config)
     }
 
@@ -212,11 +215,11 @@ impl Config {
             Err(anyhow!("Context {} does not exist in config file.", name))
         }
     }
+}
 
-    //todo implement a display Trait ?
-    pub fn show(&self) -> Result<()> {
-        println!("{}", serde_yaml::to_string(&self)?);
-        Ok(())
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_yaml::to_string(&self).unwrap_or("Cannot deserialize the config. The file may be corrupted.".to_string()))
     }
 }
 

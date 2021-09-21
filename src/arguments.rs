@@ -1,6 +1,5 @@
 use crate::{trust, util, AppId};
 
-use crate::arguments::Other_commands::endpoints;
 use crate::config::Context;
 use anyhow::{anyhow, Result};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
@@ -180,16 +179,6 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .long(Other_commands::token.as_ref())
         .help("Refresh token for authentication.");
-
-    let endpoints_arg = Arg::with_name(Other_commands::endpoints.as_ref())
-        .short("e")
-        .takes_value(false)
-        .required(false)
-        .help("Get drogue-cloud available endpoints. Optionally, specify and endpoint name to get only it's address.")
-        .value_name("endpoint_name")
-        .default_value("*")
-        .hide_default_value(true)
-        .long(Other_commands::endpoints.as_ref());
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
@@ -453,9 +442,19 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .clone()
                         .takes_value(false)
                         .help("print a valid bearer token for the drogue cloud instance.")
-                        .conflicts_with(endpoints.as_ref()),
+                        .conflicts_with(Other_commands::endpoints.as_ref()),
                 )
-                .arg(&endpoints_arg),
+                .subcommand(
+                    SubCommand::with_name(Other_commands::endpoints.as_ref())
+                        .about("List drogue-cloud available endpoints.")
+                        .aliases(&["-e", "endpoint", "--endpoints"])
+                        .arg( Arg::with_name(Other_commands::endpoints.as_ref())
+                            .takes_value(true)
+                            .required(false)
+                            .help("Specify an endpoint name to get only it's address.")
+                            .value_name("endpoint_name")
+                        )
+                )
         )
         .subcommand(
             SubCommand::with_name(Other_commands::context.as_ref())
