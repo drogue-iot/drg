@@ -194,11 +194,9 @@ pub fn add_alias(
 ) -> Result<()> {
     // prepare json data to merge
     let data = json!({"spec": {
-    "alias": {
-        "aliases": [
+    "alias": [
           new_alias
         ]
-    }
     }});
 
     set(config, app, device_id, data)
