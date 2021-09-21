@@ -262,7 +262,7 @@ fn main() -> Result<()> {
                     if command.unwrap().is_present(&Other_flags::cert) {
                         let alias = format!("CN={}, O=Drogue IoT, OU={}", id, app_id);
                         let alias_spec = json!([alias]);
-                        data.merge_in("/alias/aliases", alias_spec)
+                        data.merge_in("/alias", alias_spec)
                     }
 
                     devices::create(&context, id, data, app_id, file)

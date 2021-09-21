@@ -7,14 +7,16 @@
  - Devices and apps can now be listed if not ID is specified :  `drg get apps` will list existing apps. 
  Plural and singular forms of a resource can be used interchangeably.
  - Endpoints information in whoami -e. It's also possible to specify a service name to get only the url.
- - Added a `cmd` subcommand to issue commands for devices using the command endpoint. 
+ - Added a `cmd` subcommand to issue commands for devices using the command endpoint.
  
 ## Bug fixes
 
 ## Misc. changes
  - Improved debug messages related to the open ID authentication flow.
  - When using `edit`, drg won't send anything to the server id there are no changes.
- - Automated builds and packaging for fedora
+ - Automated builds 
+ - packaging for fedora
+ - Add a "ignore-missing" flag to ignore 404 error when deleting a resource.
  
 
 ## Deprecations
