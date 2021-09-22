@@ -21,7 +21,7 @@ use tempfile::Builder;
 use url::Url;
 
 pub const VERSION: &str = crate_version!();
-pub const COMPATIBLE_DROGUE_VERSION: &str = "0.5.0";
+pub const COMPATIBLE_DROGUE_VERSION: &str = "0.7.0";
 pub const REGISTRY_API_PATH: &str = "api/registry/v1alpha1";
 pub const COMMAND_API_PATH: &str = "api/command/v1alpha1";
 

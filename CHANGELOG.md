@@ -1,3 +1,14 @@
+# Version 0.7.1
+
+## New features
+
+## Bug fixes
+
+## Misc. changes
+
+## Deprecations
+
+
 # Version 0.7.0
 
 ## New features
