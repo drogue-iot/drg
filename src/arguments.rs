@@ -1,3 +1,4 @@
+use crate::admin::Roles;
 use crate::{trust, util, AppId};
 
 use crate::config::Context;
@@ -63,6 +64,8 @@ pub enum Parameters {
     #[strum(serialize = "key-input")]
     key_input,
     payload,
+    role,
+    username,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -76,6 +79,7 @@ pub enum Other_commands {
     trust,
     stream,
     endpoints,
+    admin,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -99,6 +103,20 @@ pub enum Context_subcommands {
 pub enum Trust_subcommands {
     create,
     enroll,
+}
+
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Admin_subcommands {
+    member,
+}
+
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Member_subcommands {
+    add,
+    list,
+    edit,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -286,6 +304,20 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .required(false)
         .help("Input private key to be used to sign CA/device certificates.");
+
+    let roles_param = Arg::with_name(&Parameters::role.as_ref())
+        .alias("roles")
+        .long(&Parameters::role.as_ref())
+        .takes_value(true)
+        .required(true)
+        .help("Role assigned to this member")
+        .possible_value(Roles::admin.as_ref())
+        .possible_value(Roles::manager.as_ref())
+        .possible_value(Roles::reader.as_ref());
+
+    let username_arg = Arg::with_name(Parameters::username.as_ref())
+        .required(true)
+        .help("Username to which roles are assigned.");
 
     App::new("Drogue Command Line Tool")
         .version(util::VERSION)
@@ -541,6 +573,33 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     Arg::with_name(Resources::app.as_ref())
                         .required(false)
                         .help("The id of the application to subscribe to."),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name(Other_commands::admin.as_ref())
+                .about("Manage application members and autorizations.")
+                .setting(AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name(Admin_subcommands::member.as_ref())
+                        .about("Manage application members and roles")
+                        .setting(AppSettings::SubcommandRequiredElseHelp)
+                        .subcommand(
+                            SubCommand::with_name(Member_subcommands::list.as_ref())
+                                .about("List all members of the application")
+                                .arg(&resource_id_arg),
+                        )
+                        .subcommand(
+                            SubCommand::with_name(Member_subcommands::add.as_ref())
+                                .about("Add or update a member")
+                                .arg(&resource_id_arg)
+                                .arg(&username_arg)
+                                .arg(&roles_param),
+                        )
+                        .subcommand(
+                            SubCommand::with_name(Member_subcommands::edit.as_ref())
+                                .about("Edit members list")
+                                .arg(&resource_id_arg),
+                        ),
                 ),
         )
         .get_matches()
