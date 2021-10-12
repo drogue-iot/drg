@@ -1,3 +1,4 @@
+mod admin;
 mod apps;
 mod arguments;
 mod command;
@@ -13,6 +14,7 @@ use arguments::{
     Trust_subcommands, Verbs,
 };
 
+use crate::arguments::{Admin_subcommands, Member_subcommands};
 use crate::config::{Config, ContextId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use json_value_merge::Merge;
@@ -234,6 +236,42 @@ fn main() -> Result<()> {
                 })
             }
         }?;
+        exit(0);
+    }
+
+    if command == Other_commands::admin.as_ref() {
+        let (v, command) = submatches.unwrap().subcommand();
+        let verb = Admin_subcommands::from_str(v);
+
+        match verb? {
+            Admin_subcommands::member => {
+                let (cmd, subcommand) = command.unwrap().subcommand();
+                let task = Member_subcommands::from_str(cmd);
+
+                let id = subcommand
+                    .unwrap()
+                    .value_of(Parameters::id)
+                    .map(|s| s.to_string());
+
+                match task? {
+                    Member_subcommands::add => {
+                        let roles = subcommand.unwrap().value_of(Parameters::role).unwrap();
+
+                        let role = admin::Roles::from_str(roles)?;
+
+                        let user = subcommand.unwrap().value_of(Parameters::username).unwrap();
+
+                        admin::member_add(&context, &id.unwrap(), user, role)?;
+                    }
+                    Member_subcommands::list => {
+                        admin::member_list(&context, &id.unwrap())?;
+                    }
+                    Member_subcommands::edit => {
+                        admin::member_edit(&context, &id.unwrap())?;
+                    }
+                }
+            }
+        }
         exit(0);
     }
 
