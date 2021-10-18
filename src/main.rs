@@ -251,23 +251,26 @@ fn main() -> Result<()> {
                 let id = subcommand
                     .unwrap()
                     .value_of(Parameters::id)
-                    .map(|s| s.to_string());
+                    .unwrap()
+                    .to_string();
 
                 match task? {
                     Member_subcommands::add => {
-                        let roles = subcommand.unwrap().value_of(Parameters::role).unwrap();
-
-                        let role = admin::Roles::from_str(roles)?;
+                        let role = subcommand
+                            .unwrap()
+                            .value_of(Parameters::role)
+                            .map(|r| admin::Roles::from_str(r).unwrap())
+                            .unwrap();
 
                         let user = subcommand.unwrap().value_of(Parameters::username).unwrap();
 
-                        admin::member_add(&context, &id.unwrap(), user, role)?;
+                        admin::member_add(&context, &id, user, role)?;
                     }
                     Member_subcommands::list => {
-                        admin::member_list(&context, &id.unwrap())?;
+                        admin::member_list(&context, &id)?;
                     }
                     Member_subcommands::edit => {
-                        admin::member_edit(&context, &id.unwrap())?;
+                        admin::member_edit(&context, &id)?;
                     }
                 }
             }
