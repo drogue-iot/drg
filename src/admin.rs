@@ -120,7 +120,7 @@ fn describe_response(res: Response) {
             println!("Application not found.");
         }
         StatusCode::CONFLICT => {
-            println!("Conflict: In case a resource version was provided in the update, but it did not match the current version of the resource.");
+            println!("Conflict: The resource may have been modified on the server since we retrievied it.");
         }
         _ => {
             println!("Error: Can't update member list.")

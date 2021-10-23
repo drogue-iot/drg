@@ -289,9 +289,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
     let algo_param = Arg::with_name(&Parameters::algo.as_ref())
         .required(true)
         .help("Algorithm used to generate key pair.")
-        .possible_value(trust::SignAlgo::ECDSA.as_ref())
-        .possible_value(trust::SignAlgo::EdDSA.as_ref())
-        .possible_value(trust::SignAlgo::RSA.as_ref());
+        .possible_values(&[
+            trust::SignAlgo::ECDSA.as_ref(),
+            trust::SignAlgo::EdDSA.as_ref(),
+            trust::SignAlgo::RSA.as_ref(),
+        ]);
 
     let key_pair_algorithm = algo_param
         .clone()
@@ -311,9 +313,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .required(true)
         .help("Role assigned to this member")
-        .possible_value(Roles::admin.as_ref())
-        .possible_value(Roles::manager.as_ref())
-        .possible_value(Roles::reader.as_ref());
+        .possible_values(&[
+            Roles::admin.as_ref(),
+            Roles::manager.as_ref(),
+            Roles::reader.as_ref(),
+        ]);
 
     let username_arg = Arg::with_name(Parameters::username.as_ref())
         .required(true)
@@ -577,6 +581,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         )
         .subcommand(
             SubCommand::with_name(Other_commands::admin.as_ref())
+                .author("Vedang Joshi")
                 .about("Manage application members and autorizations.")
                 .setting(AppSettings::SubcommandRequiredElseHelp)
                 .subcommand(
