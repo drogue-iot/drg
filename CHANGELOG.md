@@ -19,6 +19,7 @@
  Plural and singular forms of a resource can be used interchangeably.
  - Endpoints information in `drg whoami -e`. It's also possible to specify a service name to get only the url.
  - Added a `cmd` subcommand to issue commands for devices using the command endpoint.
+ - Added an `admin` subcommand to manage application members and access tokens.
  
 ## Bug fixes
 

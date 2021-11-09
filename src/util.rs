@@ -25,6 +25,7 @@ pub const COMPATIBLE_DROGUE_VERSION: &str = "0.7.0";
 pub const REGISTRY_API_PATH: &str = "api/registry/v1alpha1";
 pub const COMMAND_API_PATH: &str = "api/command/v1alpha1";
 pub const ADMIN_API_PATH: &str = "api/admin/v1alpha1";
+pub const KEYS_API_PATH: &str = "api/keys/v1alpha1";
 
 pub fn print_result(r: Response, resource_name: String, op: Verbs) {
     match op {

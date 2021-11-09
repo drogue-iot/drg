@@ -4,6 +4,7 @@ mod arguments;
 mod command;
 mod config;
 mod devices;
+mod keys;
 mod openid;
 mod stream;
 mod trust;
@@ -14,7 +15,7 @@ use arguments::{
     Trust_subcommands, Verbs,
 };
 
-use crate::arguments::{Admin_subcommands, Member_subcommands};
+use crate::arguments::{Admin_subcommands, Member_subcommands, Tokens_subcommands};
 use crate::config::{Config, ContextId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use json_value_merge::Merge;
@@ -135,15 +136,15 @@ fn main() -> Result<()> {
         let (_, submatches) = matches.subcommand();
         let (_, endpoints_matches) = submatches.map(|s| s.subcommand()).unwrap_or(("", None));
         if submatches.unwrap().is_present(Other_commands::token) {
-            openid::print_token(&context);
+            openid::print_token(context);
         } else if let Some(endpoints_matches) = endpoints_matches {
             let service = match endpoints_matches.value_of(Other_commands::endpoints) {
                 Some("*") => None,
                 s => s,
             };
-            util::print_endpoints(&context, service)?;
+            util::print_endpoints(context, service)?;
         } else {
-            openid::print_whoami(&context);
+            openid::print_whoami(context);
             util::print_version(&Ok(config));
         }
         exit(0)
@@ -151,9 +152,9 @@ fn main() -> Result<()> {
 
     if command == Other_commands::stream.as_ref() {
         let (_, matches) = matches.subcommand();
-        let app_id = arguments::get_app_id(&matches.unwrap(), &context)?;
+        let app_id = arguments::get_app_id(&matches.unwrap(), context)?;
 
-        stream::stream_app(&context, &app_id)?;
+        stream::stream_app(context, &app_id)?;
         exit(0)
     }
 
@@ -186,7 +187,7 @@ fn main() -> Result<()> {
             Trust_subcommands::create => {
                 let keyout = command.unwrap().value_of(&Parameters::key_output);
                 let app_id = id.unwrap_or_else(|| {
-                    arguments::get_app_id(&command.unwrap(), &context)
+                    arguments::get_app_id(command.unwrap(), context)
                         .map_err(|e| {
                             log::error!("{}", e);
                             exit(1)
@@ -195,7 +196,7 @@ fn main() -> Result<()> {
                 });
 
                 apps::add_trust_anchor(
-                    &context,
+                    context,
                     &app_id,
                     keyout,
                     key_pair_algorithm,
@@ -204,7 +205,7 @@ fn main() -> Result<()> {
                 )
             }
             Trust_subcommands::enroll => {
-                let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                let app_id = arguments::get_app_id(command.unwrap(), context)?;
                 let device_id = &id.unwrap();
 
                 let ca_key = &command
@@ -217,7 +218,7 @@ fn main() -> Result<()> {
 
                 let device_key = command.unwrap().value_of(&Parameters::key_output);
 
-                let cert = apps::get_trust_anchor(&context, &app_id)?;
+                let cert = apps::get_trust_anchor(context, &app_id)?;
 
                 trust::create_device_certificate(
                     &app_id,
@@ -232,7 +233,7 @@ fn main() -> Result<()> {
                 )
                 .and_then(|_| {
                     let alias = format!("CN={}, O=Drogue IoT, OU={}", device_id, app_id);
-                    devices::add_alias(&context, app_id, device_id.to_string(), alias)
+                    devices::add_alias(context, app_id, device_id.to_string(), alias)
                 })
             }
         }?;
@@ -264,13 +265,33 @@ fn main() -> Result<()> {
 
                         let user = subcommand.unwrap().value_of(Parameters::username).unwrap();
 
-                        admin::member_add(&context, &id, user, role)?;
+                        admin::member_add(context, &id, user, role)?;
                     }
                     Member_subcommands::list => {
-                        admin::member_list(&context, &id)?;
+                        admin::member_list(context, &id)?;
                     }
                     Member_subcommands::edit => {
-                        admin::member_edit(&context, &id)?;
+                        admin::member_edit(context, &id)?;
+                    }
+                }
+            }
+            Admin_subcommands::tokens => {
+                let (cmd, subcommand) = command.unwrap().subcommand();
+                let task = Tokens_subcommands::from_str(cmd);
+
+                match task? {
+                    Tokens_subcommands::list => {
+                        keys::get_api_keys(context)?;
+                    }
+                    Tokens_subcommands::create => {
+                        keys::create_api_key(context)?;
+                    }
+                    Tokens_subcommands::delete => {
+                        let prefix = subcommand
+                            .unwrap()
+                            .value_of(Parameters::token_prefix)
+                            .unwrap();
+                        keys::delete_api_key(context, prefix)?;
                     }
                 }
             }
@@ -296,9 +317,9 @@ fn main() -> Result<()> {
             let file = command.unwrap().value_of(Parameters::filename);
 
             match resource? {
-                Resources::app => apps::create(&context, id, data, file),
+                Resources::app => apps::create(context, id, data, file),
                 Resources::device => {
-                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                    let app_id = arguments::get_app_id(command.unwrap(), context)?;
 
                     // add an alias with the correct subject dn.
                     if command.unwrap().is_present(&Other_flags::cert) {
@@ -307,7 +328,7 @@ fn main() -> Result<()> {
                         data.merge_in("/alias", alias_spec)
                     }
 
-                    devices::create(&context, id, data, app_id, file)
+                    devices::create(context, id, data, app_id, file)
                 }
                 // ignore apps and devices keywords
                 _ => Err(anyhow!("Cannot create multiple resources")),
@@ -324,10 +345,10 @@ fn main() -> Result<()> {
             let ignore_missing = command.unwrap().is_present(Other_flags::ignore_missing);
 
             match resource? {
-                Resources::app => apps::delete(&context, id, ignore_missing),
+                Resources::app => apps::delete(context, id, ignore_missing),
                 Resources::device => {
-                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-                    devices::delete(&context, app_id, id, ignore_missing)
+                    let app_id = arguments::get_app_id(command.unwrap(), context)?;
+                    devices::delete(context, app_id, id, ignore_missing)
                 }
                 // ignore apps and devices keywords
                 _ => Err(anyhow!("Cannot delete multiple resources")),
@@ -344,10 +365,10 @@ fn main() -> Result<()> {
             let resource = Resources::from_str(res);
 
             match resource? {
-                Resources::app => apps::edit(&context, id, file),
+                Resources::app => apps::edit(context, id, file),
                 Resources::device => {
-                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
-                    devices::edit(&context, app_id, id, file)
+                    let app_id = arguments::get_app_id(command.unwrap(), context)?;
+                    devices::edit(context, app_id, id, file)
                 }
                 // ignore apps and devices keywords
                 _ => Err(anyhow!("Cannot edit multiple resources")),
@@ -371,15 +392,15 @@ fn main() -> Result<()> {
             match resource {
                 Resources::app | Resources::apps => {
                     match id {
-                        Some(id) => apps::read(&context, id as AppId),
-                        None => apps::list(&context, labels),
+                        Some(id) => apps::read(context, id as AppId),
+                        None => apps::list(context, labels),
                     }?;
                 }
                 Resources::device | Resources::devices => {
-                    let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+                    let app_id = arguments::get_app_id(command.unwrap(), context)?;
                     match id {
-                        Some(id) => devices::read(&context, app_id, id as DeviceId),
-                        None => devices::list(&context, app_id, labels),
+                        Some(id) => devices::read(context, app_id, id as DeviceId),
+                        None => devices::list(context, app_id, labels),
                     }?;
                 }
             }
@@ -390,24 +411,24 @@ fn main() -> Result<()> {
 
             // clap already makes sure vals contains two values
             let (device, value) = (args[0].to_string(), args[1].to_string());
-            let app_id = arguments::get_app_id(&command.unwrap(), &context)?;
+            let app_id = arguments::get_app_id(command.unwrap(), context)?;
 
             match Set_targets::from_str(target)? {
                 Set_targets::gateway => {
-                    devices::set_gateway(&context, app_id, device as DeviceId, value)?;
+                    devices::set_gateway(context, app_id, device as DeviceId, value)?;
                 }
                 Set_targets::password => {
                     let username = command.unwrap().value_of(Set_args::username);
-                    devices::set_password(&context, app_id, device as DeviceId, value, username)?;
+                    devices::set_password(context, app_id, device as DeviceId, value, username)?;
                 }
                 Set_targets::alias => {
-                    devices::add_alias(&context, app_id, device as DeviceId, value)?;
+                    devices::add_alias(context, app_id, device as DeviceId, value)?;
                 }
             }
         }
         Verbs::cmd => {
             let args: Vec<&str> = cmd.values_of(Verbs::cmd).unwrap().collect();
-            let app_id = arguments::get_app_id(&cmd, &context)?;
+            let app_id = arguments::get_app_id(&cmd, context)?;
             let (command, device) = (args[0], args[1]);
 
             let body = match cmd.value_of(Parameters::filename) {
@@ -415,7 +436,7 @@ fn main() -> Result<()> {
                 None => util::json_parse(cmd.value_of(Parameters::payload))?,
             };
 
-            command::send_command(&context, app_id.as_str(), device, command, body)?;
+            command::send_command(context, app_id.as_str(), device, command, body)?;
         }
     }
 
