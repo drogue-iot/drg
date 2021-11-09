@@ -66,6 +66,7 @@ pub enum Parameters {
     payload,
     role,
     username,
+    token_prefix,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -109,6 +110,15 @@ pub enum Trust_subcommands {
 #[allow(non_camel_case_types)]
 pub enum Admin_subcommands {
     member,
+    tokens,
+}
+
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Tokens_subcommands {
+    create,
+    list,
+    delete,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -132,6 +142,10 @@ pub fn parse_arguments() -> ArgMatches<'static> {
     let resource_id_arg = Arg::with_name(Parameters::id.as_ref())
         .required(true)
         .help("The unique id of the resource.");
+
+    let token_prefix = Arg::with_name(Parameters::token_prefix.as_ref())
+        .required(true)
+        .help("The token prefix.");
 
     let set_arg = Arg::with_name(Verbs::set.as_ref())
         .required(true)
@@ -604,6 +618,25 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                             SubCommand::with_name(Member_subcommands::edit.as_ref())
                                 .about("Edit members list")
                                 .arg(&resource_id_arg),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name(Admin_subcommands::tokens.as_ref())
+                        .about("Manage API access keys")
+                        .setting(AppSettings::SubcommandRequiredElseHelp)
+                        .alias("token")
+                        .subcommand(
+                            SubCommand::with_name(Tokens_subcommands::list.as_ref())
+                                .about("List existing tokens prefixes"),
+                        )
+                        .subcommand(
+                            SubCommand::with_name(Tokens_subcommands::create.as_ref())
+                                .about("Generate a new access token"),
+                        )
+                        .subcommand(
+                            SubCommand::with_name(Tokens_subcommands::delete.as_ref())
+                                .about("Delete an existing access key")
+                                .arg(&token_prefix),
                         ),
                 ),
         )
