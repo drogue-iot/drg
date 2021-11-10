@@ -596,6 +596,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .subcommand(
             SubCommand::with_name(Other_commands::stream.as_ref())
                 .about("Stream application events")
+                .aliases(&["consume", "subscribe"])
                 .arg(
                     Arg::with_name(Resources::app.as_ref())
                         .required(false)
