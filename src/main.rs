@@ -12,7 +12,7 @@ mod util;
 
 use arguments::{
     Context_subcommands, Other_commands, Other_flags, Parameters, Resources, Set_args, Set_targets,
-    Trust_subcommands, Verbs,
+    Transfer_subcommands, Trust_subcommands, Verbs,
 };
 
 use crate::arguments::{Admin_subcommands, Member_subcommands, Tokens_subcommands};
@@ -293,6 +293,21 @@ fn main() -> Result<()> {
                             .unwrap();
                         keys::delete_api_key(context, prefix)?;
                     }
+                }
+            }
+            Admin_subcommands::transfer => {
+                let (cmd, subcommand) = command.unwrap().subcommand();
+                let task = Transfer_subcommands::from_str(cmd);
+
+                let id = subcommand.unwrap().value_of(Parameters::id).unwrap();
+
+                match task? {
+                    Transfer_subcommands::init => {
+                        let user = subcommand.unwrap().value_of(Parameters::username).unwrap();
+                        admin::transfer_app(context, id, user)?;
+                    }
+                    Transfer_subcommands::accept => admin::accept_transfer(context, id)?,
+                    Transfer_subcommands::cancel => admin::cancel_transfer(context, id)?,
                 }
             }
         }

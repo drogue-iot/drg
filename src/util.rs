@@ -194,6 +194,15 @@ fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Value> {
         .context("Cannot deserialize drogue endpoints details")
 }
 
+pub fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
+    let endpoints = get_drogue_endpoints_authenticated(context)?;
+    let ws = endpoints["console"]
+        .as_str()
+        .context("No `console` service in drogue endpoints list")?;
+
+    url_validation(ws)
+}
+
 pub fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context)?;
     let ws = endpoints["websocket_integration"]["url"]
