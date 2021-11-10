@@ -111,6 +111,7 @@ pub enum Trust_subcommands {
 pub enum Admin_subcommands {
     member,
     tokens,
+    transfer,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -127,6 +128,14 @@ pub enum Member_subcommands {
     add,
     list,
     edit,
+}
+
+#[derive(AsRefStr, EnumString)]
+#[allow(non_camel_case_types)]
+pub enum Transfer_subcommands {
+    init,
+    accept,
+    cancel,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -617,6 +626,27 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                         .subcommand(
                             SubCommand::with_name(Member_subcommands::edit.as_ref())
                                 .about("Edit members list")
+                                .arg(&resource_id_arg),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name(Admin_subcommands::transfer.as_ref())
+                        .about("Transfer ownership of an application to another member")
+                        .setting(AppSettings::SubcommandRequiredElseHelp)
+                        .subcommand(
+                            SubCommand::with_name(Transfer_subcommands::init.as_ref())
+                                .about("Initiate the application transfer")
+                                .arg(&resource_id_arg)
+                                .arg(&username_arg),
+                        )
+                        .subcommand(
+                            SubCommand::with_name(Transfer_subcommands::accept.as_ref())
+                                .about("Accept an application transfer")
+                                .arg(&resource_id_arg),
+                        )
+                        .subcommand(
+                            SubCommand::with_name(Transfer_subcommands::cancel.as_ref())
+                                .about("Cancel an application transfer")
                                 .arg(&resource_id_arg),
                         ),
                 )
