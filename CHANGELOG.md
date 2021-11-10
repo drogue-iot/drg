@@ -1,6 +1,7 @@
-# Version 0.7.1
+# Version main
 
 ## New features
+- Added an `admin` subcommand to manage application members, transfer application ownership and manage access tokens.
 
 ## Bug fixes
 
@@ -19,7 +20,6 @@
  Plural and singular forms of a resource can be used interchangeably.
  - Endpoints information in `drg whoami -e`. It's also possible to specify a service name to get only the url.
  - Added a `cmd` subcommand to issue commands for devices using the command endpoint.
- - Added an `admin` subcommand to manage application members, transfer application ownership and manage access tokens.
  
 ## Bug fixes
 
