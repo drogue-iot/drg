@@ -12,6 +12,7 @@ use reqwest::{
 use serde_json::{json, Value};
 use strum_macros::{AsRefStr, EnumString};
 use tabular::{Row, Table};
+use urlencoding;
 
 #[derive(AsRefStr, EnumString)]
 #[allow(non_camel_case_types)]
@@ -36,7 +37,7 @@ fn craft_url(config: &Context, app: &str, end: &ApiOp) -> String {
         "{}{}/apps/{}/{}",
         &config.registry_url,
         util::ADMIN_API_PATH,
-        app,
+        urlencoding::encode(app),
         end.as_ref()
     )
 }
@@ -94,9 +95,8 @@ fn member_put(config: &Context, app: &str, data: serde_json::Value) -> Result<Re
 
     client
         .put(&url)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
         .bearer_auth(&config.token.access_token().secret())
-        .body(data.to_string())
+        .json(&data)
         .send()
         .context("Can't update member list")
 }
@@ -143,7 +143,7 @@ pub fn transfer_app(config: &Context, app: &str, username: &str) -> Result<()> {
                 );
                 if let Ok(console) = util::get_drogue_console_endpoint(&config) {
                     println!("Alternatively you can share this link with the new owner :");
-                    println!("{}transfer/{}", console.as_str(), app);
+                    println!("{}transfer/{}", console.as_str(), urlencoding::encode(app));
                 }
             }
             e => {
@@ -212,7 +212,7 @@ fn describe_response(res: Response) {
             println!("Application not found.");
         }
         StatusCode::CONFLICT => {
-            println!("Conflict: The resource may have been modified on the server since we retrievied it.");
+            println!("Conflict: The resource may have been modified on the server since we retrieved it.");
         }
         _ => {
             println!("Error: Can't update member list.")

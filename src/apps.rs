@@ -7,10 +7,11 @@ use reqwest::{StatusCode, Url};
 use serde_json::{from_str, json, Value};
 use std::process::exit;
 use tabular::{Row, Table};
+use urlencoding;
 
 fn craft_url(base: &Url, app_id: Option<&str>) -> String {
     let app = match app_id {
-        Some(app) => format!("/{}", app),
+        Some(app) => format!("/{}", urlencoding::encode(app)),
         None => String::new(),
     };
     format!("{}{}/apps{}", base, util::REGISTRY_API_PATH, app)
@@ -38,8 +39,7 @@ pub fn create(
 
     client
         .post(&url)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .body(body.to_string())
+        .json(&body)
         .bearer_auth(&config.token.access_token().secret())
         .send()
         .context("Can't create app.")
@@ -209,9 +209,8 @@ fn put(config: &Context, app: &str, data: serde_json::Value) -> Result<Response>
 
     client
         .put(&url)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
         .bearer_auth(&config.token.access_token().secret())
-        .body(data.to_string())
+        .json(&data)
         .send()
         .context("Can't update app data.")
 }

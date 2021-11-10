@@ -9,17 +9,18 @@ use reqwest::{StatusCode, Url};
 use serde_json::{from_str, json, Value};
 use std::process::exit;
 use tabular::{Row, Table};
+use urlencoding;
 
 fn craft_url(base: &Url, app_id: &str, device_id: Option<&str>) -> String {
     let device = match device_id {
-        Some(dev) => format!("/{}", dev),
+        Some(dev) => format!("/{}", urlencoding::encode(dev)),
         None => String::new(),
     };
     format!(
         "{}{}/apps/{}/devices{}",
         base,
         util::REGISTRY_API_PATH,
-        app_id,
+        urlencoding::encode(app_id),
         device
     )
 }
@@ -83,9 +84,8 @@ pub fn create(
 
     client
         .post(&url)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
         .bearer_auth(&config.token.access_token().secret())
-        .body(body.to_string())
+        .json(&body)
         .send()
         .context("Can't create device.")
         .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::create))
@@ -255,9 +255,8 @@ fn put(
 
     client
         .put(&url)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
         .bearer_auth(token)
-        .body(data.to_string())
+        .json(&data)
         .send()
         .context(format!(
             "Error while updating device data for {}",

@@ -11,10 +11,11 @@ use reqwest::{
 };
 use serde_json::Value;
 use tabular::{Row, Table};
+use urlencoding;
 
 fn craft_url(config: &Context, prefix: Option<&str>) -> String {
     let prefix = match prefix {
-        Some(prefix) => format!("/{}", prefix),
+        Some(prefix) => format!("/{}", urlencoding::encode(prefix)),
         None => String::new(),
     };
 

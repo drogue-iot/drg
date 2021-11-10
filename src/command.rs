@@ -6,6 +6,7 @@ use oauth2::TokenResponse;
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde_json::Value;
+use urlencoding;
 
 pub fn send_command(
     config: &Context,
@@ -15,20 +16,20 @@ pub fn send_command(
     body: Value,
 ) -> Result<()> {
     let client = Client::new();
+
     let url = format!(
         "{}{}/apps/{}/devices/{}",
         &config.registry_url,
         util::COMMAND_API_PATH,
-        app,
-        device
+        urlencoding::encode(app),
+        urlencoding::encode(device)
     );
 
     client
         .post(&url)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
         .bearer_auth(&config.token.access_token().secret())
         .query(&[("command", command)])
-        .body(body.to_string())
+        .json(&body)
         .send()
         .context("Can't send command.")
         .map(|res| match res.status() {
