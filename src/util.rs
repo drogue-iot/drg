@@ -183,7 +183,7 @@ pub fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
 
 fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Value> {
     let client = Client::new();
-    let url = format!("{}api/console/v1alpha1/info", &context.registry_url);
+    let url = format!("{}api/console/v1alpha1/info", &context.drogue_cloud_url);
     let res = client
         .get(url)
         .bearer_auth(&context.token.access_token().secret())
