@@ -91,7 +91,7 @@ pub fn create_api_key(config: &Context) -> Result<()> {
         Ok(res) => {
             let body: Value =
                 serde_json::from_str(&res.text().unwrap_or_else(|_| "{}".to_string()))?;
-            let key = body["key"].as_str().unwrap();
+            let key = body["token"].as_str().unwrap();
             println!("A new Access Token was created:\n");
             println!("{}", key);
             println!("Make sure you save it, as you will not be able to display it again.");
