@@ -4,9 +4,9 @@ mod arguments;
 mod command;
 mod config;
 mod devices;
-mod keys;
 mod openid;
 mod stream;
+mod tokens;
 mod trust;
 mod util;
 
@@ -281,17 +281,17 @@ fn main() -> Result<()> {
 
                 match task? {
                     Tokens_subcommands::list => {
-                        keys::get_api_keys(context)?;
+                        tokens::get_api_keys(context)?;
                     }
                     Tokens_subcommands::create => {
-                        keys::create_api_key(context)?;
+                        tokens::create_api_key(context)?;
                     }
                     Tokens_subcommands::delete => {
                         let prefix = subcommand
                             .unwrap()
                             .value_of(Parameters::token_prefix)
                             .unwrap();
-                        keys::delete_api_key(context, prefix)?;
+                        tokens::delete_api_key(context, prefix)?;
                     }
                 }
             }
