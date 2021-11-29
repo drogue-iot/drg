@@ -153,8 +153,13 @@ fn main() -> Result<()> {
     if command == Other_commands::stream.as_ref() {
         let (_, matches) = matches.subcommand();
         let app_id = arguments::get_app_id(&matches.unwrap(), context)?;
+        let count = matches
+            .unwrap()
+            .value_of(Parameters::count)
+            .map(|s| s.parse::<usize>().unwrap())
+            .unwrap_or(std::usize::MAX);
 
-        stream::stream_app(context, &app_id)?;
+        stream::stream_app(context, &app_id, count)?;
         exit(0)
     }
 

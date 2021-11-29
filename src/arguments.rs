@@ -67,6 +67,7 @@ pub enum Parameters {
     role,
     username,
     token_prefix,
+    count,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -601,6 +602,13 @@ pub fn parse_arguments() -> ArgMatches<'static> {
                     Arg::with_name(Resources::app.as_ref())
                         .required(false)
                         .help("The id of the application to subscribe to."),
+                )
+                .arg(
+                    Arg::with_name(Parameters::count.as_ref())
+                        .required(false)
+                        .short("n")
+                        .takes_value(true)
+                        .help("The number of messages to stream before exiting."),
                 ),
         )
         .subcommand(

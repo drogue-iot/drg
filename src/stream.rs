@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use oauth2::TokenResponse;
+use std::io::Write;
 use tungstenite::connect;
 use tungstenite::http::{header, Request};
 use urlencoding;
@@ -7,7 +8,7 @@ use urlencoding;
 use crate::config::Context;
 use crate::util;
 
-pub fn stream_app(config: &Context, app: &str) -> Result<()> {
+pub fn stream_app(config: &Context, app: &str, mut count: usize) -> Result<()> {
     let url = util::get_drogue_websocket_endpoint(config)?;
     let url = format!("{}{}", url, urlencoding::encode(app));
 
@@ -23,7 +24,7 @@ pub fn stream_app(config: &Context, app: &str) -> Result<()> {
         connect(request).context("Error connecting to the Websocket endpoint:")?;
     log::debug!("HTTP response: {}", response.status());
 
-    loop {
+    while count > 0 {
         let msg = socket.read_message();
         match msg {
             Ok(m) => {
@@ -31,10 +32,11 @@ pub fn stream_app(config: &Context, app: &str) -> Result<()> {
                 if m.is_text() {
                     util::show_json(m.into_text().expect("Invalid message"));
                 }
+                count -= 1;
             }
-            Err(e) => break Err(anyhow!(e)),
+            Err(e) => return Err(anyhow!(e)),
         }
-
         //bail!("Websocket Error")
     }
+    Ok(())
 }
