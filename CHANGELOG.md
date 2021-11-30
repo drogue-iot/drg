@@ -2,6 +2,7 @@
 
 ## New features
 - Added an `admin` subcommand to manage application members, transfer application ownership and manage access tokens.
+- Added optional -n <count> parameter for the `stream` command to stream a fixed number of messages.
 
 ## Bug fixes
 
