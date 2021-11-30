@@ -1,12 +1,14 @@
-# Version main
+# Version 0.8.0
 
 ## New features
 - Added an `admin` subcommand to manage application members, transfer application ownership and manage access tokens.
 - Added optional -n <count> parameter for the `stream` command to stream a fixed number of messages.
 
 ## Bug fixes
+- Add URL encoding for user supplied values. 
 
 ## Misc. changes
+- Add aliases for `drg stream` : `consume`, `subscribe` are now valid aliases. 
 
 ## Deprecations
 
