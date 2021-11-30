@@ -157,7 +157,7 @@ fn main() -> Result<()> {
             .unwrap()
             .value_of(Parameters::count)
             .map(|s| s.parse::<usize>().unwrap())
-            .unwrap_or(std::usize::MAX);
+            .unwrap_or(usize::MAX);
 
         stream::stream_app(context, &app_id, count)?;
         exit(0)
