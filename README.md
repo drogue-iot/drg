@@ -25,12 +25,6 @@ Note: Debian users must install the `libssl1.1` package.
     brew tap drogue-iot/drg
     brew install drg
 
-## Fedora 
-
-Starting with Fedora 34, you can install `drg` directly from the Fedora repositories:
-
-    sudo dnf install drg
-
 ## Snap
 
     sudo snap install drogue-cli
@@ -190,7 +184,28 @@ drg stream <appId>
 drg stream
 ```
 
-# Roadmap
+### Admin
+
+You can create and manage access tokens with the admin subcommand : 
+```
+drg admin token create
+drg admin token list
+drg admin token delete <prefix>
+```
+
+Drg can also transfer apps ownership and manage apps members :
+```
+drg admin member add <app> <user> --role reader
+drg admin member list <app>
+drg admin member edit <app>
+
+#Transfer operations
+drg admin transfer init <app> <newOwnerUSername>
+drg admin transfer cancel <app>
+# The new owner can accept the transfer :
+drg admin transfer accept <app>
+```
+
 
 In no particular order here are the following things that we would like to add to `drg` :
  * Json patch operations
