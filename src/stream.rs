@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use oauth2::TokenResponse;
-use std::io::Write;
 use tungstenite::connect;
 use tungstenite::http::{header, Request};
 use urlencoding;
