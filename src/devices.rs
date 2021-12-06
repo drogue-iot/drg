@@ -7,6 +7,7 @@ use reqwest::blocking::Client;
 use reqwest::blocking::Response;
 use reqwest::{StatusCode, Url};
 use serde_json::{from_str, json, Value};
+use sha2::{Digest, Sha512};
 use std::process::exit;
 use tabular::{Row, Table};
 use urlencoding;
@@ -174,9 +175,13 @@ pub fn set_password(
     password: String,
     username: Option<&str>,
 ) -> Result<()> {
+    let mut hasher = Sha512::new();
+    hasher.update(password.as_bytes());
+    let hash = &hasher.finalize()[..];
+
     let credential = match username {
-        Some(user) => json!({"user": {"username": user, "password": password}}),
-        None => json!({ "pass": password }),
+        Some(user) => json!({"user": {"username": user, "password": {"sha512": hash}}}),
+        None => json!({ "pass": {"sha512": hash} }),
     };
 
     // prepare json data to merge
