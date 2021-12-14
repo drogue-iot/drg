@@ -65,7 +65,9 @@ fn main() -> Result<()> {
                     token_exp_date: chrono::MAX_DATETIME,
                 })
             } else {
-                Err(anyhow!("Invalid access token. Format should be username:token"))
+                Err(anyhow!(
+                    "Invalid access token. Format should be username:token"
+                ))
             }
         } else {
             let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
