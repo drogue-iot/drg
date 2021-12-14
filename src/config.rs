@@ -34,7 +34,7 @@ pub struct Context {
     pub auth_url: Url,
     pub token_url: Url,
     pub registry_url: Url,
-    pub token_exp_date: DateTime<Utc>,
+    pub token_exp_date: Option<DateTime<Utc>>,
     pub token: Token,
 }
 

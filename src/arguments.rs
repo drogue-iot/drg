@@ -75,6 +75,7 @@ pub enum Parameters {
 pub enum Other_commands {
     login,
     token,
+    #[strum(serialize = "access-token")]
     access_token,
     version,
     whoami,

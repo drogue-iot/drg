@@ -39,7 +39,7 @@ pub fn login(
         None => get_token(auth_url.clone(), token_url.clone())?,
     };
 
-    let token_exp_date = calculate_token_expiration_date(&token)?;
+    let token_exp_date = Some(calculate_token_expiration_date(&token)?);
 
     log::info!("Token successfully obtained.");
     log::debug!("{:?}", token);
@@ -133,13 +133,17 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
 }
 
 pub fn verify_token_validity(context: &mut Context) -> Result<bool> {
-    log::debug!("Token expires at : {}", context.token_exp_date);
-    // 30 seconds should be enough
-    if context.token_exp_date - Utc::now() > Duration::seconds(30) {
-        Ok(false)
+    if let Some(token_exp_date) = context.token_exp_date {
+        log::debug!("Token expires at : {:?}", context.token_exp_date);
+        // 30 seconds should be enough
+        if token_exp_date - Utc::now() > Duration::seconds(30) {
+            Ok(false)
+        } else {
+            log::info!("Token is expired or will be soon, refreshing...");
+            refresh_token(context)
+        }
     } else {
-        log::info!("Token is expired or will be soon, refreshing...");
-        refresh_token(context)
+        Ok(false)
     }
 }
 
@@ -155,10 +159,13 @@ fn refresh_token(context: &mut Context) -> Result<bool> {
                 refresh_token_var,
             )?;
 
-            context.token_exp_date = calculate_token_expiration_date(&new_token)?;
+            context.token_exp_date = Some(calculate_token_expiration_date(&new_token)?);
             context.token = Token::TokenResponse(new_token);
 
-            log::info!("New token will expire at {}", context.token_exp_date);
+            log::info!(
+                "New token will expire at {}",
+                context.token_exp_date.as_ref().unwrap()
+            );
             log::info!("Token successfully refreshed.");
 
             Ok(true)

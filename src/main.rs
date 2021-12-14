@@ -16,7 +16,7 @@ use arguments::{
 };
 
 use crate::arguments::{Admin_subcommands, Member_subcommands, Tokens_subcommands};
-use crate::config::{Config, ContextId};
+use crate::config::{Config, Context, ContextId, Token};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use json_value_merge::Merge;
 use serde_json::json;
@@ -43,14 +43,35 @@ fn main() -> Result<()> {
 
     if command == Other_commands::login.as_ref() {
         let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
-        let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
 
+        let access_token_val = submatches.unwrap().value_of(Other_commands::token);
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
-        let context = openid::login(
-            url.clone(),
-            refresh_token_val,
-            context_arg.unwrap_or("default".to_string() as ContextId),
-        )?;
+        let context = if let Some(access_token) = access_token_val {
+            if let Some((id, token)) = access_token.split_once(':') {
+                let (sso_url, registry_url) = util::get_drogue_services_endpoints(url.clone())?;
+                let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
+                Ok(Context {
+                    name: context_arg.unwrap_or("default".to_string() as ContextId),
+                    drogue_cloud_url: url.clone(),
+                    default_app: None,
+                    default_algo: None,
+                    token: Token::AccessToken(id.to_string(), token.to_string()),
+                    token_url,
+                    auth_url,
+                    registry_url,
+                    token_exp_date: None,
+                })
+            } else {
+                Err(anyhow!("Invalid access token. Format should be id:token"))
+            }
+        } else {
+            let refresh_token_val = submatches.unwrap().value_of(Other_commands::token);
+            openid::login(
+                url.clone(),
+                refresh_token_val,
+                context_arg.unwrap_or("default".to_string() as ContextId),
+            )
+        }?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
         let name = context.name.clone();
