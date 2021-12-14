@@ -13,7 +13,7 @@ use tiny_http::{Response, Server};
 use qstring::QString;
 use reqwest::Url;
 
-use crate::config::{self, Context};
+use crate::config::{self, Context, Token};
 use crate::util;
 use chrono::{DateTime, Duration, Utc};
 use std::net::{Ipv4Addr, SocketAddr};
@@ -49,7 +49,7 @@ pub fn login(
         drogue_cloud_url: api_endpoint,
         default_app: None,
         default_algo: None,
-        token,
+        token: Token::TokenResponse(token),
         token_url,
         auth_url,
         registry_url,
@@ -144,23 +144,27 @@ pub fn verify_token_validity(context: &mut Context) -> Result<bool> {
 }
 
 fn refresh_token(context: &mut Context) -> Result<bool> {
-    let refresh_token_var = context
-        .token
-        .refresh_token()
-        .ok_or_else(|| Error::msg("Error loading refresh token from config"))?;
-    let new_token = exchange_token(
-        context.auth_url.clone(),
-        context.token_url.clone(),
-        refresh_token_var,
-    )?;
+    match &context.token {
+        Token::TokenResponse(token) => {
+            let refresh_token_var = token
+                .refresh_token()
+                .ok_or_else(|| Error::msg("Error loading refresh token from config"))?;
+            let new_token = exchange_token(
+                context.auth_url.clone(),
+                context.token_url.clone(),
+                refresh_token_var,
+            )?;
 
-    context.token_exp_date = calculate_token_expiration_date(&new_token)?;
-    context.token = new_token;
+            context.token_exp_date = calculate_token_expiration_date(&new_token)?;
+            context.token = Token::TokenResponse(new_token);
 
-    log::info!("New token will expire at {}", context.token_exp_date);
-    log::info!("Token successfully refreshed.");
+            log::info!("New token will expire at {}", context.token_exp_date);
+            log::info!("Token successfully refreshed.");
 
-    Ok(true)
+            Ok(true)
+        }
+        _ => Ok(true),
+    }
 }
 
 fn exchange_token(
@@ -201,7 +205,14 @@ fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTim
 }
 
 pub fn print_token(context: &Context) {
-    println!("{}", context.token.access_token().secret());
+    match &context.token {
+        Token::TokenResponse(token) => {
+            println!("{}", token.access_token().secret());
+        }
+        Token::AccessToken(id, token) => {
+            println!("{}:{}", id, token);
+        }
+    }
 }
 pub fn print_whoami(context: &Context) {
     println!("Cluster adress : {}", context.drogue_cloud_url);

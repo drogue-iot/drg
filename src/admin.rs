@@ -1,10 +1,9 @@
 use std::process::exit;
 
-use crate::config::Context;
+use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
 use anyhow::{Context as anyhowContext, Result};
-use oauth2::TokenResponse;
 use reqwest::{
     blocking::{Client, Response},
     StatusCode,
@@ -47,7 +46,7 @@ fn member_get(config: &Context, app: &str) -> Result<Response> {
 
     client
         .get(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .map_err(|e| {
             log::error!("Error: {}", e);
@@ -94,7 +93,7 @@ fn member_put(config: &Context, app: &str, data: serde_json::Value) -> Result<Re
 
     client
         .put(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .json(&data)
         .send()
         .context("Can't update member list")
@@ -126,7 +125,7 @@ pub fn transfer_app(config: &Context, app: &str, username: &str) -> Result<()> {
 
     client
         .put(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .json(&body)
         .send()
         .map_err(|e| {
@@ -158,7 +157,7 @@ pub fn cancel_transfer(config: &Context, app: &str) -> Result<()> {
 
     client
         .delete(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .map_err(|e| {
             log::error!("Error: {}", e);
@@ -181,7 +180,7 @@ pub fn accept_transfer(config: &Context, app: &str) -> Result<()> {
 
     client
         .put(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .map_err(|e| {
             log::error!("Error: {}", e);

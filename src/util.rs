@@ -1,4 +1,4 @@
-use crate::config::{Config, Context};
+use crate::config::{Config, Context, RequestBuilderExt};
 use crate::Other_flags;
 use crate::Verbs;
 use anyhow::{anyhow, Context as AnyhowContext, Result};
@@ -7,7 +7,6 @@ use clap::crate_version;
 use clap::ArgMatches;
 use colored_json::write_colored_json;
 use log::LevelFilter;
-use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
 use serde_json::Value::String as serde_string;
@@ -186,7 +185,7 @@ fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Value> {
     let url = format!("{}api/console/v1alpha1/info", &context.drogue_cloud_url);
     let res = client
         .get(url)
-        .bearer_auth(&context.token.access_token().secret())
+        .auth(&context.token)
         .send()
         .context("Can't retrieve drogue services details")?;
 

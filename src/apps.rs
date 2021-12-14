@@ -1,7 +1,6 @@
-use crate::config::Context;
+use crate::config::{Context, RequestBuilderExt};
 use crate::{trust, util, AppId, Verbs};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
-use oauth2::TokenResponse;
 use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
 use serde_json::{from_str, json, Value};
@@ -39,7 +38,7 @@ pub fn create(
     client
         .post(&url)
         .json(&body)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .context("Can't create app.")
         .map(|res| util::print_result(res, format!("App {}", app), Verbs::create))
@@ -55,7 +54,7 @@ pub fn delete(config: &Context, app: AppId, ignore_missing: bool) -> Result<()> 
 
     client
         .delete(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .context("Can't get app.")
         .map(|res| {
@@ -105,9 +104,7 @@ pub fn list(config: &Context, labels: Option<String>) -> Result<()> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, None);
 
-    let mut req = client
-        .get(&url)
-        .bearer_auth(&config.token.access_token().secret());
+    let mut req = client.get(&url).auth(&config.token);
 
     if let Some(labels) = labels {
         req = req.query(&[("labels", labels)]);
@@ -136,7 +133,7 @@ fn get(config: &Context, app: &str) -> Result<Response> {
     let url = craft_url(&config.registry_url, Some(app));
     client
         .get(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .context("Can't retrieve app data.")
 }
@@ -208,7 +205,7 @@ fn put(config: &Context, app: &str, data: serde_json::Value) -> Result<Response>
 
     client
         .put(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .json(&data)
         .send()
         .context("Can't update app data.")
