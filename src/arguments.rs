@@ -228,7 +228,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
     let access_token_arg = Arg::with_name(Other_commands::access_token.as_ref())
         .takes_value(true)
         .long(Other_commands::access_token.as_ref())
-        .conflicts_with(Other_commands::token.as_ref()
+        .conflicts_with(Other_commands::token.as_ref())
         .value_name("username:token")
         .help("Access token for authentication.");
 
