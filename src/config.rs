@@ -34,14 +34,21 @@ pub struct Context {
     pub auth_url: Url,
     pub token_url: Url,
     pub registry_url: Url,
-    pub token_exp_date: Option<DateTime<Utc>>,
+    pub token_exp_date: DateTime<Utc>,
     pub token: Token,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
 pub enum Token {
     TokenResponse(BasicTokenResponse),
-    AccessToken(String, String),
+    AccessToken(AccessToken),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AccessToken {
+    pub id: String,
+    pub token: String,
 }
 
 pub trait RequestBuilderExt {
@@ -52,7 +59,7 @@ impl RequestBuilderExt for reqwest::blocking::RequestBuilder {
     fn auth(self, token: &Token) -> Self {
         match token {
             Token::TokenResponse(token) => self.bearer_auth(&token.access_token().secret()),
-            Token::AccessToken(id, token) => self.basic_auth(id, Some(token)),
+            Token::AccessToken(auth) => self.basic_auth(&auth.id, Some(&auth.token)),
         }
     }
 }
@@ -64,8 +71,8 @@ impl RequestBuilderExt for tungstenite::http::request::Builder {
                 let bearer_header = format!("Bearer {}", &token.access_token().secret());
                 self.header(tungstenite::http::header::AUTHORIZATION, bearer_header)
             }
-            Token::AccessToken(id, token) => {
-                let encoded = base64::encode(&format!("{}:{}", id, token).as_bytes());
+            Token::AccessToken(auth) => {
+                let encoded = base64::encode(&format!("{}:{}", auth.id, auth.token).as_bytes());
                 let basic_header = format!("Basic {}", encoded);
                 self.header(tungstenite::http::header::AUTHORIZATION, basic_header)
             }

@@ -16,7 +16,7 @@ use arguments::{
 };
 
 use crate::arguments::{Admin_subcommands, Member_subcommands, Tokens_subcommands};
-use crate::config::{Config, Context, ContextId, Token};
+use crate::config::{AccessToken, Config, Context, ContextId, Token};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use json_value_merge::Merge;
 use serde_json::json;
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
     if command == Other_commands::login.as_ref() {
         let url = util::url_validation(submatches.unwrap().value_of(Parameters::url).unwrap())?;
 
-        let access_token_val = submatches.unwrap().value_of(Other_commands::token);
+        let access_token_val = submatches.unwrap().value_of(Other_commands::access_token);
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
         let context = if let Some(access_token) = access_token_val {
             if let Some((id, token)) = access_token.split_once(':') {
@@ -55,11 +55,14 @@ fn main() -> Result<()> {
                     drogue_cloud_url: url.clone(),
                     default_app: None,
                     default_algo: None,
-                    token: Token::AccessToken(id.to_string(), token.to_string()),
+                    token: Token::AccessToken(AccessToken {
+                        id: id.to_string(),
+                        token: token.to_string(),
+                    }),
                     token_url,
                     auth_url,
                     registry_url,
-                    token_exp_date: None,
+                    token_exp_date: chrono::MAX_DATETIME,
                 })
             } else {
                 Err(anyhow!("Invalid access token. Format should be id:token"))
