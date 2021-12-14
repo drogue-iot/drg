@@ -1,8 +1,7 @@
-use crate::config::Context;
+use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
 use anyhow::{Context as anyhowContext, Result};
-use oauth2::TokenResponse;
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde_json::Value;
@@ -26,7 +25,7 @@ pub fn send_command(
 
     client
         .post(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .query(&[("command", command)])
         .json(&body)
         .send()

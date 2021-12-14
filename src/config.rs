@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use core::fmt;
 use dirs::config_dir;
 use oauth2::basic::BasicTokenResponse;
+use oauth2::TokenResponse;
 use tabular::{Row, Table};
 use url::Url;
 
@@ -34,7 +35,42 @@ pub struct Context {
     pub token_url: Url,
     pub registry_url: Url,
     pub token_exp_date: DateTime<Utc>,
-    pub token: BasicTokenResponse,
+    pub token: Token,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum Token {
+    TokenResponse(BasicTokenResponse),
+    AccessToken(String, String),
+}
+
+pub trait RequestBuilderExt {
+    fn auth(self, token: &Token) -> Self;
+}
+
+impl RequestBuilderExt for reqwest::blocking::RequestBuilder {
+    fn auth(self, token: &Token) -> Self {
+        match token {
+            Token::TokenResponse(token) => self.bearer_auth(&token.access_token().secret()),
+            Token::AccessToken(id, token) => self.basic_auth(id, Some(token)),
+        }
+    }
+}
+
+impl RequestBuilderExt for tungstenite::http::request::Builder {
+    fn auth(self, token: &Token) -> Self {
+        match token {
+            Token::TokenResponse(token) => {
+                let bearer_header = format!("Bearer {}", &token.access_token().secret());
+                self.header(tungstenite::http::header::AUTHORIZATION, bearer_header)
+            }
+            Token::AccessToken(id, token) => {
+                let encoded = base64::encode(&format!("{}:{}", id, token).as_bytes());
+                let basic_header = format!("Basic {}", encoded);
+                self.header(tungstenite::http::header::AUTHORIZATION, basic_header)
+            }
+        }
+    }
 }
 
 impl Config {

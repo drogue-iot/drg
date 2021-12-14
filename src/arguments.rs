@@ -75,6 +75,7 @@ pub enum Parameters {
 pub enum Other_commands {
     login,
     token,
+    access_token,
     version,
     whoami,
     context,
@@ -222,6 +223,11 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .takes_value(true)
         .long(Other_commands::token.as_ref())
         .help("Refresh token for authentication.");
+
+    let access_token_arg = Arg::with_name(Other_commands::access_token.as_ref())
+        .takes_value(true)
+        .long(Other_commands::access_token.as_ref())
+        .help("Access token for authentication.");
 
     let config_file_arg = Arg::with_name(Parameters::config.as_ref())
         .long(Parameters::config.as_ref())
@@ -491,6 +497,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .subcommand(
             SubCommand::with_name(Other_commands::login.as_ref())
                 .arg(&token_arg)
+                .arg(&access_token_arg)
                 .about("Log into a drogue cloud installation.")
                 .arg(&url_arg)
                 .arg(&login_keep_current),

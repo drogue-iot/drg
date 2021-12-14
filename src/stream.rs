@@ -1,21 +1,15 @@
 use anyhow::{anyhow, Context as AnyhowContext, Result};
-use oauth2::TokenResponse;
 use tungstenite::connect;
-use tungstenite::http::{header, Request};
+use tungstenite::http::Request;
 
-use crate::config::Context;
+use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
 pub fn stream_app(config: &Context, app: &str, mut count: usize) -> Result<()> {
     let url = util::get_drogue_websocket_endpoint(config)?;
     let url = format!("{}{}", url, urlencoding::encode(app));
 
-    let bearer_header = format!("Bearer {}", &config.token.access_token().secret());
-
-    let request = Request::builder()
-        .uri(url)
-        .header(header::AUTHORIZATION, bearer_header)
-        .body(())?;
+    let request = Request::builder().uri(url).auth(&config.token).body(())?;
 
     log::debug!("Connecting to websocket with request : {:?}", request);
     let (mut socket, response) =

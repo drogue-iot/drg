@@ -1,10 +1,9 @@
 use std::process::exit;
 
-use crate::config::Context;
+use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
 use anyhow::{anyhow, Result};
-use oauth2::TokenResponse;
 use reqwest::{
     blocking::{Client, Response},
     StatusCode,
@@ -27,7 +26,7 @@ pub fn get_api_keys(config: &Context) -> Result<()> {
 
     let res = client
         .get(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .map_err(|e| {
             log::error!("Error: {}", e);
@@ -73,7 +72,7 @@ pub fn create_api_key(config: &Context) -> Result<()> {
 
     let res = client
         .post(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .map_err(|e| {
             log::error!("Error: {}", e);
@@ -106,7 +105,7 @@ pub fn delete_api_key(config: &Context, prefix: &str) -> Result<()> {
 
     client
         .delete(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .map_err(|e| {
             log::error!("Error: {}", e);

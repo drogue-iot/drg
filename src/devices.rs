@@ -1,8 +1,7 @@
-use crate::config::Context;
+use crate::config::{Context, RequestBuilderExt};
 use crate::{util, AppId, DeviceId, Verbs};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use json_value_merge::Merge;
-use oauth2::TokenResponse;
 use reqwest::blocking::Client;
 use reqwest::blocking::Response;
 use reqwest::{StatusCode, Url};
@@ -36,7 +35,7 @@ pub fn delete(
 
     client
         .delete(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .context("Can't delete device.")
         .map(|res| {
@@ -84,7 +83,7 @@ pub fn create(
 
     client
         .post(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .json(&body)
         .send()
         .context("Can't create device.")
@@ -129,9 +128,7 @@ pub fn list(config: &Context, app: AppId, labels: Option<String>) -> Result<()> 
     let client = Client::new();
     let url = craft_url(&config.registry_url, &app, None);
 
-    let mut req = client
-        .get(&url)
-        .bearer_auth(&config.token.access_token().secret());
+    let mut req = client.get(&url).auth(&config.token);
 
     if let Some(labels) = labels {
         req = req.query(&[("labels", labels)]);
@@ -242,7 +239,7 @@ fn get(config: &Context, app: &str, device_id: &DeviceId) -> Result<Response> {
 
     client
         .get(&url)
-        .bearer_auth(&config.token.access_token().secret())
+        .auth(&config.token)
         .send()
         .context("Can't get device.")
 }
@@ -255,11 +252,10 @@ fn put(
 ) -> Result<Response> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, app, Some(device_id));
-    let token = &config.token.access_token().secret();
 
     client
         .put(&url)
-        .bearer_auth(token)
+        .auth(&config.token)
         .json(&data)
         .send()
         .context(format!(
