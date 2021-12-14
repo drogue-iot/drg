@@ -76,7 +76,7 @@ impl Config {
 
     fn replace_context(&mut self, context: Context) -> Result<()> {
         let name = &context.name;
-        self.delete_context(&name)?;
+        self.delete_context(name)?;
         println!("Updated existing context {}", &name);
         self.contexts.push(context);
         Ok(())
@@ -183,7 +183,7 @@ impl Config {
     }
 
     pub fn delete_context(&mut self, name: &str) -> Result<()> {
-        if self.contains_context(&name) {
+        if self.contains_context(name) {
             self.contexts.retain(|c| c.name != name);
 
             if self.active_context == name {
@@ -222,8 +222,9 @@ impl fmt::Display for Config {
         write!(
             f,
             "{}",
-            serde_yaml::to_string(&self)
-                .unwrap_or("Cannot deserialize the config. The file may be corrupted.".to_string())
+            serde_yaml::to_string(&self).unwrap_or_else(|_| {
+                "Cannot deserialize the config. The file may be corrupted.".to_string()
+            })
         )
     }
 }

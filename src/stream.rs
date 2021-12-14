@@ -2,7 +2,6 @@ use anyhow::{anyhow, Context as AnyhowContext, Result};
 use oauth2::TokenResponse;
 use tungstenite::connect;
 use tungstenite::http::{header, Request};
-use urlencoding;
 
 use crate::config::Context;
 use crate::util;

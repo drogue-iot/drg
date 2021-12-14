@@ -12,7 +12,6 @@ use reqwest::{
 use serde_json::{json, Value};
 use strum_macros::{AsRefStr, EnumString};
 use tabular::{Row, Table};
-use urlencoding;
 
 #[derive(AsRefStr, EnumString)]
 #[allow(non_camel_case_types)]
@@ -106,7 +105,7 @@ pub fn member_edit(config: &Context, app: &str) -> Result<()> {
     let body = res.text().unwrap_or_else(|_| "{}".to_string());
     let insert = util::editor(body)?;
 
-    member_put(config, app, insert).map(|res| describe_response(res))
+    member_put(config, app, insert).map(describe_response)
 }
 
 pub fn member_add(config: &Context, app: &str, username: &str, role: Roles) -> Result<()> {
@@ -116,7 +115,7 @@ pub fn member_add(config: &Context, app: &str, username: &str, role: Roles) -> R
     let mut body: Value = serde_json::from_str(&obj)?;
     body["members"][username] = serde_json::json!({"role": role.as_ref()});
 
-    member_put(config, app, body).map(|res| describe_response(res))
+    member_put(config, app, body).map(describe_response)
 }
 
 pub fn transfer_app(config: &Context, app: &str, username: &str) -> Result<()> {
@@ -141,7 +140,7 @@ pub fn transfer_app(config: &Context, app: &str, username: &str) -> Result<()> {
                     "The new user can accept the transfer with \"drg admin transfer accept {}\"",
                     app
                 );
-                if let Ok(console) = util::get_drogue_console_endpoint(&config) {
+                if let Ok(console) = util::get_drogue_console_endpoint(config) {
                     println!("Alternatively you can share this link with the new owner :");
                     println!("{}transfer/{}", console.as_str(), urlencoding::encode(app));
                 }

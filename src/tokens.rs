@@ -11,7 +11,6 @@ use reqwest::{
 };
 use serde_json::Value;
 use tabular::{Row, Table};
-use urlencoding;
 
 fn craft_url(config: &Context, prefix: Option<&str>) -> String {
     let prefix = match prefix {

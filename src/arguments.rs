@@ -262,7 +262,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .short("k")
         .help("Do not activate the new context.");
 
-    let labels = Arg::with_name(&Parameters::labels.as_ref())
+    let labels = Arg::with_name(Parameters::labels.as_ref())
         .required(false)
         .short("l")
         .long(Parameters::labels.as_ref())
@@ -270,27 +270,27 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .multiple(true)
         .help("A comma separated list of the label filters to filter the list with.");
 
-    let keyout = Arg::with_name(&Parameters::key_output.as_ref())
+    let keyout = Arg::with_name(Parameters::key_output.as_ref())
         .takes_value(true)
         .required(false)
         .long(Parameters::key_output.as_ref())
         .help("Generate and Output file containing the private key. Later to be used to sign device certificates, or device authentication.");
 
-    let ca_key = Arg::with_name(&Parameters::ca_key.as_ref())
-        .long(&Parameters::ca_key.as_ref())
+    let ca_key = Arg::with_name(Parameters::ca_key.as_ref())
+        .long(Parameters::ca_key.as_ref())
         .takes_value(true)
         .required(true)
         .help("Private key of the CA i.e application.");
 
-    let cert_out = Arg::with_name(&Parameters::out.as_ref())
-        .long(&Parameters::out.as_ref())
+    let cert_out = Arg::with_name(Parameters::out.as_ref())
+        .long(Parameters::out.as_ref())
         .short("o")
         .takes_value(true)
         .required(false)
         .help("Output device certificate to file.");
 
-    let device_name_subj = Arg::with_name(&Other_flags::cert.as_ref())
-        .long(&Other_flags::cert.as_ref())
+    let device_name_subj = Arg::with_name(Other_flags::cert.as_ref())
+        .long(Other_flags::cert.as_ref())
         .takes_value(false)
         .help("Creates device with the same name as the subject of device certificate.")
         .long_help(
@@ -300,8 +300,8 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         );
 
     // Default value comes from trust::CERT_VALIDITY_DAYS
-    let cert_valid_days = Arg::with_name(&Parameters::days.as_ref())
-        .long(&Parameters::days.as_ref())
+    let cert_valid_days = Arg::with_name(Parameters::days.as_ref())
+        .long(Parameters::days.as_ref())
         .takes_value(true)
         .required(false)
         .help("Number of days the certificate should be valid for. [default: 365]")
@@ -310,7 +310,7 @@ pub fn parse_arguments() -> ArgMatches<'static> {
             Ok(_) => Ok(()),
         });
 
-    let algo_param = Arg::with_name(&Parameters::algo.as_ref())
+    let algo_param = Arg::with_name(Parameters::algo.as_ref())
         .required(true)
         .help("Algorithm used to generate key pair.")
         .possible_values(&[
@@ -323,17 +323,17 @@ pub fn parse_arguments() -> ArgMatches<'static> {
         .clone()
         .required(false)
         .takes_value(true)
-        .long(&Parameters::algo.as_ref());
+        .long(Parameters::algo.as_ref());
 
-    let key_input = Arg::with_name(&Parameters::key_input.as_ref())
-        .long(&Parameters::key_input.as_ref())
+    let key_input = Arg::with_name(Parameters::key_input.as_ref())
+        .long(Parameters::key_input.as_ref())
         .takes_value(true)
         .required(false)
         .help("Input private key to be used to sign CA/device certificates.");
 
-    let roles_param = Arg::with_name(&Parameters::role.as_ref())
+    let roles_param = Arg::with_name(Parameters::role.as_ref())
         .alias("roles")
-        .long(&Parameters::role.as_ref())
+        .long(Parameters::role.as_ref())
         .takes_value(true)
         .required(true)
         .help("Role assigned to this member")

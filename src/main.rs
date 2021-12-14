@@ -152,7 +152,7 @@ fn main() -> Result<()> {
 
     if command == Other_commands::stream.as_ref() {
         let (_, matches) = matches.subcommand();
-        let app_id = arguments::get_app_id(&matches.unwrap(), context)?;
+        let app_id = arguments::get_app_id(matches.unwrap(), context)?;
         let count = matches
             .unwrap()
             .value_of(Parameters::count)
@@ -227,7 +227,7 @@ fn main() -> Result<()> {
 
                 trust::create_device_certificate(
                     &app_id,
-                    &device_id,
+                    device_id,
                     ca_key,
                     &cert,
                     device_key,
@@ -448,7 +448,7 @@ fn main() -> Result<()> {
         }
         Verbs::cmd => {
             let args: Vec<&str> = cmd.values_of(Verbs::cmd).unwrap().collect();
-            let app_id = arguments::get_app_id(&cmd, context)?;
+            let app_id = arguments::get_app_id(cmd, context)?;
             let (command, device) = (args[0], args[1]);
 
             let body = match cmd.value_of(Parameters::filename) {

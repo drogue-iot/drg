@@ -151,7 +151,7 @@ fn refresh_token(context: &mut Context) -> Result<bool> {
     let new_token = exchange_token(
         context.auth_url.clone(),
         context.token_url.clone(),
-        &refresh_token_var,
+        refresh_token_var,
     )?;
 
     context.token_exp_date = calculate_token_expiration_date(&new_token)?;

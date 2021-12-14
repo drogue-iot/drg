@@ -6,7 +6,6 @@ use oauth2::TokenResponse;
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde_json::Value;
-use urlencoding;
 
 pub fn send_command(
     config: &Context,

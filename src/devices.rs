@@ -10,7 +10,6 @@ use serde_json::{from_str, json, Value};
 use sha2::{Digest, Sha512};
 use std::process::exit;
 use tabular::{Row, Table};
-use urlencoding;
 
 fn craft_url(base: &Url, app_id: &str, device_id: Option<&str>) -> String {
     let device = match device_id {
@@ -50,7 +49,7 @@ pub fn delete(
 }
 
 pub fn read(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
-    get(&config, &app, &device_id)
+    get(config, &app, &device_id)
         .map(|res| util::print_result(res, device_id.to_string(), Verbs::get))
 }
 
@@ -97,18 +96,18 @@ pub fn edit(config: &Context, app: AppId, device_id: DeviceId, file: Option<&str
         Some(f) => {
             let data = util::get_data_from_file(f)?;
 
-            put(&config, &app, &device_id, data)
+            put(config, &app, &device_id, data)
                 .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::edit))
         }
         None => {
             //read device data
-            let res = get(&config, &app, &device_id);
+            let res = get(config, &app, &device_id);
             match res {
                 Ok(r) => match r.status() {
                     StatusCode::OK => {
                         let body = r.text().unwrap_or_else(|_| "{}".to_string());
                         let insert = util::editor(body)?;
-                        put(&config, &app, &device_id, insert).map(|p| {
+                        put(config, &app, &device_id, insert).map(|p| {
                             util::print_result(p, format!("Device {}", device_id), Verbs::edit)
                         })
                     }
@@ -215,14 +214,14 @@ pub fn add_alias(
 // The "set" operation merges the data with what already exists on the server side
 fn set(config: &Context, app: AppId, device_id: DeviceId, data: Value) -> Result<()> {
     //read device data
-    let res = get(&config, &app, &device_id);
+    let res = get(config, &app, &device_id);
     match res {
         Ok(r) => match r.status() {
             StatusCode::OK => {
                 let mut body: Value =
                     serde_json::from_str(r.text().unwrap_or_else(|_| "{}".to_string()).as_str())?;
                 body.merge(data);
-                put(&config, &app, &device_id, body)
+                put(config, &app, &device_id, body)
                     .map(|p| util::print_result(p, format!("Device {}", device_id), Verbs::edit))
             }
             e => {
@@ -239,7 +238,7 @@ fn set(config: &Context, app: AppId, device_id: DeviceId, data: Value) -> Result
 
 fn get(config: &Context, app: &str, device_id: &DeviceId) -> Result<Response> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, app, Some(&device_id));
+    let url = craft_url(&config.registry_url, app, Some(device_id));
 
     client
         .get(&url)
@@ -255,7 +254,7 @@ fn put(
     data: serde_json::Value,
 ) -> Result<Response> {
     let client = Client::new();
-    let url = craft_url(&config.registry_url, app, Some(&device_id));
+    let url = craft_url(&config.registry_url, app, Some(device_id));
     let token = &config.token.access_token().secret();
 
     client

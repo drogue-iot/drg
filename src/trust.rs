@@ -120,7 +120,7 @@ pub fn create_trust_anchor(
     // Private key printed to terminal, when keyout argument not specified.
     if !is_input_key {
         match keyout {
-            Some(file_name) => write_to_file(file_name, &private_key, "App private key"),
+            Some(file_name) => write_to_file(file_name, private_key, "App private key"),
             _ => {
                 println!("Private key for an application is used to sign device certificates, see `drg trust add --help`\n");
                 println!("{}", &private_key)
@@ -155,7 +155,7 @@ pub fn create_device_certificate(
     let ca_base64 = base64::decode(&ca_cert)?;
     let ca_cert_pem = from_utf8(&ca_base64)?;
 
-    let ca_certificate = CertificateParams::from_ca_cert_pem(&ca_cert_pem, ca_key_content)
+    let ca_certificate = CertificateParams::from_ca_cert_pem(ca_cert_pem, ca_key_content)
         .map_err(|e| anyhow!("Error: {}", e))?;
 
     let ca_cert_fin = Certificate::from_params(ca_certificate)?;
@@ -167,8 +167,8 @@ pub fn create_device_certificate(
 
     let device_csr = generate_certificate(
         CertificateType::device,
-        &device_id,
-        &app_id,
+        device_id,
+        app_id,
         key_pair_algorithm,
         days,
         key_input,
@@ -233,10 +233,10 @@ pub fn verify_input_key(key_input: &str) -> Result<(KeyPair, SignAlgo)> {
 }
 
 fn verify_public_key(ca_cert: &str, local_cert: &[u8]) -> Result<()> {
-    let ca_x509 = x509_parser::pem::parse_x509_pem(&ca_cert.as_bytes())?.1;
+    let ca_x509 = x509_parser::pem::parse_x509_pem(ca_cert.as_bytes())?.1;
     let ca_x509_der = x509_parser::parse_x509_certificate(&ca_x509.contents)?.1;
 
-    let local_certificate = x509_parser::parse_x509_certificate(&local_cert)?.1;
+    let local_certificate = x509_parser::parse_x509_certificate(local_cert)?.1;
 
     let ca_public_key = ca_x509_der
         .tbs_certificate
@@ -261,7 +261,7 @@ fn verify_public_key(ca_cert: &str, local_cert: &[u8]) -> Result<()> {
 fn write_to_file(file_name: &str, content: &str, resource_type: &str) {
     let mut file = File::create(file_name);
     match file.as_mut() {
-        Ok(file) => match file.write_all(&content.as_bytes()) {
+        Ok(file) => match file.write_all(content.as_bytes()) {
             Ok(_) => {
                 println!(
                     "{} was successfully written to file {}.",

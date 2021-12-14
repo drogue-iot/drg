@@ -7,7 +7,6 @@ use reqwest::{StatusCode, Url};
 use serde_json::{from_str, json, Value};
 use std::process::exit;
 use tabular::{Row, Table};
-use urlencoding;
 
 fn craft_url(base: &Url, app_id: Option<&str>) -> String {
     let app = match app_id {
@@ -73,7 +72,7 @@ pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
         Some(f) => {
             let data = util::get_data_from_file(f)?;
 
-            put(&config, &app, data)
+            put(config, &app, data)
                 .map(|res| util::print_result(res, format!("App {}", &app), Verbs::edit))
         }
         None => {
@@ -150,7 +149,7 @@ pub fn add_trust_anchor(
     days: Option<&str>,
     key_input: Option<rcgen::KeyPair>,
 ) -> Result<()> {
-    let res = get(config, &app);
+    let res = get(config, app);
     match res {
         Ok(r) => match r.status() {
             StatusCode::OK => {
@@ -175,7 +174,7 @@ pub fn add_trust_anchor(
 }
 
 pub fn get_trust_anchor(config: &Context, app: &str) -> Result<String> {
-    let res = get(config, &app);
+    let res = get(config, app);
     match res {
         Ok(r) => match r.status() {
             StatusCode::OK => {
