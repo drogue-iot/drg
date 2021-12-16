@@ -4,10 +4,14 @@ use anyhow::{anyhow, Context as AnyhowContext, Result};
 use serde::{Deserialize, Serialize};
 use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exit};
 
+use async_trait::async_trait;
+use drogue_client::openid::{Credentials, TokenProvider};
+
 use crate::AppId;
 use chrono::{DateTime, Utc};
 use core::fmt;
 use dirs::config_dir;
+use drogue_client::error::ClientError;
 use oauth2::basic::BasicTokenResponse;
 use oauth2::TokenResponse;
 use tabular::{Row, Table};
@@ -283,6 +287,19 @@ impl Context {
 
     pub fn set_default_algo(&mut self, algo: SignAlgo) {
         self.default_algo = Some(algo.as_ref().to_string())
+    }
+}
+
+#[async_trait]
+impl TokenProvider for &Context {
+    type Error = reqwest::Error;
+
+    async fn provide_access_token(
+        &self,
+    ) -> std::result::Result<Option<Credentials>, ClientError<Self::Error>> {
+        Ok(Some(Credentials::Bearer(
+            self.token.access_token().secret().clone(),
+        )))
     }
 }
 
