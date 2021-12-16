@@ -23,7 +23,8 @@ use std::str::FromStr;
 type AppId = String;
 type DeviceId = String;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let matches = arguments::app_arguments().get_matches();
     let config_path = matches.value_of(Parameters::config.as_ref());
     let (command, submatches) = matches.subcommand().unwrap();
@@ -405,7 +406,7 @@ fn main() -> Result<()> {
                     admin::member_list(context, &app_id)?;
                 }
                 ResourceType::token => {
-                    tokens::get_api_keys(context)?;
+                    tokens::get_api_keys(context).await?;
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),

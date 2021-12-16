@@ -1,134 +1,61 @@
-use std::process::exit;
-
 use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
-use anyhow::{anyhow, Result};
-use reqwest::{
-    blocking::{Client, Response},
-    StatusCode,
-};
-use serde_json::Value;
+use anyhow::Result;
+use reqwest::StatusCode;
 use tabular::{Row, Table};
 
-fn craft_url(config: &Context, prefix: Option<&str>) -> String {
-    let prefix = match prefix {
-        Some(prefix) => format!("/{}", urlencoding::encode(prefix)),
-        None => String::new(),
-    };
+use drogue_client::tokens::v1::Client;
+use drogue_client::Context as ClientContext;
 
-    format!("{}{}{}", &config.registry_url, util::KEYS_API_PATH, prefix)
-}
+pub async fn get_api_keys(config: &Context) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-pub fn get_api_keys(config: &Context) -> Result<()> {
-    let client = Client::new();
-    let url = craft_url(config, None);
+    let res = client.get_tokens(ClientContext::default()).await?;
 
-    let res = client
-        .get(&url)
-        .auth(&config.token)
-        .send()
-        .map_err(|e| {
-            log::error!("Error: {}", e);
-            exit(2);
-        })
-        .map(|res: Response| match res.status() {
-            StatusCode::OK => res,
-            e => {
-                log::error!("{}", e);
-                util::exit_with_code(e);
-            }
-        });
-
-    match res {
-        Ok(res) => {
-            let body: Vec<Value> =
-                serde_json::from_str(&res.text().unwrap_or_else(|_| "{}".to_string()))?;
-
-            let mut table = Table::new("{:<} | {:<} | {:<}");
-            table.add_row(
+    let mut table = Table::new("{:<} | {:<} | {:<}");
+    table.add_row(
                 Row::new()
                     .with_cell("TOKEN PREFIX")
                     .with_cell("AGE")
                     .with_cell("DESCRIPTION"),
             );
 
-            for token in body {
-                let prefix = token["prefix"].as_str();
-                let creation = token["created"].as_str();
-                let desc = token["description"].as_str();
-                if let Some(prefix) = prefix {
-                    table.add_row(
-                        Row::new()
-                            .with_cell(prefix)
-                            .with_cell(util::age(creation.unwrap())?)
-                            .with_cell(desc.unwrap_or_default()),
-                    );
-                }
-            }
-            print!("{}", table);
-            Ok(())
-        }
-        Err(_) => Err(anyhow!("Error while requesting access tokens.")),
+    for token in res {
+        table.add_row(
+            Row::new()
+                .with_cell(token.prefix)
+                .with_cell(util::age_from_timestamp(token.created)?)
+                .with_cell(token.description.unwrap_or_default()),
+        );
     }
+    print!("{}", table);
+    Ok(())
 }
 
-pub fn create_api_key(config: &Context, description: Option<&str>) -> Result<()> {
-    let client = Client::new();
-    let url = craft_url(config, None);
+pub async fn create_api_key(config: &Context, description: Option<&str>) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let mut request = client.post(&url).auth(&config.token);
+    let res = client.create_token(ClientContext::default()).await?;
 
-    if let Some(description) = description {
-        request = request.query(&[("description", description)]);
-    }
-
-    let res = request
-        .send()
-        .map_err(|e| {
-            log::error!("Error: {}", e);
-            exit(2);
-        })
-        .map(|res: Response| match res.status() {
-            StatusCode::OK => res,
-            e => {
-                log::error!("{}", e);
-                util::exit_with_code(e);
-            }
-        });
-    match res {
-        Ok(res) => {
-            let body: Value =
-                serde_json::from_str(&res.text().unwrap_or_else(|_| "{}".to_string()))?;
-            let key = body["token"].as_str().unwrap();
-            println!("A new Access Token was created:\n");
-            println!("{}", key);
-            println!("Make sure you save it, as you will not be able to display it again.");
-            Ok(())
-        }
-        Err(_) => Err(anyhow!("Error creating a token")),
-    }
+    println!("A new Access Token was created:\n");
+    println!("{}", res.token);
+    println!("Make sure you save it, as you will not be able to display it again.");
+    Ok(())
 }
 
-pub fn delete_api_key(config: &Context, prefix: &str) -> Result<()> {
-    let client = Client::new();
-    let url = craft_url(config, Some(prefix));
+pub async fn delete_api_key(config: &Context, prefix: &str) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    client
-        .delete(&url)
-        .auth(&config.token)
-        .send()
-        .map_err(|e| {
-            log::error!("Error: {}", e);
-            exit(2);
-        })
-        .map(|res: Response| match res.status() {
-            StatusCode::NO_CONTENT => {
-                println!("Access token with prefix {} deleted", prefix);
-            }
-            e => {
-                log::error!("{}", e);
-                util::exit_with_code(e);
-            }
-        })
+    let res = client
+        .delete_token(prefix, ClientContext::default())
+        .await?;
+
+    if res {
+        println!("Access token with prefix {} deleted", prefix);
+    } else {
+        println!("Access token with prefix {} was not found", prefix);
+        util::exit_with_code(StatusCode::NOT_FOUND);
+    }
+    Ok(())
 }

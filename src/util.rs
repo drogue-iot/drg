@@ -2,7 +2,7 @@ use crate::arguments::Action;
 use crate::config::{Config, Context, RequestBuilderExt};
 use crate::Parameters;
 use anyhow::{anyhow, Context as AnyhowContext, Result};
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
 use clap::crate_version;
 use clap::{ArgMatches, Values};
 use colored_json::write_colored_json;
@@ -25,7 +25,6 @@ pub const COMPATIBLE_DROGUE_VERSION: &str = "0.8.0";
 pub const REGISTRY_API_PATH: &str = "api/registry/v1alpha1";
 pub const COMMAND_API_PATH: &str = "api/command/v1alpha1";
 pub const ADMIN_API_PATH: &str = "api/admin/v1alpha1";
-pub const KEYS_API_PATH: &str = "api/tokens/v1alpha1";
 
 pub fn print_result(r: Response, resource_name: String, op: Action) {
     match op {
@@ -287,6 +286,12 @@ pub fn get_data_from_file(path: &str) -> Result<Value> {
 
 pub fn age(str_timestamp: &str) -> Result<String> {
     let time = chrono::DateTime::parse_from_rfc3339(str_timestamp)?;
+
+    age_from_timestamp(time.with_timezone(&Utc))
+}
+
+pub fn age_from_timestamp(time: DateTime<Utc>) -> Result<String> {
+    //let time = chrono::DateTime::parse_from_rfc3339(str_timestamp)?;
     let age = Utc::now().naive_utc() - time.naive_utc();
 
     if age > Duration::days(7) {
