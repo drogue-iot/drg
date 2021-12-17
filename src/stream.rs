@@ -20,11 +20,14 @@ pub fn stream_app(config: &Context, app: &str, mut count: usize) -> Result<()> {
         let msg = socket.read_message();
         match msg {
             Ok(m) => {
-                // ignore protocol messages, only show text
-                if m.is_text() {
-                    util::show_json(m.into_text().expect("Invalid message"));
+                log::debug!("Message: {:?}", m);
+                if m.is_binary() || m.is_text() {
+                    count -= 1;
+                    // ignore protocol messages, only show text
+                    if m.is_text() {
+                        util::show_json(m.into_text().expect("Invalid message"));
+                    }
                 }
-                count -= 1;
             }
             Err(e) => return Err(anyhow!(e)),
         }
