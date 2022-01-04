@@ -1,0 +1,30 @@
+id: io.drogue.drg
+command: drg
+
+
+runtime: org.freedesktop.Platform
+runtime-version: '21.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+   - org.freedesktop.Sdk.Extension.rust-stable
+
+finish-args:
+  - "--share=network"
+  - "--filesystem=~/.config/drg_config.yaml:rw"
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/drg/cargo
+
+modules:
+  - name: drg
+    buildsystem: simple
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml --verbose
+      - cargo --offline build --release --verbose
+      - install -Dm755 ./target/debug/drg -t /app/bin/
+    sources:
+          - type: dir
+            path: ../../
+          - generated-sources.json
