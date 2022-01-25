@@ -88,7 +88,7 @@ pub fn create(
         .json(&body)
         .send()
         .context("Can't create device.")
-        .map(|res| util::print_result(res, format!("Device created"), Action::create))
+        .map(|res| util::print_result(res, "Device created".to_string(), Action::create))
 }
 
 pub fn edit(

@@ -45,7 +45,7 @@ pub fn create(
         .auth(&config.token)
         .send()
         .context("Can't create app.")
-        .map(|res| util::print_result(res, format!("App created"), Action::create))
+        .map(|res| util::print_result(res, "App created".to_string(), Action::create))
 }
 
 pub fn read(config: &Context, app: AppId) -> Result<()> {
