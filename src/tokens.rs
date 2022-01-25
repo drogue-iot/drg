@@ -45,17 +45,24 @@ pub fn get_api_keys(config: &Context) -> Result<()> {
             let body: Vec<Value> =
                 serde_json::from_str(&res.text().unwrap_or_else(|_| "{}".to_string()))?;
 
-            let mut table = Table::new("{:<} | {:<}");
-            table.add_row(Row::new().with_cell("TOKEN PREFIX").with_cell("AGE"));
+            let mut table = Table::new("{:<} | {:<} | {:<}");
+            table.add_row(
+                Row::new()
+                    .with_cell("TOKEN PREFIX")
+                    .with_cell("AGE")
+                    .with_cell("DESCRIPTION"),
+            );
 
             for token in body {
                 let prefix = token["prefix"].as_str();
                 let creation = token["created"].as_str();
+                let desc = token["description"].as_str();
                 if let Some(prefix) = prefix {
                     table.add_row(
                         Row::new()
                             .with_cell(prefix)
-                            .with_cell(util::age(creation.unwrap())?),
+                            .with_cell(util::age(creation.unwrap())?)
+                            .with_cell(desc.unwrap_or_default()),
                     );
                 }
             }
@@ -66,13 +73,17 @@ pub fn get_api_keys(config: &Context) -> Result<()> {
     }
 }
 
-pub fn create_api_key(config: &Context) -> Result<()> {
+pub fn create_api_key(config: &Context, description: Option<&str>) -> Result<()> {
     let client = Client::new();
     let url = craft_url(config, None);
 
-    let res = client
-        .post(&url)
-        .auth(&config.token)
+    let mut request = client.post(&url).auth(&config.token);
+
+    if let Some(description) = description {
+        request = request.query(&[("description", description)]);
+    }
+
+    let res = request
         .send()
         .map_err(|e| {
             log::error!("Error: {}", e);

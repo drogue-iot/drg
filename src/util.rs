@@ -1,16 +1,17 @@
+use crate::arguments::Action;
 use crate::config::{Config, Context, RequestBuilderExt};
-use crate::Other_flags;
-use crate::Verbs;
+use crate::Parameters;
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use chrono::{Duration, Utc};
 use clap::crate_version;
-use clap::ArgMatches;
+use clap::{ArgMatches, Values};
 use colored_json::write_colored_json;
 use log::LevelFilter;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
 use serde_json::Value::String as serde_string;
-use serde_json::{from_str, Value};
+use serde_json::{from_str, json, Value};
+use std::collections::HashMap;
 use std::fs;
 use std::io::stdout;
 use std::io::{Read, Write};
@@ -26,26 +27,26 @@ pub const COMMAND_API_PATH: &str = "api/command/v1alpha1";
 pub const ADMIN_API_PATH: &str = "api/admin/v1alpha1";
 pub const KEYS_API_PATH: &str = "api/tokens/v1alpha1";
 
-pub fn print_result(r: Response, resource_name: String, op: Verbs) {
+pub fn print_result(r: Response, resource_name: String, op: Action) {
     match op {
-        Verbs::create => match r.status() {
+        Action::create => match r.status() {
             StatusCode::CREATED => println!("{} created.", resource_name),
             r => exit_with_code(r),
         },
-        Verbs::delete => match r.status() {
+        Action::delete => match r.status() {
             StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
             r => exit_with_code(r),
         },
-        Verbs::get => match r.status() {
+        Action::get => match r.status() {
             StatusCode::OK => show_json(r.text().expect("Empty response")),
             r => exit_with_code(r),
         },
-        Verbs::edit | Verbs::set => match r.status() {
+        Action::edit | Action::set => match r.status() {
             StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
             r => exit_with_code(r),
         },
         //should never happen.
-        Verbs::cmd => {}
+        _ => {}
     }
 }
 
@@ -239,7 +240,7 @@ pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
 }
 
 pub fn log_level(matches: &ArgMatches) -> LevelFilter {
-    match matches.occurrences_of(Other_flags::verbose) {
+    match matches.occurrences_of(Parameters::verbose.as_ref()) {
         0 => LevelFilter::Error,
         1 => {
             println!("Log level: WARN");
@@ -349,4 +350,22 @@ fn deserialize_endpoint(details: &Value) -> (Option<String>, String) {
 
     let port = port.map_or("".to_string(), |p| format!(":{}", p));
     (host, port)
+}
+
+pub fn process_labels(args: Values) -> Value {
+    // split the labels around the =
+    let labels: HashMap<&str, &str> = args
+        .map(|l| {
+            let mut s = l.split("=");
+            let k = s.next();
+            let v = s.next();
+            k.zip(v)
+        })
+        .flatten()
+        .collect();
+
+    // prepare json data to merge
+    json!({"metadata": {
+    "labels": labels
+    }})
 }

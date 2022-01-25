@@ -66,7 +66,7 @@ pub fn member_list(config: &Context, app: &str) -> Result<()> {
     let body: Value = serde_json::from_str(&res.text().unwrap_or_else(|_| "{}".to_string()))?;
 
     let mut table = Table::new("{:<} | {:<}");
-    table.add_row(Row::new().with_cell("User").with_cell("Role"));
+    table.add_row(Row::new().with_cell("USER").with_cell("ROLE"));
 
     match body["members"].as_object() {
         Some(members) => {
@@ -74,7 +74,7 @@ pub fn member_list(config: &Context, app: &str) -> Result<()> {
                 table.add_row(
                     Row::new()
                         .with_cell(i)
-                        .with_cell(members[i]["role"].to_owned()),
+                        .with_cell(members[i]["role"].as_str().unwrap_or_default()),
                 );
             }
             println!("{}", table);
@@ -85,6 +85,19 @@ pub fn member_list(config: &Context, app: &str) -> Result<()> {
     };
 
     Ok(())
+}
+pub fn member_delete(_config: &Context, _app: &str, _username: &str) -> Result<()> {
+    // todo use a strongly typed deserialisation of members using drogue_client.
+    unimplemented!()
+    // let res = member_get(config, app)?;
+    // let obj = res.text().unwrap_or_else(|_| "{}".to_string());
+    //
+    // let mut body: Value = serde_json::from_str(&obj)?;
+    // let mut members= body["members"].as_array().unwrap_or_default();
+    // members.retain(|u| u != username);
+    // body["members"] = members;
+    //
+    // member_put(config, app, body).map(describe_response)
 }
 
 fn member_put(config: &Context, app: &str, data: serde_json::Value) -> Result<Response> {

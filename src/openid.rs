@@ -74,7 +74,7 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
         Some(TokenUrl::new(token_url.to_string())?),
     )
     // Where the user will be redirected to after the authorization process.
-    .set_redirect_url(RedirectUrl::new(format!("http://localhost:{}", port))?);
+    .set_redirect_uri(RedirectUrl::new(format!("http://localhost:{}", port))?);
 
     // Generate a PKCE challenge. As this is a client app a PKCE challenge this is needed to assure confidentiality.
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();

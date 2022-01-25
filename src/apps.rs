@@ -1,6 +1,8 @@
 use crate::config::{Context, RequestBuilderExt};
-use crate::{trust, util, AppId, Verbs};
+use crate::{trust, util, Action, AppId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
+use clap::Values;
+use json_value_merge::Merge;
 use reqwest::blocking::{Client, Response};
 use reqwest::{StatusCode, Url};
 use serde_json::{from_str, json, Value};
@@ -17,22 +19,24 @@ fn craft_url(base: &Url, app_id: Option<&str>) -> String {
 
 pub fn create(
     config: &Context,
-    app: AppId,
+    app: Option<AppId>,
     data: serde_json::Value,
     file: Option<&str>,
 ) -> Result<()> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, None);
-    let body = match file {
-        Some(f) => util::get_data_from_file(f)?,
-        None => {
+    let body = match (file, app) {
+        (Some(f), None) => util::get_data_from_file(f)?,
+        (None, Some(a)) => {
             json!({
             "metadata": {
-                "name": app,
+                "name": a,
             },
             "spec": data,
             })
         }
+        // a file AND an app name should not be allowed by clap.
+        _ => unreachable!(),
     };
 
     client
@@ -41,11 +45,11 @@ pub fn create(
         .auth(&config.token)
         .send()
         .context("Can't create app.")
-        .map(|res| util::print_result(res, format!("App {}", app), Verbs::create))
+        .map(|res| util::print_result(res, format!("App created"), Action::create))
 }
 
 pub fn read(config: &Context, app: AppId) -> Result<()> {
-    get(config, &app).map(|res| util::print_result(res, app.to_string(), Verbs::get))
+    get(config, &app).map(|res| util::print_result(res, app.to_string(), Action::get))
 }
 
 pub fn delete(config: &Context, app: AppId, ignore_missing: bool) -> Result<()> {
@@ -61,7 +65,7 @@ pub fn delete(config: &Context, app: AppId, ignore_missing: bool) -> Result<()> 
             if ignore_missing && res.status() == StatusCode::NOT_FOUND {
                 exit(0);
             } else {
-                util::print_result(res, format!("App {}", &app), Verbs::delete)
+                util::print_result(res, format!("App {}", &app), Action::delete)
             }
         })
 }
@@ -72,7 +76,7 @@ pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
             let data = util::get_data_from_file(f)?;
 
             put(config, &app, data)
-                .map(|res| util::print_result(res, format!("App {}", &app), Verbs::edit))
+                .map(|res| util::print_result(res, format!("App {}", &app), Action::edit))
         }
         None => {
             //read app data
@@ -84,7 +88,7 @@ pub fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()> {
                         let insert = util::editor(body)?;
 
                         put(config, &app, insert)
-                            .map(|p| util::print_result(p, format!("App {}", &app), Verbs::edit))
+                            .map(|p| util::print_result(p, format!("App {}", &app), Action::edit))
                     }
                     e => {
                         log::error!("Error : could not retrieve app: {}", e);
@@ -146,28 +150,11 @@ pub fn add_trust_anchor(
     days: Option<&str>,
     key_input: Option<rcgen::KeyPair>,
 ) -> Result<()> {
-    let res = get(config, app);
-    match res {
-        Ok(r) => match r.status() {
-            StatusCode::OK => {
-                let app_obj = r.text().unwrap_or_else(|_| "{}".to_string());
-                let mut app_obj: Value = serde_json::from_str(&app_obj)?;
-                app_obj["spec"]["trustAnchors"] =
-                    trust::create_trust_anchor(app, keyout, key_pair_algorithm, days, key_input)?;
+    let trust_anchor =
+        trust::create_trust_anchor(app, keyout, key_pair_algorithm, days, key_input)?;
+    let data = json!({"spec": {"trustAnchors": [ trust_anchor ]}} );
 
-                put(config, app, app_obj)
-                    .map(|p| util::print_result(p, format!("App {}", &app), Verbs::edit))
-            }
-            e => {
-                log::error!("Error : could not retrieve app: {}", e);
-                util::exit_with_code(e)
-            }
-        },
-        Err(e) => {
-            log::error!("Error : could not retrieve app: {}", e);
-            exit(2);
-        }
-    }
+    set(config, app.to_string(), data)
 }
 
 pub fn get_trust_anchor(config: &Context, app: &str) -> Result<String> {
@@ -195,6 +182,36 @@ pub fn get_trust_anchor(config: &Context, app: &str) -> Result<String> {
         Err(e) => {
             log::error!("Error : could not retrieve app: {}", e);
             exit(2);
+        }
+    }
+}
+
+pub fn add_labels(config: &Context, app: AppId, args: Values) -> Result<()> {
+    let data = util::process_labels(args);
+    set(config, app, data)
+}
+
+// The "set" operation merges the data with what already exists on the server side
+fn set(config: &Context, app: AppId, data: Value) -> Result<()> {
+    //read app data
+    let res = get(config, &app);
+    match res {
+        Ok(r) => match r.status() {
+            StatusCode::OK => {
+                let mut body: Value =
+                    serde_json::from_str(r.text().unwrap_or_else(|_| "{}".to_string()).as_str())?;
+                body.merge(data);
+                put(config, &app, body)
+                    .map(|p| util::print_result(p, format!("Application {}", app), Action::edit))
+            }
+            e => {
+                log::error!("Error : could not retrieve application: {}", e);
+                util::exit_with_code(e)
+            }
+        },
+        Err(e) => {
+            log::error!("Error : could not execute request: {}", e);
+            exit(2)
         }
     }
 }
