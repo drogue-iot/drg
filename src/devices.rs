@@ -1,6 +1,7 @@
 use crate::config::{Context, RequestBuilderExt};
-use crate::{util, AppId, DeviceId, Verbs};
+use crate::{util, Action, AppId, DeviceId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
+use clap::Values;
 use json_value_merge::Merge;
 use reqwest::blocking::Client;
 use reqwest::blocking::Response;
@@ -42,14 +43,14 @@ pub fn delete(
             if ignore_missing && res.status() == StatusCode::NOT_FOUND {
                 exit(0);
             } else {
-                util::print_result(res, format!("Device {}", device_id), Verbs::delete)
+                util::print_result(res, format!("Device {}", device_id), Action::delete)
             }
         })
 }
 
 pub fn read(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
     get(config, &app, &device_id)
-        .map(|res| util::print_result(res, device_id.to_string(), Verbs::get))
+        .map(|res| util::print_result(res, device_id.to_string(), Action::get))
 }
 
 pub fn create(
@@ -87,28 +88,33 @@ pub fn create(
         .json(&body)
         .send()
         .context("Can't create device.")
-        .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::create))
+        .map(|res| util::print_result(res, format!("Device created"), Action::create))
 }
 
-pub fn edit(config: &Context, app: AppId, device_id: DeviceId, file: Option<&str>) -> Result<()> {
-    match file {
-        Some(f) => {
+pub fn edit(
+    config: &Context,
+    app: AppId,
+    device_id: Option<DeviceId>,
+    file: Option<&str>,
+) -> Result<()> {
+    match (device_id, file) {
+        (None, Some(f)) => {
             let data = util::get_data_from_file(f)?;
+            let dev_id = name_from_json_or_file(None, file)?;
 
-            put(config, &app, &device_id, data)
-                .map(|res| util::print_result(res, format!("Device {}", device_id), Verbs::edit))
+            put(config, &app, &dev_id, data)
+                .map(|res| util::print_result(res, format!("Device {}", dev_id), Action::edit))
         }
-        None => {
+        (Some(id), None) => {
             //read device data
-            let res = get(config, &app, &device_id);
+            let res = get(config, &app, &id);
             match res {
                 Ok(r) => match r.status() {
                     StatusCode::OK => {
                         let body = r.text().unwrap_or_else(|_| "{}".to_string());
                         let insert = util::editor(body)?;
-                        put(config, &app, &device_id, insert).map(|p| {
-                            util::print_result(p, format!("Device {}", device_id), Verbs::edit)
-                        })
+                        put(config, &app, &id, insert)
+                            .map(|p| util::print_result(p, format!("Device {}", id), Action::edit))
                     }
                     e => {
                         log::error!("Error : could not retrieve device: {}", e);
@@ -121,6 +127,8 @@ pub fn edit(config: &Context, app: AppId, device_id: DeviceId, file: Option<&str
                 }
             }
         }
+        // Clap is making sure the arguments are mutually exclusive.
+        _ => unreachable!(),
     }
 }
 
@@ -173,7 +181,7 @@ pub fn set_password(
 ) -> Result<()> {
     let mut hasher = Sha512::new();
     hasher.update(password.as_bytes());
-    let hash = &hasher.finalize()[..];
+    let hash = format!("{:x}", hasher.finalize());
 
     let credential = match username {
         Some(user) => json!({"user": {"username": user, "password": {"sha512": hash}}}),
@@ -208,6 +216,11 @@ pub fn add_alias(
     set(config, app, device_id, data)
 }
 
+pub fn add_labels(config: &Context, app: AppId, device_id: DeviceId, args: Values) -> Result<()> {
+    let data = util::process_labels(args);
+    set(config, app, device_id, data)
+}
+
 // The "set" operation merges the data with what already exists on the server side
 fn set(config: &Context, app: AppId, device_id: DeviceId, data: Value) -> Result<()> {
     //read device data
@@ -219,7 +232,7 @@ fn set(config: &Context, app: AppId, device_id: DeviceId, data: Value) -> Result
                     serde_json::from_str(r.text().unwrap_or_else(|_| "{}".to_string()).as_str())?;
                 body.merge(data);
                 put(config, &app, &device_id, body)
-                    .map(|p| util::print_result(p, format!("Device {}", device_id), Verbs::edit))
+                    .map(|p| util::print_result(p, format!("Device {}", device_id), Action::edit))
             }
             e => {
                 log::error!("Error : could not retrieve device: {}", e);
@@ -285,4 +298,20 @@ fn pretty_list(data: String) -> Result<()> {
 
     print!("{}", table);
     Ok(())
+}
+
+pub fn name_from_json_or_file(param: Option<String>, file: Option<&str>) -> Result<String> {
+    match (param, file) {
+        (Some(id), None) => Ok(id),
+        (None, Some(file)) => {
+            let f = util::get_data_from_file(file)?;
+            let id = f["metadata"]["name"]
+                .as_str()
+                .context("Misisng `name` property in device definition file")?
+                .to_string();
+            Ok(id)
+        }
+        // we must have id or file, not both, not neither.
+        _ => unreachable!(),
+    }
 }

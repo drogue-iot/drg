@@ -1,11 +1,19 @@
 use anyhow::{anyhow, Context as AnyhowContext, Result};
+use colored_json::write_colored_json;
+use serde_json::Value;
+use std::io::stdout;
 use tungstenite::connect;
 use tungstenite::http::Request;
 
 use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
-pub fn stream_app(config: &Context, app: &str, mut count: usize) -> Result<()> {
+pub fn stream_app(
+    config: &Context,
+    app: &str,
+    device: Option<&str>,
+    mut count: usize,
+) -> Result<()> {
     let url = util::get_drogue_websocket_endpoint(config)?;
     let url = format!("{}{}", url, urlencoding::encode(app));
 
@@ -25,7 +33,8 @@ pub fn stream_app(config: &Context, app: &str, mut count: usize) -> Result<()> {
                     count -= 1;
                     // ignore protocol messages, only show text
                     if m.is_text() {
-                        util::show_json(m.into_text().expect("Invalid message"));
+                        let message = m.into_text().expect("Invalid message");
+                        filter_device(message, device);
                     }
                 }
             }
@@ -34,4 +43,26 @@ pub fn stream_app(config: &Context, app: &str, mut count: usize) -> Result<()> {
         //bail!("Websocket Error")
     }
     Ok(())
+}
+
+fn filter_device<S: Into<String>>(payload: S, device: Option<&str>) {
+    let payload = payload.into();
+    match serde_json::from_str(&payload) {
+        // show as JSON
+        Ok(json) => {
+            if let Some(device) = device {
+                let json: Value = json;
+                let sender: &str = json["sender"].as_str().unwrap_or_default();
+                if sender == device {
+                    write_colored_json(&json, &mut stdout().lock()).ok();
+                    println!();
+                }
+            } else {
+                write_colored_json(&json, &mut stdout().lock()).ok();
+                println!();
+            }
+        }
+        // fall back to plain text output
+        Err(_) => println!("{}", payload),
+    }
 }

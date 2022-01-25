@@ -1,3 +1,18 @@
+# Version 0.8.1
+
+## New features
+- Reworked the CLI flow : general improvement in usability, better help messages.
+- drg can now set labels using `drg set labels` subcommand.
+- drg stream can now filter the stream to only display messages comming from a given device.
+
+
+## Misc. changes
+- When creating or updating an application or a device with a full spec file, the application name or device Id will be red from the file, without needing to input it.
+
+## Dependencies
+- Updated to clap v3
+- updated to oauth v4
+
 # Version 0.8.0
 
 ## New features
