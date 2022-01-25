@@ -356,7 +356,7 @@ pub fn process_labels(args: Values) -> Value {
     // split the labels around the =
     let labels: HashMap<&str, &str> = args
         .map(|l| {
-            let mut s = l.split("=");
+            let mut s = l.split('=');
             let k = s.next();
             let v = s.next();
             k.zip(v)
