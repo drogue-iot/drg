@@ -7,7 +7,7 @@ use reqwest::blocking::Client;
 use reqwest::blocking::Response;
 use reqwest::{StatusCode, Url};
 use serde_json::{from_str, json, Value};
-use sha2::{Digest, Sha512};
+use sha_crypt::sha512_simple;
 use std::process::exit;
 use tabular::{Row, Table};
 
@@ -179,9 +179,8 @@ pub fn set_password(
     password: String,
     username: Option<&str>,
 ) -> Result<()> {
-    let mut hasher = Sha512::new();
-    hasher.update(password.as_bytes());
-    let hash = format!("{:x}", hasher.finalize());
+    let hash = sha512_simple(&password, &Default::default())
+        .map_err(|err| anyhow!("Failed to hash password: {:?}", err))?;
 
     let credential = match username {
         Some(user) => json!({"user": {"username": user, "password": {"sha512": hash}}}),
