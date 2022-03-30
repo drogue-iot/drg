@@ -1,5 +1,5 @@
 use oauth2::basic::{BasicClient, BasicTokenResponse};
-use oauth2::reqwest::http_client;
+use oauth2::reqwest::async_http_client;
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope,
     TokenResponse, TokenUrl,
@@ -20,7 +20,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 
 const CLIENT_ID: &str = "drogue";
 
-pub fn login(
+pub async fn login(
     api_endpoint: Url,
     refresh_token_val: Option<&str>,
     context_name: config::ContextId,
@@ -31,12 +31,15 @@ pub fn login(
     let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
 
     let token = match refresh_token_val {
-        Some(refresh_token_val) => exchange_token(
-            auth_url.clone(),
-            token_url.clone(),
-            &oauth2::RefreshToken::new(refresh_token_val.to_string()),
-        )?,
-        None => get_token(auth_url.clone(), token_url.clone())?,
+        Some(refresh_token_val) => {
+            exchange_token(
+                auth_url.clone(),
+                token_url.clone(),
+                &oauth2::RefreshToken::new(refresh_token_val.to_string()),
+            )
+            .await?
+        }
+        None => get_token(auth_url.clone(), token_url.clone()).await?,
     };
 
     let token_exp_date = calculate_token_expiration_date(&token)?;
@@ -59,7 +62,7 @@ pub fn login(
     Ok(config)
 }
 
-fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
+async fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
     log::debug!("Using auth url : {}", auth_url);
 
     //start a local server
@@ -115,7 +118,8 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
         .exchange_code(AuthorizationCode::new(code.to_string()))
         // Set the PKCE code verifier.
         .set_pkce_verifier(pkce_verifier)
-        .request(http_client);
+        .request_async(async_http_client)
+        .await;
 
     let browser_msg = match token_result {
         Ok(_) => "Authentication success. This browser can be closed.",
@@ -132,18 +136,18 @@ fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
     })
 }
 
-pub fn verify_token_validity(context: &mut Context) -> Result<bool> {
+pub async fn verify_token_validity(context: &mut Context) -> Result<bool> {
     log::debug!("Token expires at : {}", context.token_exp_date);
     // 30 seconds should be enough
     if context.token_exp_date - Utc::now() > Duration::seconds(30) {
         Ok(false)
     } else {
         log::info!("Token is expired or will be soon, refreshing...");
-        refresh_token(context)
+        refresh_token(context).await
     }
 }
 
-fn refresh_token(context: &mut Context) -> Result<bool> {
+async fn refresh_token(context: &mut Context) -> Result<bool> {
     match &context.token {
         Token::TokenResponse(token) => {
             let refresh_token_var = token
@@ -153,7 +157,8 @@ fn refresh_token(context: &mut Context) -> Result<bool> {
                 context.auth_url.clone(),
                 context.token_url.clone(),
                 refresh_token_var,
-            )?;
+            )
+            .await?;
 
             context.token_exp_date = calculate_token_expiration_date(&new_token)?;
             context.token = Token::TokenResponse(new_token);
@@ -167,7 +172,7 @@ fn refresh_token(context: &mut Context) -> Result<bool> {
     }
 }
 
-fn exchange_token(
+async fn exchange_token(
     auth_url: Url,
     token_url: Url,
     refresh_token_val: &oauth2::RefreshToken,
@@ -187,7 +192,8 @@ fn exchange_token(
     // Exchange the refresh token for access token
     client
         .exchange_refresh_token(refresh_token_val)
-        .request(http_client)
+        .request_async(async_http_client)
+        .await
         .map_err(|e| {
             log::warn!("{:?}", e);
             Error::msg(format!("While refreshing token : {}", e))

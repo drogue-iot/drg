@@ -297,9 +297,15 @@ impl TokenProvider for &Context {
     async fn provide_access_token(
         &self,
     ) -> std::result::Result<Option<Credentials>, ClientError<Self::Error>> {
-        Ok(Some(Credentials::Bearer(
-            self.token.access_token().secret().clone(),
-        )))
+        match &self.token {
+            Token::AccessToken(basic) => Ok(Some(Credentials::Basic(
+                basic.id.clone(),
+                Some(basic.token.clone()),
+            ))),
+            Token::TokenResponse(token) => Ok(Some(Credentials::Bearer(
+                token.access_token().secret().clone(),
+            ))),
+        }
     }
 }
 
