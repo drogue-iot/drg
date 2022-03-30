@@ -76,6 +76,7 @@ async fn main() -> Result<()> {
                 refresh_token_val,
                 context_arg.unwrap_or("default".to_string() as ContextId),
             )
+            .await
         }?;
 
         println!("\nSuccessfully authenticated to drogue cloud : {}", url);
@@ -156,7 +157,7 @@ async fn main() -> Result<()> {
     }
 
     // The following commands needs a context and a valid token
-    if openid::verify_token_validity(config.get_context_mut(&context_arg)?)? {
+    if openid::verify_token_validity(config.get_context_mut(&context_arg)?).await? {
         config.write(config_path)?;
     }
     let context = config.get_context(&context_arg)?;
@@ -228,7 +229,7 @@ async fn main() -> Result<()> {
                 }
                 ResourceType::token => {
                     let description = command.value_of(Parameters::description.as_ref());
-                    tokens::create_api_key(context, description)
+                    tokens::create_api_key(context, description).await
                 }
                 //TODO verify appcert
                 ResourceType::app_cert | ResourceType::device_cert => {
@@ -333,7 +334,7 @@ async fn main() -> Result<()> {
                 }
                 ResourceType::token => {
                     let prefix = command.value_of(ResourceId::tokenPrefix.as_ref()).unwrap();
-                    tokens::delete_api_key(context, prefix)
+                    tokens::delete_api_key(context, prefix).await
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
