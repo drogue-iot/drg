@@ -10,7 +10,7 @@ use log::LevelFilter;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value::String as serde_string;
 use serde_json::{from_str, json, Value};
 use std::collections::HashMap;

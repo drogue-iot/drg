@@ -1,20 +1,14 @@
-use crate::config::{Context, RequestBuilderExt};
-use crate::{trust, util, Action, AppId};
-use anyhow::{anyhow, Context as AnyhowContext, Result};
+use crate::config::Context;
+use crate::{trust, util, AppId};
+use anyhow::{anyhow, Result};
 use clap::Values;
-use drogue_client::error::ClientError;
-use drogue_client::meta::v1::NonScopedMetadata;
 use json_value_merge::Merge;
-use reqwest::blocking::Response;
-use reqwest::{StatusCode, Url};
-use serde_json::{from_str, json, Value};
+use serde_json::{json, Value};
 use std::process::exit;
 use tabular::{Row, Table};
 
-use crate::util::show_json;
 use drogue_client::registry::v1::Application;
 use drogue_client::registry::v1::Client;
-use serde::Deserialize;
 
 pub async fn create(
     config: &Context,
@@ -53,7 +47,7 @@ pub async fn read(config: &Context, app: AppId) -> Result<()> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     match client.get_app(&app).await {
-        Ok(Some(app)) => Ok(show_json(serde_json::to_string(&app)?)),
+        Ok(Some(app)) => Ok(util::show_json(serde_json::to_string(&app)?)),
         Ok(None) => Ok(println!("Application {} not found", app)),
         Err(e) => Err(e.into()),
     }
