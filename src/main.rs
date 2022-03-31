@@ -20,6 +20,8 @@ use serde_json::json;
 use std::process::exit;
 use std::str::FromStr;
 
+use crate::admin::Role;
+
 type AppId = String;
 type DeviceId = String;
 
@@ -220,12 +222,12 @@ async fn main() -> Result<()> {
                     let app_id = arguments::get_app_id(command, context)?;
                     let role = command
                         .value_of(Parameters::role.as_ref())
-                        .map(|r| admin::Roles::from_str(r).unwrap())
+                        .map(|r| Role::from_str(r).unwrap())
                         .unwrap();
 
                     let user = command.value_of(ResourceType::member.as_ref()).unwrap();
 
-                    admin::member_add(context, &app_id, user, role)
+                    admin::member_add(context, &app_id, user, role).await
                 }
                 ResourceType::token => {
                     let description = command.value_of(Parameters::description.as_ref());
@@ -334,7 +336,7 @@ async fn main() -> Result<()> {
                     let app_id = arguments::get_app_id(command, context)?;
                     let user = command.value_of(ResourceType::member.as_ref()).unwrap();
 
-                    admin::member_delete(context, app_id.as_str(), user)
+                    admin::member_delete(context, app_id.as_str(), user).await
                 }
                 ResourceType::token => {
                     let prefix = command.value_of(ResourceId::tokenPrefix.as_ref()).unwrap();
@@ -368,7 +370,7 @@ async fn main() -> Result<()> {
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
-                    admin::member_edit(context, &app_id)
+                    admin::member_edit(context, &app_id).await
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -404,7 +406,7 @@ async fn main() -> Result<()> {
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
-                    admin::member_list(context, &app_id)?;
+                    admin::member_list(context, &app_id).await?;
                 }
                 ResourceType::token => {
                     tokens::get_api_keys(context).await?;
@@ -486,15 +488,15 @@ async fn main() -> Result<()> {
                 Transfer::init => {
                     let user = cmd.value_of(Parameters::username.as_ref()).unwrap();
                     let id = arguments::get_app_id(cmd, context)?;
-                    admin::transfer_app(context, id.as_str(), user)?;
+                    admin::transfer_app(context, id.as_str(), user).await?;
                 }
                 Transfer::accept => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
-                    admin::accept_transfer(context, id)?
+                    admin::accept_transfer(context, id).await?
                 }
                 Transfer::cancel => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
-                    admin::cancel_transfer(context, id)?
+                    admin::cancel_transfer(context, id).await?
                 }
             }
         }

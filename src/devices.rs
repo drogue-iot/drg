@@ -123,7 +123,12 @@ pub async fn edit(
     }
 }
 
-pub async fn list(config: &Context, app: AppId, labels: Option<Values<'_>>, wide: bool) -> Result<()> {
+pub async fn list(
+    config: &Context,
+    app: AppId,
+    labels: Option<Values<'_>>,
+    wide: bool,
+) -> Result<()> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     let labels = util::clap_values_to_vec(labels);
@@ -247,7 +252,6 @@ where
 // this part needs to be refactored.
 
 fn pretty_list(data: Vec<Device>, wide: bool) {
-
     let mut header = Row::new().with_cell("NAME").with_cell("AGE");
     let mut table = if wide {
         header.add_cell("FIRMWARE");
@@ -268,52 +272,50 @@ fn pretty_list(data: Vec<Device>, wide: bool) {
             .with_cell(name)
             .with_cell(util::age_from_timestamp(creation));
 
-            if wide {
-                    if let Some(firmware) = dev.status.get("firmware") {
-                        let current = firmware["current"].as_str();
-                        let target = firmware["target"].as_str();
+        if wide {
+            if let Some(firmware) = dev.status.get("firmware") {
+                let current = firmware["current"].as_str();
+                let target = firmware["target"].as_str();
 
-                        let mut in_sync = None;
-                        let mut update = None;
-                        for item in firmware["conditions"].as_array().unwrap() {
-                            if let Some("InSync") = item["type"].as_str() {
-                                in_sync.replace(if item["status"].as_str().unwrap() == "True" {
-                                    true
-                                } else {
-                                    false
-                                });
-                            }
-
-                            if let Some("UpdateProgress") = item["type"].as_str() {
-                                update = item["message"].as_str().clone();
-                            }
-                        }
-
-                        match (in_sync, update) {
-                            (Some(true), _) => row.add_cell("InSync"),
-                            (Some(false), Some(update)) => {
-                                row.add_cell(format!("Updating ({})", update))
-                            }
-                            (Some(false), _) => row.add_cell("NotInSync"),
-                            _ => row.add_cell("Unknown"),
-                        };
-
-                        if let Some(current) = current {
-                            row.add_cell(current);
-                        }
-
-                        if let Some(target) = target {
-                            row.add_cell(target);
-                        }
-                    } else {
-                        row.add_cell("");
-                        row.add_cell("");
-                        row.add_cell("");
+                let mut in_sync = None;
+                let mut update = None;
+                for item in firmware["conditions"].as_array().unwrap() {
+                    if let Some("InSync") = item["type"].as_str() {
+                        in_sync.replace(if item["status"].as_str().unwrap() == "True" {
+                            true
+                        } else {
+                            false
+                        });
                     }
-            }
 
-            table.add_row(row);
+                    if let Some("UpdateProgress") = item["type"].as_str() {
+                        update = item["message"].as_str().clone();
+                    }
+                }
+
+                match (in_sync, update) {
+                    (Some(true), _) => row.add_cell("InSync"),
+                    (Some(false), Some(update)) => row.add_cell(format!("Updating ({})", update)),
+                    (Some(false), _) => row.add_cell("NotInSync"),
+                    _ => row.add_cell("Unknown"),
+                };
+
+                if let Some(current) = current {
+                    row.add_cell(current);
+                }
+
+                if let Some(target) = target {
+                    row.add_cell(target);
+                }
+            } else {
+                row.add_cell("");
+                row.add_cell("");
+                row.add_cell("");
+            }
         }
+
+        table.add_row(row);
+    }
 
     print!("{}", table);
 }

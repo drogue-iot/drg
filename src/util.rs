@@ -23,7 +23,6 @@ use url::Url;
 pub const VERSION: &str = crate_version!();
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.9.0";
 pub const COMMAND_API_PATH: &str = "api/command/v1alpha1";
-pub const ADMIN_API_PATH: &str = "api/admin/v1alpha1";
 
 pub fn show_json<S: Into<String>>(payload: S) {
     let payload = payload.into();
@@ -63,7 +62,7 @@ pub fn json_parse(data: Option<&str>) -> Result<Value> {
 pub fn editor<S, T>(original: S) -> Result<T>
 where
     S: Serialize,
-    T: DeserializeOwned + PartialEq,
+    T: DeserializeOwned,
 {
     let original_string = serde_yaml::to_string(&original)?;
 
