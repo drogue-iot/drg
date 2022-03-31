@@ -214,7 +214,7 @@ async fn main() -> Result<()> {
                         data.merge_in("/alias", alias_spec)
                     }
 
-                    devices::create(context, dev_id, data, app_id, file)
+                    devices::create(context, dev_id, data, app_id, file).await
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -279,7 +279,7 @@ async fn main() -> Result<()> {
                         // Safe unwrap because clap makes sure the argument is provided
                         let dev_id = command.value_of(ResourceId::deviceId.as_ref()).unwrap();
 
-                        trust::create_device_certificate(
+                        match trust::create_device_certificate(
                             &app_id,
                             dev_id,
                             ca_key,
@@ -289,16 +289,19 @@ async fn main() -> Result<()> {
                             key_pair_algorithm,
                             days,
                             key_input,
-                        )
-                        .and_then(|_| {
-                            let alias = format!("CN={}, O=Drogue IoT, OU={}", dev_id, app_id);
-                            devices::add_alias(
-                                context,
-                                app_id.to_string(),
-                                dev_id.to_string(),
-                                alias,
-                            )
-                        })
+                        ) {
+                            Ok(_) => {
+                                let alias = format!("CN={}, O=Drogue IoT, OU={}", dev_id, app_id);
+                                devices::add_alias(
+                                    context,
+                                    app_id.to_string(),
+                                    dev_id.to_string(),
+                                    alias,
+                                )
+                                .await
+                            }
+                            _ => Err(anyhow!("Cannot create trust anchor")),
+                        }
                     }
                 }
                 // The other enum variants are not exposed by clap
@@ -325,7 +328,7 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::deviceId.as_ref())
                         .unwrap()
                         .to_string();
-                    devices::delete(context, app_id, id, ignore_missing)
+                    devices::delete(context, app_id, id, ignore_missing).await
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -361,7 +364,7 @@ async fn main() -> Result<()> {
                     let file = command.value_of(Parameters::filename.as_ref());
                     let app_id = arguments::get_app_id(command, context)?;
 
-                    devices::edit(context, app_id, dev_id, file)
+                    devices::edit(context, app_id, dev_id, file).await
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -390,15 +393,13 @@ async fn main() -> Result<()> {
                 ResourceType::device => {
                     let wide = arguments::get_wide(command);
                     let app_id = arguments::get_app_id(command, context)?;
-                    let labels = command
-                        .values_of(Parameters::labels.as_ref())
-                        .map(|v| v.collect::<Vec<&str>>().join(","));
+                    let labels = command.values_of(Parameters::labels.as_ref());
                     let dev_id = command
                         .value_of(ResourceId::deviceId.as_ref())
                         .map(|s| s.to_string());
                     match dev_id {
-                        Some(id) => devices::read(context, app_id, id as DeviceId),
-                        None => devices::list(context, app_id, labels, wide),
+                        Some(id) => devices::read(context, app_id, id as DeviceId).await,
+                        None => devices::list(context, app_id, labels, wide).await,
                     }?;
                 }
                 ResourceType::member => {
@@ -426,7 +427,7 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::gatewayId.as_ref())
                         .unwrap()
                         .to_string();
-                    devices::set_gateway(context, app_id, id as DeviceId, gateway_id)?;
+                    devices::set_gateway(context, app_id, id as DeviceId, gateway_id).await?;
                 }
                 ResourceType::password => {
                     let id = command
@@ -438,7 +439,8 @@ async fn main() -> Result<()> {
                         .unwrap()
                         .to_string();
                     let username = command.value_of(ResourceId::username.as_ref());
-                    devices::set_password(context, app_id, id as DeviceId, password, username)?;
+                    devices::set_password(context, app_id, id as DeviceId, password, username)
+                        .await?;
                 }
                 ResourceType::alias => {
                     let id = command
@@ -449,14 +451,14 @@ async fn main() -> Result<()> {
                         .value_of(Parameters::alias.as_ref())
                         .unwrap()
                         .to_string();
-                    devices::add_alias(context, app_id, id as DeviceId, alias)?;
+                    devices::add_alias(context, app_id, id as DeviceId, alias).await?;
                 }
                 ResourceType::label => {
                     let labels = command.values_of(ResourceType::label.as_ref()).unwrap();
 
                     match command.value_of("dev-flag") {
                         Some(dev_id) => {
-                            devices::add_labels(context, app_id, dev_id.to_string(), labels)
+                            devices::add_labels(context, app_id, dev_id.to_string(), labels).await
                         }
                         None => apps::add_labels(context, app_id, &labels).await,
                     }?;

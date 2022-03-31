@@ -1,4 +1,3 @@
-use crate::arguments::Action;
 use crate::config::{Config, Context, RequestBuilderExt};
 use crate::Parameters;
 use anyhow::{anyhow, Context as AnyhowContext, Result};
@@ -7,8 +6,7 @@ use clap::crate_version;
 use clap::{ArgMatches, Values};
 use colored_json::write_colored_json;
 use log::LevelFilter;
-use reqwest::blocking::{Client, Response};
-use reqwest::StatusCode;
+use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value::String as serde_string;
@@ -23,33 +21,9 @@ use tempfile::Builder;
 use url::Url;
 
 pub const VERSION: &str = crate_version!();
-pub const COMPATIBLE_DROGUE_VERSION: &str = "0.8.0";
-pub const REGISTRY_API_PATH: &str = "api/registry/v1alpha1";
+pub const COMPATIBLE_DROGUE_VERSION: &str = "0.9.0";
 pub const COMMAND_API_PATH: &str = "api/command/v1alpha1";
 pub const ADMIN_API_PATH: &str = "api/admin/v1alpha1";
-
-pub fn print_result(r: Response, resource_name: String, op: Action) {
-    match op {
-        Action::create => match r.status() {
-            StatusCode::CREATED => println!("{} created.", resource_name),
-            r => exit_with_code(r),
-        },
-        Action::delete => match r.status() {
-            StatusCode::NO_CONTENT => println!("{} deleted.", resource_name),
-            r => exit_with_code(r),
-        },
-        Action::get => match r.status() {
-            StatusCode::OK => show_json(r.text().expect("Empty response")),
-            r => exit_with_code(r),
-        },
-        Action::edit | Action::set => match r.status() {
-            StatusCode::NO_CONTENT => println!("{} updated.", resource_name),
-            r => exit_with_code(r),
-        },
-        //should never happen.
-        _ => {}
-    }
-}
 
 pub fn show_json<S: Into<String>>(payload: S) {
     let payload = payload.into();
@@ -293,12 +267,6 @@ where
     let contents = fs::read_to_string(path).context("Something went wrong reading the file")?;
 
     serde_json::from_str(contents.as_str()).context("Invalid JSON in file")
-}
-
-pub fn age(str_timestamp: &str) -> Result<String> {
-    let time = chrono::DateTime::parse_from_rfc3339(str_timestamp)?;
-
-    Ok(age_from_timestamp(time.with_timezone(&Utc)))
 }
 
 pub fn age_from_timestamp(time: DateTime<Utc>) -> String {
