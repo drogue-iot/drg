@@ -9,6 +9,8 @@ use colored_json::write_colored_json;
 use log::LevelFilter;
 use reqwest::blocking::{Client, Response};
 use reqwest::StatusCode;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::Value::String as serde_string;
 use serde_json::{from_str, json, Value};
 use std::collections::HashMap;
@@ -84,24 +86,31 @@ pub fn json_parse(data: Option<&str>) -> Result<Value> {
     ))
 }
 
-pub fn editor(original: String) -> Result<Value> {
-    let data: Value = serde_json::from_str(original.as_str())?;
+pub fn editor<S, T>(original: S) -> Result<T>
+where
+    S: Serialize,
+    T: DeserializeOwned + PartialEq,
+{
+    let original_string = serde_yaml::to_string(&original)?;
 
     let file = Builder::new().suffix(".yml").tempfile()?;
     //the handler needs to be kept to reopen the file later.
     let mut file2 = file.reopen()?;
 
     // Write the original data to the file, but in YAML for easier editing
-    file.as_file()
-        .write_all(serde_yaml::to_string(&data)?.as_bytes())?;
+    file.as_file().write_all(&original_string.as_bytes())?;
 
     edit::edit_file(file.path())
         .map_err(|err| {
             log::debug!("{}", err);
             log::error!(
-                "Error opening a text editor, please try using --filename with the following json"
+                "Error opening a text editor, you can try with the --filename option. \
+                Here is the original resource:"
             );
-            show_json(&original);
+            show_json(
+                serde_json::to_string(&original)
+                    .unwrap_or(String::from("Error serializing the resource")),
+            );
             exit(1);
         })
         .unwrap();
@@ -110,12 +119,11 @@ pub fn editor(original: String) -> Result<Value> {
     let mut buf = String::new();
     file2.read_to_string(&mut buf)?;
 
-    let new_data: Value = serde_yaml::from_str(buf.as_str()).context("Invalid YAML data.")?;
-    if data == new_data {
+    if original_string == buf {
         println!("Edit cancelled, no changes made.");
         exit(2);
     } else {
-        Ok(new_data)
+        Ok(serde_yaml::from_str(buf.as_str()).context("Invalid YAML data.")?)
     }
 }
 
@@ -278,7 +286,10 @@ fn get_drogue_services_version(url: &Url) -> Result<String> {
     Ok(version.to_string())
 }
 
-pub fn get_data_from_file(path: &str) -> Result<Value> {
+pub fn get_data_from_file<T>(path: &str) -> Result<T>
+where
+    T: DeserializeOwned,
+{
     let contents = fs::read_to_string(path).context("Something went wrong reading the file")?;
 
     serde_json::from_str(contents.as_str()).context("Invalid JSON in file")
@@ -287,26 +298,25 @@ pub fn get_data_from_file(path: &str) -> Result<Value> {
 pub fn age(str_timestamp: &str) -> Result<String> {
     let time = chrono::DateTime::parse_from_rfc3339(str_timestamp)?;
 
-    age_from_timestamp(time.with_timezone(&Utc))
+    Ok(age_from_timestamp(time.with_timezone(&Utc)))
 }
 
-pub fn age_from_timestamp(time: DateTime<Utc>) -> Result<String> {
-    //let time = chrono::DateTime::parse_from_rfc3339(str_timestamp)?;
+pub fn age_from_timestamp(time: DateTime<Utc>) -> String {
     let age = Utc::now().naive_utc() - time.naive_utc();
 
     if age > Duration::days(7) {
-        Ok(format!("{}d", age.num_days()))
+        format!("{}d", age.num_days())
     } else if age > Duration::days(3) {
         let hours = age
             .checked_sub(&Duration::days(age.num_days()))
             .unwrap_or_else(|| Duration::hours(0));
-        Ok(format!("{}d{}h", age.num_days(), hours.num_hours()))
+        format!("{}d{}h", age.num_days(), hours.num_hours())
     } else if age > Duration::hours(2) {
-        Ok(format!("{}h", age.num_hours()))
+        format!("{}h", age.num_hours())
     } else if age > Duration::minutes(2) {
-        Ok(format!("{}m", age.num_minutes()))
+        format!("{}m", age.num_minutes())
     } else {
-        Ok(format!("{}s", age.num_seconds()))
+        format!("{}s", age.num_seconds())
     }
 }
 
@@ -357,9 +367,10 @@ fn deserialize_endpoint(details: &Value) -> (Option<String>, String) {
     (host, port)
 }
 
-pub fn process_labels(args: Values) -> Value {
+pub fn process_labels(args: &Values) -> Value {
     // split the labels around the =
     let labels: HashMap<&str, &str> = args
+        .clone()
         .map(|l| {
             let mut s = l.split('=');
             let k = s.next();

@@ -216,7 +216,7 @@ pub fn add_alias(
 }
 
 pub fn add_labels(config: &Context, app: AppId, device_id: DeviceId, args: Values) -> Result<()> {
-    let data = util::process_labels(args);
+    let data = util::process_labels(&args);
     set(config, app, device_id, data)
 }
 
@@ -365,7 +365,7 @@ pub fn name_from_json_or_file(param: Option<String>, file: Option<&str>) -> Resu
     match (param, file) {
         (Some(id), None) => Ok(id),
         (None, Some(file)) => {
-            let f = util::get_data_from_file(file)?;
+            let f: Value = util::get_data_from_file(file)?;
             let id = f["metadata"]["name"]
                 .as_str()
                 .context("Misisng `name` property in device definition file")?

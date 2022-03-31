@@ -196,7 +196,7 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::applicationId.as_ref())
                         .map(|s| s.to_string());
 
-                    apps::create(context, app_id, data, file)
+                    apps::create(context, app_id, data, file).await
                 }
                 ResourceType::device => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -263,7 +263,7 @@ async fn main() -> Result<()> {
 
                     let device_key = command.value_of(&Parameters::key_output.as_ref());
 
-                    let cert = apps::get_trust_anchor(context, &app_id)?;
+                    let cert = apps::get_trust_anchor(context, &app_id).await?;
 
                     if resource == ResourceType::app_cert {
                         apps::add_trust_anchor(
@@ -274,6 +274,7 @@ async fn main() -> Result<()> {
                             days,
                             key_input,
                         )
+                        .await
                     } else {
                         // Safe unwrap because clap makes sure the argument is provided
                         let dev_id = command.value_of(ResourceId::deviceId.as_ref()).unwrap();
@@ -316,7 +317,7 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::applicationId.as_ref())
                         .unwrap()
                         .to_string();
-                    apps::delete(context, id, ignore_missing)
+                    apps::delete(context, id, ignore_missing).await
                 }
                 ResourceType::device => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -351,7 +352,7 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::applicationId.as_ref())
                         .map(|s| s.to_string())
                         .unwrap();
-                    apps::edit(context, id, file)
+                    apps::edit(context, id, file).await
                 }
                 ResourceType::device => {
                     let dev_id = command
@@ -379,13 +380,11 @@ async fn main() -> Result<()> {
                     let app_id = command
                         .value_of(ResourceId::applicationId.as_ref())
                         .map(|s| s.to_string());
-                    let labels = command
-                        .values_of(Parameters::labels.as_ref())
-                        .map(|v| v.collect::<Vec<&str>>().join(","));
+                    let labels = command.values_of(Parameters::labels.as_ref());
 
                     match app_id {
-                        Some(id) => apps::read(context, id as AppId),
-                        None => apps::list(context, labels),
+                        Some(id) => apps::read(context, id as AppId).await,
+                        None => apps::list(context, labels).await,
                     }?;
                 }
                 ResourceType::device => {
@@ -459,7 +458,7 @@ async fn main() -> Result<()> {
                         Some(dev_id) => {
                             devices::add_labels(context, app_id, dev_id.to_string(), labels)
                         }
-                        None => apps::add_labels(context, app_id, labels),
+                        None => apps::add_labels(context, app_id, &labels).await,
                     }?;
                 }
                 // The other enum variants are not exposed by clap
