@@ -1,4 +1,3 @@
-use crate::admin::Roles;
 use crate::{trust, util, AppId};
 
 use crate::config::Context;
@@ -6,6 +5,8 @@ use anyhow::{anyhow, Result};
 use clap::{App, AppSettings, Arg, ArgGroup, ArgMatches};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
+
+use crate::admin::Role;
 
 /// Drg CLI follows a "action resourceType resourceId options" pattern.
 /// Rarely, the resource Id is optional
@@ -176,11 +177,7 @@ pub fn app_arguments() -> clap::App<'static> {
         .takes_value(true)
         .required(true)
         .help("Role assigned to this member")
-        .possible_values([
-            Roles::admin.as_ref(),
-            Roles::manager.as_ref(),
-            Roles::reader.as_ref(),
-        ]);
+        .possible_values(["admin", "manager", "reader"]);
 
     let ca_key = Arg::new(Parameters::ca_key.as_ref())
         .long(Parameters::ca_key.as_ref())

@@ -1,81 +1,23 @@
-use std::process::exit;
-
-use crate::config::{Context, RequestBuilderExt};
+use crate::config::Context;
 use crate::util;
 
-use anyhow::{Context as anyhowContext, Result};
-use reqwest::{
-    blocking::{Client, Response},
-    StatusCode,
-};
-use serde_json::{json, Value};
-use strum_macros::{AsRefStr, EnumString};
+use anyhow::Result;
+pub use drogue_client::admin::v1::Role;
+use drogue_client::admin::v1::{Client, MemberEntry};
 use tabular::{Row, Table};
 
-#[derive(AsRefStr, EnumString)]
-#[allow(non_camel_case_types)]
-pub enum Roles {
-    admin,
-    manager,
-    reader,
-}
+pub async fn member_list(config: &Context, app: &str) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-#[derive(AsRefStr, EnumString)]
-enum ApiOp {
-    #[strum(to_string = "transfer-ownership")]
-    TransferOwnership,
-    #[strum(to_string = "accept-ownership")]
-    AcceptOwnerShip,
-    #[strum(to_string = "members")]
-    Members,
-}
-
-fn craft_url(config: &Context, app: &str, end: &ApiOp) -> String {
-    format!(
-        "{}{}/apps/{}/{}",
-        &config.registry_url,
-        util::ADMIN_API_PATH,
-        urlencoding::encode(app),
-        end.as_ref()
-    )
-}
-
-fn member_get(config: &Context, app: &str) -> Result<Response> {
-    let client = Client::new();
-    let url = craft_url(config, app, &ApiOp::Members);
-
-    client
-        .get(&url)
-        .auth(&config.token)
-        .send()
-        .map_err(|e| {
-            log::error!("Error: {}", e);
-            exit(2);
-        })
-        .map(|res| match res.status() {
-            StatusCode::OK => res,
-            e => {
-                log::error!("{}", e);
-                util::exit_with_code(e);
-            }
-        })
-}
-
-pub fn member_list(config: &Context, app: &str) -> Result<()> {
-    let res = member_get(config, app)?;
-    let body: Value = serde_json::from_str(&res.text().unwrap_or_else(|_| "{}".to_string()))?;
+    let res = client.get_members(app).await?;
 
     let mut table = Table::new("{:<} | {:<}");
     table.add_row(Row::new().with_cell("USER").with_cell("ROLE"));
 
-    match body["members"].as_object() {
+    match res {
         Some(members) => {
-            for i in members.keys() {
-                table.add_row(
-                    Row::new()
-                        .with_cell(i)
-                        .with_cell(members[i]["role"].as_str().unwrap_or_default()),
-                );
+            for (user, entry) in members.members.iter() {
+                table.add_row(Row::new().with_cell(user).with_cell(entry.role));
             }
             println!("{}", table);
         }
@@ -86,147 +28,141 @@ pub fn member_list(config: &Context, app: &str) -> Result<()> {
 
     Ok(())
 }
-pub fn member_delete(_config: &Context, _app: &str, _username: &str) -> Result<()> {
-    // todo use a strongly typed deserialisation of members using drogue_client.
-    unimplemented!()
-    // let res = member_get(config, app)?;
-    // let obj = res.text().unwrap_or_else(|_| "{}".to_string());
-    //
-    // let mut body: Value = serde_json::from_str(&obj)?;
-    // let mut members= body["members"].as_array().unwrap_or_default();
-    // members.retain(|u| u != username);
-    // body["members"] = members;
-    //
-    // member_put(config, app, body).map(describe_response)
-}
+pub async fn member_delete(config: &Context, app: &str, username: &str) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-fn member_put(config: &Context, app: &str, data: serde_json::Value) -> Result<Response> {
-    let client = Client::new();
-    let url = craft_url(config, app, &ApiOp::Members);
+    let op = match client.get_members(app).await {
+        Ok(Some(mut members)) => {
+            members.members.remove(&username.to_string());
 
-    client
-        .put(&url)
-        .auth(&config.token)
-        .json(&data)
-        .send()
-        .context("Can't update member list")
-}
-
-pub fn member_edit(config: &Context, app: &str) -> Result<()> {
-    let res = member_get(config, app)?;
-    let body = res.text().unwrap_or_else(|_| "{}".to_string());
-    let insert = util::editor(body)?;
-
-    member_put(config, app, insert).map(describe_response)
-}
-
-pub fn member_add(config: &Context, app: &str, username: &str, role: Roles) -> Result<()> {
-    let res = member_get(config, app)?;
-    let obj = res.text().unwrap_or_else(|_| "{}".to_string());
-
-    let mut body: Value = serde_json::from_str(&obj)?;
-    body["members"][username] = serde_json::json!({"role": role.as_ref()});
-
-    member_put(config, app, body).map(describe_response)
-}
-
-pub fn transfer_app(config: &Context, app: &str, username: &str) -> Result<()> {
-    let client = Client::new();
-    let url = craft_url(config, app, &ApiOp::TransferOwnership);
-
-    let body = json!({ "newUser": username });
-
-    client
-        .put(&url)
-        .auth(&config.token)
-        .json(&body)
-        .send()
-        .map_err(|e| {
-            log::error!("Error: {}", e);
-            exit(2);
-        })
-        .map(|res| match res.status() {
-            StatusCode::ACCEPTED => {
-                println!("Application transfer initated");
-                println!(
-                    "The new user can accept the transfer with \"drg admin transfer accept {}\"",
-                    app
-                );
-                if let Ok(console) = util::get_drogue_console_endpoint(config) {
-                    println!("Alternatively you can share this link with the new owner :");
-                    println!("{}transfer/{}", console.as_str(), urlencoding::encode(app));
-                }
-            }
-            e => {
-                log::error!("{}", e);
-                util::exit_with_code(e);
-            }
-        })
-}
-
-pub fn cancel_transfer(config: &Context, app: &str) -> Result<()> {
-    let client = Client::new();
-    let url = craft_url(config, app, &ApiOp::TransferOwnership);
-
-    client
-        .delete(&url)
-        .auth(&config.token)
-        .send()
-        .map_err(|e| {
-            log::error!("Error: {}", e);
-            exit(2);
-        })
-        .map(|res| match res.status() {
-            StatusCode::NO_CONTENT => {
-                println!("Application transfer canceled");
-            }
-            e => {
-                log::error!("{}", e);
-                util::exit_with_code(e);
-            }
-        })
-}
-
-pub fn accept_transfer(config: &Context, app: &str) -> Result<()> {
-    let client = Client::new();
-    let url = craft_url(config, app, &ApiOp::AcceptOwnerShip);
-
-    client
-        .put(&url)
-        .auth(&config.token)
-        .send()
-        .map_err(|e| {
-            log::error!("Error: {}", e);
-            exit(2);
-        })
-        .map(|res| match res.status() {
-            StatusCode::NO_CONTENT => {
-                println!("Application transfer completed.");
-                println!("You are now the owner of application {}", app);
-            }
-            e => {
-                log::error!("{}", e);
-                util::exit_with_code(e);
-            }
-        })
-}
-
-fn describe_response(res: Response) {
-    match res.status() {
-        StatusCode::NO_CONTENT => {
-            println!("The member list was updated.");
+            client.update_members(app, members).await
         }
-        StatusCode::BAD_REQUEST => {
-            println!("Invalid format: {}", res.text().unwrap_or_default());
+        Ok(None) => Ok(false),
+        Err(e) => Err(e),
+    };
+
+    match op {
+        Ok(true) => {
+            println!("Application members updated");
+            Ok(())
         }
-        StatusCode::NOT_FOUND => {
-            println!("Application not found.");
+        Ok(false) => {
+            println!("Application not found");
+            Ok(())
         }
-        StatusCode::CONFLICT => {
-            println!("Conflict: The resource may have been modified on the server since we retrieved it.");
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub async fn member_edit(config: &Context, app: &str) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+    let op = match client.get_members(app).await {
+        Ok(Some(members)) => {
+            let data = util::editor(members)?;
+            client.update_members(app, data).await
         }
-        _ => {
-            println!("Error: Can't update member list.")
+        Ok(None) => {
+            println!("Application {} not found", app);
+            Ok(false)
         }
+        Err(e) => Err(e),
+    };
+
+    match op {
+        Ok(true) => {
+            println!("Application members updated");
+            Ok(())
+        }
+        Ok(false) => Ok(()),
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub async fn member_add(config: &Context, app: &str, username: &str, role: Role) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+    let op = match client.get_members(app).await {
+        Ok(Some(mut members)) => {
+            println!("{:?}", members);
+            members
+                .members
+                .insert(username.to_string(), MemberEntry { role });
+
+            println!("{:?}", members);
+
+            client.update_members(app, members).await
+        }
+        Ok(None) => Ok(false),
+        Err(e) => Err(e),
+    };
+
+    match op {
+        Ok(true) => {
+            println!("Application members updated");
+            Ok(())
+        }
+        Ok(false) => {
+            println!("Application not found");
+            Ok(())
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub async fn transfer_app(config: &Context, app: &str, username: &str) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+    match client.initiate_app_transfer(app, username).await {
+        Ok(true) => {
+            println!("Application transfer initated");
+            println!(
+                "The new user can accept the transfer with \"drg admin transfer accept {}\"",
+                app
+            );
+            if let Ok(console) = util::get_drogue_console_endpoint(config) {
+                println!("Alternatively you can share this link with the new owner :");
+                println!("{}transfer/{}", console.as_str(), urlencoding::encode(app));
+            }
+            Ok(())
+        }
+        Ok(false) => {
+            println!("The application does not exist");
+            Ok(())
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub async fn cancel_transfer(config: &Context, app: &str) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+    match client.cancel_app_transfer(app).await {
+        Ok(true) => {
+            println!("Application transfer canceled");
+            Ok(())
+        }
+        Ok(false) => {
+            println!("The application does not exist");
+            Ok(())
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub async fn accept_transfer(config: &Context, app: &str) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+    match client.accept_app_transfer(app).await {
+        Ok(true) => {
+            println!("Application transfer completed.");
+            println!("You are now the owner of application {}", app);
+            Ok(())
+        }
+        Ok(false) => {
+            println!("The application does not exist");
+            Ok(())
+        }
+        Err(e) => Err(e.into()),
     }
 }
