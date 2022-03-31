@@ -136,6 +136,12 @@ pub fn app_arguments() -> clap::App<'static> {
 
     let app_id = Arg::new(ResourceId::applicationId.as_ref()).help("The id of the application.");
 
+    let wide_flag = Arg::new("wide-flag")
+        .short('w')
+        .long("wide")
+        .takes_value(false)
+        .help("Wide display output format");
+
     let app_flag = Arg::new("app-flag")
         .short('a')
         .long("application")
@@ -363,6 +369,7 @@ pub fn app_arguments() -> clap::App<'static> {
                 .arg(&device_id)
                 .arg(&app_flag)
                 .arg(&labels)
+                .arg(&wide_flag)
         )
         .subcommand(
             App::new(ResourceType::application.as_ref())
@@ -698,6 +705,10 @@ pub fn app_arguments() -> clap::App<'static> {
                         ),
                 ),
         )
+}
+
+pub fn get_wide<'a>(matches: &'a ArgMatches) -> bool {
+    matches.is_present("wide-flag")
 }
 
 pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Context) -> Result<AppId> {

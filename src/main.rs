@@ -387,6 +387,7 @@ fn main() -> Result<()> {
                     }?;
                 }
                 ResourceType::device => {
+                    let wide = arguments::get_wide(command);
                     let app_id = arguments::get_app_id(command, context)?;
                     let labels = command
                         .values_of(Parameters::labels.as_ref())
@@ -396,7 +397,7 @@ fn main() -> Result<()> {
                         .map(|s| s.to_string());
                     match dev_id {
                         Some(id) => devices::read(context, app_id, id as DeviceId),
-                        None => devices::list(context, app_id, labels),
+                        None => devices::list(context, app_id, labels, wide),
                     }?;
                 }
                 ResourceType::member => {

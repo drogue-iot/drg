@@ -132,7 +132,7 @@ pub fn edit(
     }
 }
 
-pub fn list(config: &Context, app: AppId, labels: Option<String>) -> Result<()> {
+pub fn list(config: &Context, app: AppId, labels: Option<String>, wide: bool) -> Result<()> {
     let client = Client::new();
     let url = craft_url(&config.registry_url, &app, None);
 
@@ -146,7 +146,7 @@ pub fn list(config: &Context, app: AppId, labels: Option<String>) -> Result<()> 
 
     if let Ok(r) = res {
         if r.status() == StatusCode::OK {
-            pretty_list(r.text()?)?;
+            pretty_list(r.text()?, wide)?;
             Ok(())
         } else {
             Err(anyhow!("List operation failed with {}", r.status()))
@@ -277,21 +277,80 @@ fn put(
 }
 
 // todo drogue-client and the types would be useful for this
-fn pretty_list(data: String) -> Result<()> {
+fn pretty_list(data: String, wide: bool) -> Result<()> {
     let device_array: Vec<Value> = from_str(data.as_str())?;
 
-    let mut table = Table::new("{:<} {:<}");
-    table.add_row(Row::new().with_cell("NAME").with_cell("AGE"));
+    let mut header = Row::new().with_cell("NAME").with_cell("AGE");
+    let mut table = if wide {
+        header.add_cell("FIRMWARE");
+        header.add_cell("CURRENT");
+        header.add_cell("TARGET");
+        Table::new("{:<} {:<} {:<} {:<} {:<}")
+    } else {
+        Table::new("{:<} {:<}")
+    };
+
+    table.add_row(header);
 
     for dev in device_array {
         let name = dev["metadata"]["name"].as_str();
         let creation = dev["metadata"]["creationTimestamp"].as_str();
         if let Some(name) = name {
-            table.add_row(
-                Row::new()
-                    .with_cell(name)
-                    .with_cell(util::age(creation.unwrap())?),
-            );
+            let mut row = Row::new()
+                .with_cell(name)
+                .with_cell(util::age(creation.unwrap())?);
+
+            if wide {
+                if let Some(status) = dev.get("status") {
+                    if let Some(firmware) = status.get("firmware") {
+                        let current = firmware["current"].as_str();
+                        let target = firmware["target"].as_str();
+
+                        let mut in_sync = None;
+                        let mut update = None;
+                        for item in firmware["conditions"].as_array().unwrap() {
+                            if let Some("InSync") = item["type"].as_str() {
+                                in_sync.replace(if item["status"].as_str().unwrap() == "True" {
+                                    true
+                                } else {
+                                    false
+                                });
+                            }
+
+                            if let Some("UpdateProgress") = item["type"].as_str() {
+                                update = item["message"].as_str().clone();
+                            }
+                        }
+
+                        match (in_sync, update) {
+                            (Some(true), _) => row.add_cell("InSync"),
+                            (Some(false), Some(update)) => {
+                                row.add_cell(format!("Updating ({})", update))
+                            }
+                            (Some(false), _) => row.add_cell("NotInSync"),
+                            _ => row.add_cell("Unknown"),
+                        };
+
+                        if let Some(current) = current {
+                            row.add_cell(current);
+                        }
+
+                        if let Some(target) = target {
+                            row.add_cell(target);
+                        }
+                    } else {
+                        row.add_cell("");
+                        row.add_cell("");
+                        row.add_cell("");
+                    }
+                } else {
+                    row.add_cell("");
+                    row.add_cell("");
+                    row.add_cell("");
+                }
+            }
+
+            table.add_row(row);
         }
     }
 
