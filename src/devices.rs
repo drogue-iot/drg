@@ -277,6 +277,9 @@ fn put(
 }
 
 // todo drogue-client and the types would be useful for this
+// todo the firmware status section is not part of the core types. If we see a use case arise
+// where there is a need for a generic schema extension mechanism that the CLI tool can handle,
+// this part needs to be refactored.
 fn pretty_list(data: String, wide: bool) -> Result<()> {
     let device_array: Vec<Value> = from_str(data.as_str())?;
 
