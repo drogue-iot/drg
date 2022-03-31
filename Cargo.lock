@@ -621,6 +621,7 @@ dependencies = [
  "futures",
  "http",
  "humantime-serde",
+ "indexmap",
  "log",
  "openid",
  "opentelemetry",
@@ -1028,6 +1029,7 @@ checksum = "282a6247722caba404c065016bbfa522806e51714c34f5dfc3e4a3a46fcb4223"
 dependencies = [
  "autocfg 1.1.0",
  "hashbrown",
+ "serde",
 ]
 
 [[package]]

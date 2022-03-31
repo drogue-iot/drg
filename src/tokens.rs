@@ -24,7 +24,7 @@ pub async fn get_api_keys(config: &Context) -> Result<()> {
             table.add_row(
                 Row::new()
                     .with_cell(token.prefix)
-                    .with_cell(util::age_from_timestamp(token.created)?)
+                    .with_cell(util::age_from_timestamp(token.created))
                     .with_cell(token.description.unwrap_or_default()),
             );
         }
