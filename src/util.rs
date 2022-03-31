@@ -72,7 +72,7 @@ where
     let mut file2 = file.reopen()?;
 
     // Write the original data to the file, but in YAML for easier editing
-    file.as_file().write_all(&original_string.as_bytes())?;
+    file.as_file().write_all(original_string.as_bytes())?;
 
     edit::edit_file(file.path())
         .map_err(|err| {
@@ -83,7 +83,7 @@ where
             );
             show_json(
                 serde_json::to_string(&original)
-                    .unwrap_or(String::from("Error serializing the resource")),
+                    .unwrap_or_else(|_| String::from("Error serializing the resource")),
             );
             exit(1);
         })
@@ -352,4 +352,14 @@ pub fn process_labels(args: &Values) -> Value {
     json!({"metadata": {
     "labels": labels
     }})
+}
+
+pub fn clap_values_to_vec(labels: Option<Values>) -> Option<Vec<&str>> {
+    labels.map(|mut labels| {
+        let mut labels_vec: Vec<&str> = Vec::new();
+        for l in labels.by_ref() {
+            labels_vec.push(l)
+        }
+        labels_vec
+    })
 }

@@ -128,12 +128,7 @@ async fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> 
     let _ = request.respond(Response::from_string(browser_msg));
 
     // Unwrapping token_result will either produce a Token or a RequestTokenError.
-    token_result.map_err(|e| {
-        Error::msg(format!(
-            "error while requesting a token: \n{}",
-            e.to_string()
-        ))
-    })
+    token_result.map_err(|e| Error::msg(format!("error while requesting a token: \n{}", e)))
 }
 
 pub async fn verify_token_validity(context: &mut Context) -> Result<bool> {
