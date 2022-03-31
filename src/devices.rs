@@ -1,59 +1,42 @@
-use crate::config::{Context, RequestBuilderExt};
-use crate::{util, Action, AppId, DeviceId};
+use crate::config::Context;
+use crate::{util, AppId, DeviceId};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use clap::Values;
 use json_value_merge::Merge;
-use reqwest::blocking::Client;
-use reqwest::blocking::Response;
-use reqwest::{StatusCode, Url};
-use serde_json::{from_str, json, Value};
+
+use serde_json::{json, Value};
 use sha_crypt::sha512_simple;
-use std::process::exit;
 use tabular::{Row, Table};
 
-fn craft_url(base: &Url, app_id: &str, device_id: Option<&str>) -> String {
-    let device = match device_id {
-        Some(dev) => format!("/{}", urlencoding::encode(dev)),
-        None => String::new(),
-    };
-    format!(
-        "{}{}/apps/{}/devices{}",
-        base,
-        util::REGISTRY_API_PATH,
-        urlencoding::encode(app_id),
-        device
-    )
-}
+use drogue_client::registry::v1::{Client, Device};
 
-pub fn delete(
+pub async fn delete(
     config: &Context,
     app: AppId,
     device_id: DeviceId,
     ignore_missing: bool,
 ) -> Result<()> {
-    let client = Client::new();
-    let url = craft_url(&config.registry_url, &app, Some(&device_id));
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    client
-        .delete(&url)
-        .auth(&config.token)
-        .send()
-        .context("Can't delete device.")
-        .map(|res| {
-            if ignore_missing && res.status() == StatusCode::NOT_FOUND {
-                exit(0);
-            } else {
-                util::print_result(res, format!("Device {}", device_id), Action::delete)
-            }
-        })
+    match (client.delete_device(app, &device_id).await, ignore_missing) {
+        (Ok(true), _) => Ok(println!("Device {} deleted", &device_id)),
+        (Ok(false), false) => Ok(println!("Device {} not found", &device_id)),
+        (Ok(false), true) => Ok(()),
+        (Err(e), _) => Err(e.into()),
+    }
 }
 
-pub fn read(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
-    get(config, &app, &device_id)
-        .map(|res| util::print_result(res, device_id.to_string(), Action::get))
+pub async fn read(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+    match client.get_device(app, &device_id).await {
+        Ok(Some(dev)) => Ok(util::show_json(serde_json::to_string(&dev)?)),
+        Ok(None) => Ok(println!("Device {} not found", &device_id)),
+        Err(e) => Err(e.into()),
+    }
 }
 
-pub fn create(
+pub async fn create(
     config: &Context,
     device_id: DeviceId,
     data: serde_json::Value,
@@ -66,97 +49,78 @@ pub fn create(
         data
     };
 
-    let body = match file {
+    let device: Device = match file {
         Some(f) => util::get_data_from_file(f)?,
-        None => {
-            json!({
-            "metadata": {
-                "name": device_id,
-                "application": app_id
-            },
-            "spec": data
-            })
-        }
+        None => serde_json::from_value(json!({
+        "metadata": {
+            "name": device_id,
+            "application": app_id
+        },
+        "spec": data
+        }))?,
     };
 
-    let client = Client::new();
-    let url = craft_url(&config.registry_url, &app_id, None);
-
-    client
-        .post(&url)
-        .auth(&config.token)
-        .json(&body)
-        .send()
-        .context("Can't create device.")
-        .map(|res| util::print_result(res, "Device created".to_string(), Action::create))
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    match client.create_device(&device).await {
+        Ok(_) => Ok(println!("Device {} created", device_id)),
+        Err(e) => Err(e.into()),
+    }
 }
 
-pub fn edit(
+pub async fn edit(
     config: &Context,
     app: AppId,
     device_id: Option<DeviceId>,
     file: Option<&str>,
 ) -> Result<()> {
-    match (device_id, file) {
-        (None, Some(f)) => {
-            let data = util::get_data_from_file(f)?;
-            let dev_id = name_from_json_or_file(None, file)?;
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-            put(config, &app, &dev_id, data)
-                .map(|res| util::print_result(res, format!("Device {}", dev_id), Action::edit))
+    let op = match (device_id, file) {
+        (None, Some(f)) => {
+            let data: Device = util::get_data_from_file(f)?;
+            client.update_device(&data).await
         }
         (Some(id), None) => {
             //read device data
-            let res = get(config, &app, &id);
-            match res {
-                Ok(r) => match r.status() {
-                    StatusCode::OK => {
-                        let body = r.text().unwrap_or_else(|_| "{}".to_string());
-                        let insert = util::editor(body)?;
-                        put(config, &app, &id, insert)
-                            .map(|p| util::print_result(p, format!("Device {}", id), Action::edit))
-                    }
-                    e => {
-                        log::error!("Error : could not retrieve device: {}", e);
-                        util::exit_with_code(e)
-                    }
-                },
-                Err(e) => {
-                    log::error!("Error : could not execute request: {}", e);
-                    exit(2)
+            let data = client.get_device(app, &id).await?;
+            match data {
+                Some(dev) => {
+                    let edited = util::editor(dev)?;
+                    client.update_app(&edited).await
                 }
+                None => Ok(false),
             }
         }
         // Clap is making sure the arguments are mutually exclusive.
         _ => unreachable!(),
+    };
+
+    match op {
+        Ok(true) => Ok(println!("Device updated")),
+        Ok(false) => Ok(println!("Device or application not found")),
+        Err(e) => Err(e.into()),
     }
 }
 
-pub fn list(config: &Context, app: AppId, labels: Option<String>, wide: bool) -> Result<()> {
-    let client = Client::new();
-    let url = craft_url(&config.registry_url, &app, None);
+pub async fn list(config: &Context, app: AppId, labels: Option<Values<'_>>, wide: bool) -> Result<()> {
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let mut req = client.get(&url).auth(&config.token);
-
-    if let Some(labels) = labels {
-        req = req.query(&[("labels", labels)]);
-    }
-
-    let res = req.send().context("Can't list devices");
-
-    if let Ok(r) = res {
-        if r.status() == StatusCode::OK {
-            pretty_list(r.text()?, wide)?;
-            Ok(())
-        } else {
-            Err(anyhow!("List operation failed with {}", r.status()))
+    let labels = labels.map(|mut labels| {
+        let mut labels_vec: Vec<&str> = Vec::new();
+        while let Some(l) = labels.next() {
+            labels_vec.push(l)
         }
-    } else {
-        Err(anyhow!("Error while requesting devices list."))
+        labels_vec
+    });
+
+    match client.list_devices(app, labels).await {
+        Ok(Some(apps)) => Ok(pretty_list(apps, wide)),
+        Ok(None) => Ok(println!("No applications")),
+        Err(e) => Err(e.into()),
     }
 }
 
-pub fn set_gateway(
+pub async fn set_gateway(
     config: &Context,
     app: AppId,
     device_id: DeviceId,
@@ -169,10 +133,10 @@ pub fn set_gateway(
     }
     }});
 
-    set(config, app, device_id, data)
+    merge_in(app, device_id, data, config).await
 }
 
-pub fn set_password(
+pub async fn set_password(
     config: &Context,
     app: AppId,
     device_id: DeviceId,
@@ -196,10 +160,10 @@ pub fn set_password(
     }
     }});
 
-    set(config, app, device_id, data)
+    merge_in(app, device_id, data, config).await
 }
 
-pub fn add_alias(
+pub async fn add_alias(
     config: &Context,
     app: AppId,
     device_id: DeviceId,
@@ -212,76 +176,53 @@ pub fn add_alias(
         ]
     }});
 
-    set(config, app, device_id, data)
+    merge_in(app, device_id, data, config).await
 }
 
-pub fn add_labels(config: &Context, app: AppId, device_id: DeviceId, args: Values) -> Result<()> {
+pub async fn add_labels(
+    config: &Context,
+    app: AppId,
+    device_id: DeviceId,
+    args: Values<'_>,
+) -> Result<()> {
     let data = util::process_labels(&args);
-    set(config, app, device_id, data)
+    merge_in(app, device_id, data, config).await
 }
 
-// The "set" operation merges the data with what already exists on the server side
-fn set(config: &Context, app: AppId, device_id: DeviceId, data: Value) -> Result<()> {
-    //read device data
-    let res = get(config, &app, &device_id);
-    match res {
-        Ok(r) => match r.status() {
-            StatusCode::OK => {
-                let mut body: Value =
-                    serde_json::from_str(r.text().unwrap_or_else(|_| "{}".to_string()).as_str())?;
-                body.merge(data);
-                put(config, &app, &device_id, body)
-                    .map(|p| util::print_result(p, format!("Device {}", device_id), Action::edit))
-            }
-            e => {
-                log::error!("Error : could not retrieve device: {}", e);
-                util::exit_with_code(e)
-            }
-        },
-        Err(e) => {
-            log::error!("Error : could not execute request: {}", e);
-            exit(2)
+//todo merge that with the same method in apps ?
+/// merges a serde Value into the device object that exist on the server
+async fn merge_in<A, D>(app: A, device: D, data: Value, config: &Context) -> Result<()>
+where
+    A: AsRef<str>,
+    D: AsRef<str>,
+{
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+    //read app data
+    let op = match client.get_device(app.as_ref(), device.as_ref()).await {
+        Ok(Some(device)) => {
+            serde_json::to_value(&device)?.merge(data);
+            client.update_device(&device).await
         }
+        Ok(None) => Ok(false),
+        Err(e) => Err(e.into()),
+    };
+
+    match op {
+        Ok(true) => Ok(println!(
+            "Device {} was successfully updated",
+            device.as_ref()
+        )),
+        Ok(false) => Ok(println!("Device or application does not exist")),
+        Err(e) => Err(e.into()),
     }
 }
 
-fn get(config: &Context, app: &str, device_id: &DeviceId) -> Result<Response> {
-    let client = Client::new();
-    let url = craft_url(&config.registry_url, app, Some(device_id));
-
-    client
-        .get(&url)
-        .auth(&config.token)
-        .send()
-        .context("Can't get device.")
-}
-
-fn put(
-    config: &Context,
-    app: &AppId,
-    device_id: &DeviceId,
-    data: serde_json::Value,
-) -> Result<Response> {
-    let client = Client::new();
-    let url = craft_url(&config.registry_url, app, Some(device_id));
-
-    client
-        .put(&url)
-        .auth(&config.token)
-        .json(&data)
-        .send()
-        .context(format!(
-            "Error while updating device data for {}",
-            device_id
-        ))
-}
-
-// todo drogue-client and the types would be useful for this
 // todo the firmware status section is not part of the core types. If we see a use case arise
 // where there is a need for a generic schema extension mechanism that the CLI tool can handle,
 // this part needs to be refactored.
-fn pretty_list(data: String, wide: bool) -> Result<()> {
-    let device_array: Vec<Value> = from_str(data.as_str())?;
+
+fn pretty_list(data: Vec<Device>, wide: bool) {
 
     let mut header = Row::new().with_cell("NAME").with_cell("AGE");
     let mut table = if wide {
@@ -295,17 +236,16 @@ fn pretty_list(data: String, wide: bool) -> Result<()> {
 
     table.add_row(header);
 
-    for dev in device_array {
-        let name = dev["metadata"]["name"].as_str();
-        let creation = dev["metadata"]["creationTimestamp"].as_str();
-        if let Some(name) = name {
-            let mut row = Row::new()
-                .with_cell(name)
-                .with_cell(util::age(creation.unwrap())?);
+    for dev in data {
+        let name = dev.metadata.name;
+        let creation = dev.metadata.creation_timestamp;
+
+        let mut row = Row::new()
+            .with_cell(name)
+            .with_cell(util::age_from_timestamp(creation));
 
             if wide {
-                if let Some(status) = dev.get("status") {
-                    if let Some(firmware) = status.get("firmware") {
+                    if let Some(firmware) = dev.status.get("firmware") {
                         let current = firmware["current"].as_str();
                         let target = firmware["target"].as_str();
 
@@ -346,19 +286,12 @@ fn pretty_list(data: String, wide: bool) -> Result<()> {
                         row.add_cell("");
                         row.add_cell("");
                     }
-                } else {
-                    row.add_cell("");
-                    row.add_cell("");
-                    row.add_cell("");
-                }
             }
 
             table.add_row(row);
         }
-    }
 
     print!("{}", table);
-    Ok(())
 }
 
 pub fn name_from_json_or_file(param: Option<String>, file: Option<&str>) -> Result<String> {

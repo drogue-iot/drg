@@ -23,16 +23,12 @@ pub async fn create(
             let app: Application = util::get_data_from_file(f)?;
             app
         }
-        (None, Some(a)) => {
-            let app: Application = serde_json::from_value(json!({
-            "metadata": {
-                "name": a,
-            },
-            "spec": data,
-            }))
-            .unwrap();
-            app
-        }
+        (None, Some(a)) => serde_json::from_value(json!({
+        "metadata": {
+            "name": a,
+        },
+        "spec": data,
+        }))?,
         // a file AND an app name should not be allowed by clap.
         _ => unreachable!(),
     };
@@ -153,7 +149,7 @@ pub async fn get_trust_anchor(config: &Context, app: &str) -> Result<String> {
             log::error!("Application not found.");
             exit(1)
         }
-        Err(e) => {
+        Err(_e) => {
             log::error!("Error : could not retrieve app");
             exit(2);
         }
