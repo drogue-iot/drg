@@ -17,6 +17,7 @@ use strum_macros::{AsRefStr, EnumString};
 pub const CERT_VALIDITY_DAYS: i64 = 365;
 
 #[derive(AsRefStr, EnumString)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum SignAlgo {
     ECDSA,
     EdDSA,

@@ -43,8 +43,14 @@ pub async fn read(config: &Context, app: AppId) -> Result<()> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     match client.get_app(&app).await {
-        Ok(Some(app)) => Ok(util::show_json(serde_json::to_string(&app)?)),
-        Ok(None) => Ok(println!("Application {} not found", app)),
+        Ok(Some(app)) => {
+            util::show_json(serde_json::to_string(&app)?);
+            Ok(())
+        }
+        Ok(None) => {
+            println!("Application {} not found", app);
+            Ok(())
+        }
         Err(e) => Err(e.into()),
     }
 }
@@ -57,12 +63,10 @@ pub async fn delete(config: &Context, app: AppId, ignore_missing: bool) -> Resul
             if res {
                 println!("App {} deleted", &app);
                 Ok(())
+            } else if !ignore_missing {
+                Err(anyhow!("The application does not exist."))
             } else {
-                if !ignore_missing {
-                    Err(anyhow!("The application does not exist."))
-                } else {
-                    Ok(())
-                }
+                Ok(())
             }
         }
         Err(e) => Err(e.into()),
@@ -93,8 +97,14 @@ pub async fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()
     };
 
     match op {
-        Ok(true) => Ok(println!("Application {} was successfully updated", app)),
-        Ok(false) => Ok(println!("Application {} does not exist", app)),
+        Ok(true) => {
+            println!("Application {} was successfully updated", app);
+            Ok(())
+        }
+        Ok(false) => {
+            println!("Application {} does not exist", app);
+            Ok(())
+        }
         Err(e) => Err(e.into()),
     }
 }
@@ -102,17 +112,17 @@ pub async fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()
 pub async fn list(config: &Context, labels: Option<Values<'_>>) -> Result<()> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let labels = labels.map(|mut labels| {
-        let mut labels_vec: Vec<&str> = Vec::new();
-        while let Some(l) = labels.next() {
-            labels_vec.push(l)
-        }
-        labels_vec
-    });
+    let labels = util::clap_values_to_vec(labels);
 
     match client.list_apps(labels).await {
-        Ok(Some(apps)) => Ok(pretty_list(apps)),
-        Ok(None) => Ok(println!("No applications")),
+        Ok(Some(apps)) => {
+            pretty_list(apps);
+            Ok(())
+        }
+        Ok(None) => {
+            println!("No applications");
+            Ok(())
+        }
         Err(e) => Err(e.into()),
     }
 }
@@ -157,7 +167,7 @@ pub async fn get_trust_anchor(config: &Context, app: &str) -> Result<String> {
 }
 
 pub async fn add_labels(config: &Context, app: AppId, args: &Values<'_>) -> Result<()> {
-    let data = util::process_labels(&args);
+    let data = util::process_labels(args);
     merge_in(app, data, config).await
 }
 
@@ -175,15 +185,19 @@ where
             client.update_app(&application).await
         }
         Ok(None) => Ok(false),
-        Err(e) => Err(e.into()),
+        Err(e) => Err(e),
     };
 
     match op {
-        Ok(true) => Ok(println!(
-            "Application {} was successfully updated",
-            app.as_ref()
-        )),
-        Ok(false) => Ok(println!("Application {} does not exist", app.as_ref())),
+        Ok(true) => {
+            println!("Application {} was successfully updated", app.as_ref());
+            Ok(())
+        }
+        Ok(false) => {
+            println!("Application {} does not exist", app.as_ref());
+            Ok(())
+        }
+
         Err(e) => Err(e.into()),
     }
 }

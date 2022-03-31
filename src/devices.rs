@@ -19,8 +19,14 @@ pub async fn delete(
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     match (client.delete_device(app, &device_id).await, ignore_missing) {
-        (Ok(true), _) => Ok(println!("Device {} deleted", &device_id)),
-        (Ok(false), false) => Ok(println!("Device {} not found", &device_id)),
+        (Ok(true), _) => {
+            println!("Device {} deleted", &device_id);
+            Ok(())
+        }
+        (Ok(false), false) => {
+            println!("Device {} not found", &device_id);
+            Ok(())
+        }
         (Ok(false), true) => Ok(()),
         (Err(e), _) => Err(e.into()),
     }
@@ -30,8 +36,14 @@ pub async fn read(config: &Context, app: AppId, device_id: DeviceId) -> Result<(
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     match client.get_device(app, &device_id).await {
-        Ok(Some(dev)) => Ok(util::show_json(serde_json::to_string(&dev)?)),
-        Ok(None) => Ok(println!("Device {} not found", &device_id)),
+        Ok(Some(dev)) => {
+            util::show_json(serde_json::to_string(&dev)?);
+            Ok(())
+        }
+        Ok(None) => {
+            println!("Device {} not found", &device_id);
+            Ok(())
+        }
         Err(e) => Err(e.into()),
     }
 }
@@ -62,7 +74,10 @@ pub async fn create(
 
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
     match client.create_device(&device).await {
-        Ok(_) => Ok(println!("Device {} created", device_id)),
+        Ok(_) => {
+            println!("Device {} created", device_id);
+            Ok(())
+        }
         Err(e) => Err(e.into()),
     }
 }
@@ -96,8 +111,14 @@ pub async fn edit(
     };
 
     match op {
-        Ok(true) => Ok(println!("Device updated")),
-        Ok(false) => Ok(println!("Device or application not found")),
+        Ok(true) => {
+            println!("Device updated");
+            Ok(())
+        }
+        Ok(false) => {
+            println!("Device or application not found");
+            Ok(())
+        }
         Err(e) => Err(e.into()),
     }
 }
@@ -105,17 +126,17 @@ pub async fn edit(
 pub async fn list(config: &Context, app: AppId, labels: Option<Values<'_>>, wide: bool) -> Result<()> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let labels = labels.map(|mut labels| {
-        let mut labels_vec: Vec<&str> = Vec::new();
-        while let Some(l) = labels.next() {
-            labels_vec.push(l)
-        }
-        labels_vec
-    });
+    let labels = util::clap_values_to_vec(labels);
 
     match client.list_devices(app, labels).await {
-        Ok(Some(apps)) => Ok(pretty_list(apps, wide)),
-        Ok(None) => Ok(println!("No applications")),
+        Ok(Some(apps)) => {
+            pretty_list(apps, wide);
+            Ok(())
+        }
+        Ok(None) => {
+            println!("No applications");
+            Ok(())
+        }
         Err(e) => Err(e.into()),
     }
 }
@@ -205,15 +226,18 @@ where
             client.update_device(&device).await
         }
         Ok(None) => Ok(false),
-        Err(e) => Err(e.into()),
+        Err(e) => Err(e),
     };
 
     match op {
-        Ok(true) => Ok(println!(
-            "Device {} was successfully updated",
-            device.as_ref()
-        )),
-        Ok(false) => Ok(println!("Device or application does not exist")),
+        Ok(true) => {
+            println!("Device {} was successfully updated", device.as_ref());
+            Ok(())
+        }
+        Ok(false) => {
+            println!("Device or application does not exist");
+            Ok(())
+        }
         Err(e) => Err(e.into()),
     }
 }
