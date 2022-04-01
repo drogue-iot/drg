@@ -120,7 +120,7 @@ pub async fn transfer_app(config: &Context, app: &str, username: &str) -> Result
                 "The new user can accept the transfer with \"drg admin transfer accept {}\"",
                 app
             );
-            if let Ok(console) = util::get_drogue_console_endpoint(config) {
+            if let Ok(console) = util::get_drogue_console_endpoint(config).await {
                 println!("Alternatively you can share this link with the new owner :");
                 println!("{}transfer/{}", console.as_str(), urlencoding::encode(app));
             }

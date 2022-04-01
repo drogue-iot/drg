@@ -2,11 +2,11 @@ use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
 use anyhow::{Context as anyhowContext, Result};
-use reqwest::blocking::Client;
+use reqwest::Client;
 use reqwest::StatusCode;
 use serde_json::Value;
 
-pub fn send_command(
+pub async fn send_command(
     config: &Context,
     app: &str,
     device: &str,
@@ -29,6 +29,7 @@ pub fn send_command(
         .query(&[("command", command)])
         .json(&body)
         .send()
+        .await
         .context("Can't send command.")
         .map(|res| match res.status() {
             StatusCode::ACCEPTED => println!("Command {} accepted", command),

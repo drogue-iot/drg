@@ -50,8 +50,9 @@ async fn main() -> Result<()> {
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
         let context = if let Some(access_token) = access_token_val {
             if let Some((id, token)) = access_token.split_once(':') {
-                let (sso_url, registry_url) = util::get_drogue_services_endpoints(url.clone())?;
-                let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url)?;
+                let (sso_url, registry_url) =
+                    util::get_drogue_services_endpoints(url.clone()).await?;
+                let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url).await?;
                 Ok(Context {
                     name: context_arg.unwrap_or("default".to_string() as ContextId),
                     drogue_cloud_url: url.clone(),
@@ -92,7 +93,7 @@ async fn main() -> Result<()> {
         config.write(config_path)?;
         exit(0);
     } else if command == Action::version.as_ref() {
-        util::print_version(&config_result);
+        util::print_version(&config_result).await;
         exit(0);
     }
 
@@ -173,10 +174,10 @@ async fn main() -> Result<()> {
                 Some("*") => None,
                 s => s,
             };
-            util::print_endpoints(context, service)?;
+            util::print_endpoints(context, service).await?;
         } else {
             openid::print_whoami(context);
-            util::print_version(&Ok(config));
+            util::print_version(&Ok(config)).await;
         }
         exit(0)
     }
@@ -479,7 +480,7 @@ async fn main() -> Result<()> {
                 None => util::json_parse(cmd.value_of(Parameters::payload.as_ref()))?,
             };
 
-            command::send_command(context, app_id.as_str(), device, command, body)?;
+            command::send_command(context, app_id.as_str(), device, command, body).await?;
         }
         Action::transfer => {
             let task = Transfer::from_str(command);
@@ -509,7 +510,7 @@ async fn main() -> Result<()> {
                 .unwrap_or(usize::MAX);
             let device = matches.value_of(Parameters::device.as_ref());
 
-            stream::stream_app(context, &app_id, device, count)?;
+            stream::stream_app(context, &app_id, device, count).await?;
             exit(0)
         }
         // todo implement the other Actions variants?

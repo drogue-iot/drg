@@ -281,15 +281,11 @@ fn pretty_list(data: Vec<Device>, wide: bool) {
                 let mut update = None;
                 for item in firmware["conditions"].as_array().unwrap() {
                     if let Some("InSync") = item["type"].as_str() {
-                        in_sync.replace(if item["status"].as_str().unwrap() == "True" {
-                            true
-                        } else {
-                            false
-                        });
+                        in_sync.replace(item["status"].as_str().unwrap() == "True");
                     }
 
                     if let Some("UpdateProgress") = item["type"].as_str() {
-                        update = item["message"].as_str().clone();
+                        update = item["message"].as_str();
                     }
                 }
 
