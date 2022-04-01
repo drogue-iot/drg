@@ -6,7 +6,7 @@ use clap::crate_version;
 use clap::{ArgMatches, Values};
 use colored_json::write_colored_json;
 use log::LevelFilter;
-use reqwest::blocking::Client;
+use reqwest::Client;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value::String as serde_string;
@@ -100,14 +100,14 @@ where
     }
 }
 
-pub fn print_version(config: &Result<Config>) {
+pub async fn print_version(config: &Result<Config>) {
     println!("Drg Version: {}", VERSION);
 
     match config {
         Ok(cfg) => {
             let context = cfg.get_context(&None);
             match context {
-                Ok(ctx) => match get_drogue_services_version(&ctx.drogue_cloud_url) {
+                Ok(ctx) => match get_drogue_services_version(&ctx.drogue_cloud_url).await {
                     Ok(cloud_version) => {
                         println!("Connected drogue-cloud service: v{}", cloud_version);
                     }
@@ -133,7 +133,7 @@ pub fn print_version(config: &Result<Config>) {
 }
 
 // use drogue's well known endpoint to retrieve endpoints.
-pub fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
+pub async fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
     let client = Client::new();
 
     let url = url.join(".well-known/drogue-endpoints")?;
@@ -141,10 +141,12 @@ pub fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
     let res = client
         .get(url)
         .send()
+        .await
         .context("Can't retrieve drogue endpoints details")?;
 
     let endpoints: Value = res
         .json()
+        .await
         .context("Cannot deserialize drogue endpoints details")?;
 
     let sso = endpoints["issuer_url"]
@@ -161,21 +163,23 @@ pub fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
     ))
 }
 
-fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Value> {
+async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Value> {
     let client = Client::new();
     let url = format!("{}api/console/v1alpha1/info", &context.drogue_cloud_url);
     let res = client
         .get(url)
         .auth(&context.token)
         .send()
+        .await
         .context("Can't retrieve drogue services details")?;
 
     res.json()
+        .await
         .context("Cannot deserialize drogue endpoints details")
 }
 
-pub fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
-    let endpoints = get_drogue_endpoints_authenticated(context)?;
+pub async fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
+    let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let ws = endpoints["console"]
         .as_str()
         .context("No `console` service in drogue endpoints list")?;
@@ -183,8 +187,8 @@ pub fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
     url_validation(ws)
 }
 
-pub fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
-    let endpoints = get_drogue_endpoints_authenticated(context)?;
+pub async fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
+    let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let ws = endpoints["websocket_integration"]["url"]
         .as_str()
         .context("No `websocket_integration` service in drogue endpoints list")?;
@@ -194,17 +198,19 @@ pub fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
 
 // use keycloak's well known endpoint to retrieve endpoints.
 // http://keycloakhost:keycloakport/auth/realms/{realm}/.well-known/openid-configuration
-pub fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
+pub async fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
     let client = Client::new();
 
     let url = issuer_url.join(".well-known/openid-configuration")?;
     let res = client
         .get(url)
         .send()
+        .await
         .context("Can't retrieve openid-connect endpoints details")?;
 
     let endpoints: Value = res
         .json()
+        .await
         .context("Cannot deserialize openid-connect endpoints details")?;
 
     let auth = endpoints["authorization_endpoint"]
@@ -238,7 +244,7 @@ pub fn log_level(matches: &ArgMatches) -> LevelFilter {
 }
 
 // use drogue's well known endpoint to retrieve version.
-fn get_drogue_services_version(url: &Url) -> Result<String> {
+async fn get_drogue_services_version(url: &Url) -> Result<String> {
     let client = Client::new();
 
     let url = url.join(".well-known/drogue-version")?;
@@ -246,10 +252,12 @@ fn get_drogue_services_version(url: &Url) -> Result<String> {
     let res = client
         .get(url)
         .send()
+        .await
         .context("Can't retrieve drogue version")?;
 
     let payload: Value = res
         .json()
+        .await
         .context("Cannot deserialize drogue version payload")?;
 
     let version = payload["version"]
@@ -287,8 +295,8 @@ pub fn age_from_timestamp(time: DateTime<Utc>) -> String {
     }
 }
 
-pub fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
-    let endpoints = get_drogue_endpoints_authenticated(context)?;
+pub async fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
+    let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let endpoints = endpoints.as_object().unwrap();
 
     if let Some(service) = service {

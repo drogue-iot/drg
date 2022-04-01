@@ -59,7 +59,7 @@ pub trait RequestBuilderExt {
     fn auth(self, token: &Token) -> Self;
 }
 
-impl RequestBuilderExt for reqwest::blocking::RequestBuilder {
+impl RequestBuilderExt for reqwest::RequestBuilder {
     fn auth(self, token: &Token) -> Self {
         match token {
             Token::TokenResponse(token) => self.bearer_auth(&token.access_token().secret()),

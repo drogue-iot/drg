@@ -8,13 +8,13 @@ use tungstenite::http::Request;
 use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
-pub fn stream_app(
+pub async fn stream_app(
     config: &Context,
     app: &str,
     device: Option<&str>,
     mut count: usize,
 ) -> Result<()> {
-    let url = util::get_drogue_websocket_endpoint(config)?;
+    let url = util::get_drogue_websocket_endpoint(config).await?;
     let url = format!("{}{}", url, urlencoding::encode(app));
 
     let request = Request::builder().uri(url).auth(&config.token).body(())?;
