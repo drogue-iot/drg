@@ -19,10 +19,7 @@ pub async fn create(
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     let app: Application = match (file, app) {
-        (Some(f), None) => {
-            let app: Application = util::get_data_from_file(f)?;
-            app
-        }
+        (Some(f), None) => util::get_data_from_file(f)?,
         (None, Some(a)) => serde_json::from_value(json!({
         "metadata": {
             "name": a,
@@ -112,7 +109,7 @@ pub async fn edit(config: &Context, app: AppId, file: Option<&str>) -> Result<()
 pub async fn list(config: &Context, labels: Option<Values<'_>>) -> Result<()> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let labels = util::clap_values_to_vec(labels);
+    let labels = util::clap_values_to_labels(labels);
 
     match client.list_apps(labels).await {
         Ok(Some(apps)) => {

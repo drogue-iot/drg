@@ -131,7 +131,7 @@ pub async fn list(
 ) -> Result<()> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let labels = util::clap_values_to_vec(labels);
+    let labels = util::clap_values_to_labels(labels);
 
     match client.list_devices(app, labels).await {
         Ok(Some(apps)) => {
