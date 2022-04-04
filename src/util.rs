@@ -5,6 +5,7 @@ use chrono::{DateTime, Duration, Utc};
 use clap::crate_version;
 use clap::{ArgMatches, Values};
 use colored_json::write_colored_json;
+use drogue_client::registry::v1::labels::LabelSelector;
 use log::LevelFilter;
 use reqwest::Client;
 use serde::de::DeserializeOwned;
@@ -12,6 +13,7 @@ use serde::Serialize;
 use serde_json::Value::String as serde_string;
 use serde_json::{from_str, json, Value};
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::fs;
 use std::io::stdout;
 use std::io::{Read, Write};
@@ -22,7 +24,6 @@ use url::Url;
 
 pub const VERSION: &str = crate_version!();
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.9.0";
-pub const COMMAND_API_PATH: &str = "api/command/v1alpha1";
 
 pub fn show_json<S: Into<String>>(payload: S) {
     let payload = payload.into();
@@ -361,12 +362,16 @@ pub fn process_labels(args: &Values) -> Value {
     }})
 }
 
-pub fn clap_values_to_vec(labels: Option<Values>) -> Option<Vec<&str>> {
-    labels.map(|mut labels| {
-        let mut labels_vec: Vec<&str> = Vec::new();
-        for l in labels.by_ref() {
-            labels_vec.push(l)
+pub fn clap_values_to_labels(labels: Option<Values>) -> Option<LabelSelector> {
+    if let Some(labels) = labels {
+        let labels = labels.into_iter().collect::<Vec<&str>>().join(",");
+
+        if let Ok(ls) = LabelSelector::try_from(labels.as_str()) {
+            Some(ls)
+        } else {
+            None
         }
-        labels_vec
-    })
+    } else {
+        None
+    }
 }

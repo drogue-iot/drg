@@ -82,7 +82,7 @@ The following operations are handled :
 Note: `list` support adding labels for filtering results:
 
           # Get a list of devices (here all 3 labels will be applied.
-          drg get apps -l key=value,foo=bar --label fiz=buz
+          drg get apps -l key=value,foo=bar --label fiz!=buz
     
 ### Edit and delete resources
     

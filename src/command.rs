@@ -1,10 +1,9 @@
-use crate::config::{Context, RequestBuilderExt};
-use crate::util;
+use crate::config::Context;
 
-use anyhow::{Context as anyhowContext, Result};
-use reqwest::Client;
-use reqwest::StatusCode;
+use anyhow::Result;
 use serde_json::Value;
+
+use drogue_client::command::v1::Client;
 
 pub async fn send_command(
     config: &Context,
@@ -13,26 +12,16 @@ pub async fn send_command(
     command: &str,
     body: Value,
 ) -> Result<()> {
-    let client = Client::new();
+    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let url = format!(
-        "{}{}/apps/{}/devices/{}",
-        &config.registry_url,
-        util::COMMAND_API_PATH,
-        urlencoding::encode(app),
-        urlencoding::encode(device)
-    );
-
-    client
-        .post(&url)
-        .auth(&config.token)
-        .query(&[("command", command)])
-        .json(&body)
-        .send()
+    match client
+        .publish_command(app, device, command, Some(body))
         .await
-        .context("Can't send command.")
-        .map(|res| match res.status() {
-            StatusCode::ACCEPTED => println!("Command {} accepted", command),
-            r => util::exit_with_code(r),
-        })
+    {
+        Ok(_) => {
+            println!("Command accepted");
+            Ok(())
+        }
+        Err(e) => Err(e.into()),
+    }
 }
