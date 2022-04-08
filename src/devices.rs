@@ -8,7 +8,9 @@ use serde_json::{json, Value};
 use sha_crypt::sha512_simple;
 use tabular::{Row, Table};
 
-use drogue_client::registry::v1::{Client, Device};
+use drogue_client::registry::v1::Password::Sha512;
+use drogue_client::registry::v1::{Client, Credential, Device};
+use webbrowser::Browser::Default;
 
 pub async fn delete(
     config: &Context,
@@ -55,21 +57,15 @@ pub async fn create(
     app_id: AppId,
     file: Option<&str>,
 ) -> Result<()> {
-    let data = if data == json!({}) {
-        json!({"credentials": {}})
-    } else {
-        data
-    };
-
     let device: Device = match file {
         Some(f) => util::get_data_from_file(f)?,
-        None => serde_json::from_value(json!({
-        "metadata": {
-            "name": device_id,
-            "application": app_id
-        },
-        "spec": data
-        }))?,
+        None => {
+            let mut device = Device::new(app_id, device_id);
+            if let Some(spec) = data.as_object() {
+                device.spec = spec.clone();
+            }
+            device
+        }
     };
 
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
@@ -173,8 +169,12 @@ pub async fn set_password(
         .map_err(|err| anyhow!("Failed to hash password: {:?}", err))?;
 
     let credential = match username {
-        Some(user) => json!({"user": {"username": user, "password": {"sha512": hash}}}),
-        None => json!({ "pass": {"sha512": hash} }),
+        Some(user) => Credential::UsernamePassword {
+            username: user.to_string(),
+            password: Sha512(hash),
+            ..Default::default()
+        },
+        None => Credential::Password { 0: Sha512(hash) },
     };
 
     // prepare json data to merge

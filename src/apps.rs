@@ -7,8 +7,8 @@ use serde_json::{json, Value};
 use std::process::exit;
 use tabular::{Row, Table};
 
-use drogue_client::registry::v1::Application;
 use drogue_client::registry::v1::Client;
+use drogue_client::registry::v1::{Application, ApplicationSpecTrustAnchors};
 
 pub async fn create(
     config: &Context,
@@ -20,12 +20,13 @@ pub async fn create(
 
     let app: Application = match (file, app) {
         (Some(f), None) => util::get_data_from_file(f)?,
-        (None, Some(a)) => serde_json::from_value(json!({
-        "metadata": {
-            "name": a,
-        },
-        "spec": data,
-        }))?,
+        (None, Some(a)) => {
+            let mut application = Application::new(a);
+            if let Some(spec) = data.as_object() {
+                application.spec = spec.clone();
+            }
+            application
+        }
         // a file AND an app name should not be allowed by clap.
         _ => unreachable!(),
     };
@@ -135,8 +136,10 @@ pub async fn add_trust_anchor(
     let trust_anchor =
         trust::create_trust_anchor(app, keyout, key_pair_algorithm, days, key_input)?;
 
-    let data = json!({"spec": {"trustAnchors": [ trust_anchor ]}} );
-
+    let anchors = ApplicationSpecTrustAnchors {
+        anchors: vec![trust_anchor],
+    };
+    let data = json!({"spec": {"trustAnchors": anchors }} );
     merge_in(app, data, config).await
 }
 
