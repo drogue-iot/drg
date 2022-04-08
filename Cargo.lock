@@ -633,7 +633,6 @@ dependencies = [
  "thiserror",
  "tracing",
  "url 2.2.2",
- "urlencoding",
 ]
 
 [[package]]

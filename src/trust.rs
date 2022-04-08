@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
-use base64::encode;
 use chrono::{Duration, Utc};
+use drogue_client::registry::v1::ApplicationSpecTrustAnchorEntry;
 use rand::rngs::OsRng;
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa,
@@ -8,7 +8,6 @@ use rcgen::{
     PKCS_RSA_SHA256,
 };
 use rsa::{pkcs8::ToPrivateKey, RsaPrivateKey};
-use serde_json::{json, Value};
 use std::fs::File;
 use std::io::Write;
 use std::{fs, process::exit, str::from_utf8};
@@ -99,7 +98,7 @@ pub fn create_trust_anchor(
     key_pair_algorithm: Option<SignAlgo>,
     days: Option<&str>,
     key_input: Option<KeyPair>,
-) -> Result<Value> {
+) -> Result<ApplicationSpecTrustAnchorEntry> {
     const OU: &str = "Cloud";
     let is_input_key = key_input.is_some();
 
@@ -129,13 +128,9 @@ pub fn create_trust_anchor(
         }
     };
 
-    Ok(json!({
-        "anchors": [
-            {
-                "certificate": encode(pem_cert)
-            }
-        ]
-    }))
+    Ok(ApplicationSpecTrustAnchorEntry {
+        certificate: base64::encode(pem_cert).into_bytes(),
+    })
 }
 
 pub fn create_device_certificate(
