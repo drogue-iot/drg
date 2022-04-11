@@ -1,13 +1,14 @@
-use crate::config::{Config, Context, RequestBuilderExt};
+use crate::config::{Config, Context};
 use crate::Parameters;
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use chrono::{DateTime, Duration, Utc};
 use clap::crate_version;
 use clap::{ArgMatches, Values};
 use colored_json::write_colored_json;
+use drogue_client::discovery::v1::Client;
+use drogue_client::discovery::v1::Endpoints;
 use drogue_client::registry::v1::labels::LabelSelector;
 use log::LevelFilter;
-use reqwest::Client;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value::String as serde_string;
@@ -135,72 +136,58 @@ pub async fn print_version(config: &Result<Config>) {
 
 // use drogue's well known endpoint to retrieve endpoints.
 pub async fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
-    let client = Client::new();
+    let client: Client<Option<&Context>> = Client::new_anonymous(reqwest::Client::new(), url);
 
-    let url = url.join(".well-known/drogue-endpoints")?;
+    let endpoints = client
+        .get_public_endpoints()
+        .await?
+        .ok_or(anyhow!("Error fetching drogue-cloud endpoints."))?;
 
-    let res = client
-        .get(url)
-        .send()
-        .await
-        .context("Can't retrieve drogue endpoints details")?;
+    let registry = endpoints
+        .registry
+        .ok_or(anyhow!("Missing SSO endpoint."))?
+        .url;
+    let sso = endpoints.sso.ok_or(anyhow!("Missing SSO endpoint."))?;
 
-    let endpoints: Value = res
-        .json()
-        .await
-        .context("Cannot deserialize drogue endpoints details")?;
-
-    let sso = endpoints["issuer_url"]
-        .as_str()
-        .context("Missing `issuer_url` in drogue endpoint details")?;
-    let registry = endpoints["registry"]["url"]
-        .as_str()
-        .context("Missing `registry` in drogue endpoint details")?;
-
-    // a trailing / is needed to append the rest of the path.
-    Ok((
-        url_validation(format!("{}/", sso).as_str())?,
-        url_validation(format!("{}/", registry).as_str())?,
-    ))
+    Ok((Url::parse(sso.as_str())?, Url::parse(registry.as_str())?))
 }
 
-async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Value> {
-    let client = Client::new();
-    let url = format!("{}api/console/v1alpha1/info", &context.drogue_cloud_url);
-    let res = client
-        .get(url)
-        .auth(&context.token)
-        .send()
-        .await
-        .context("Can't retrieve drogue services details")?;
+async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Endpoints> {
+    let client = Client::new_authenticated(
+        reqwest::Client::new(),
+        context.drogue_cloud_url.clone(),
+        context,
+    );
 
-    res.json()
-        .await
-        .context("Cannot deserialize drogue endpoints details")
+    client
+        .get_authenticated_endpoints()
+        .await?
+        .ok_or(anyhow!("Error fetching drogue-cloud endpoints."))
 }
 
 pub async fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
-    let ws = endpoints["console"]
-        .as_str()
-        .context("No `console` service in drogue endpoints list")?;
+    let console = endpoints
+        .console
+        .ok_or(anyhow!("No `console` service in drogue endpoints list"))?;
 
-    url_validation(ws)
+    Url::parse(console.as_str()).context("Cannot parse console url to a valid url")
+    //url_validation(ws)
 }
 
 pub async fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
-    let ws = endpoints["websocket_integration"]["url"]
-        .as_str()
-        .context("No `websocket_integration` service in drogue endpoints list")?;
+    let ws = endpoints
+        .websocket_integration
+        .ok_or(anyhow!("No `console` service in drogue endpoints list"))?;
 
-    url_validation(ws)
+    Url::parse(ws.url.as_str()).context("Cannot parse console url to a valid url")
 }
 
 // use keycloak's well known endpoint to retrieve endpoints.
 // http://keycloakhost:keycloakport/auth/realms/{realm}/.well-known/openid-configuration
 pub async fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
-    let client = Client::new();
+    let client = reqwest::Client::new();
 
     let url = issuer_url.join(".well-known/openid-configuration")?;
     let res = client
@@ -246,26 +233,14 @@ pub fn log_level(matches: &ArgMatches) -> LevelFilter {
 
 // use drogue's well known endpoint to retrieve version.
 async fn get_drogue_services_version(url: &Url) -> Result<String> {
-    let client = Client::new();
+    let client: Client<Option<&Context>> =
+        Client::new_anonymous(reqwest::Client::new(), url.clone());
 
-    let url = url.join(".well-known/drogue-version")?;
-
-    let res = client
-        .get(url)
-        .send()
-        .await
-        .context("Can't retrieve drogue version")?;
-
-    let payload: Value = res
-        .json()
-        .await
-        .context("Cannot deserialize drogue version payload")?;
-
-    let version = payload["version"]
-        .as_str()
-        .context("Missing `version` in drogue version payload")?;
-
-    Ok(version.to_string())
+    client
+        .get_drogue_cloud_version()
+        .await?
+        .ok_or(anyhow!("Error retrieving drogue version"))
+        .map(|v| v.version)
 }
 
 pub fn get_data_from_file<T>(path: &str) -> Result<T>
@@ -298,6 +273,7 @@ pub fn age_from_timestamp(time: DateTime<Utc>) -> String {
 
 pub async fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
+    let endpoints = serde_json::to_value(endpoints)?;
     let endpoints = endpoints.as_object().unwrap();
 
     if let Some(service) = service {
