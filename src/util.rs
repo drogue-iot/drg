@@ -7,6 +7,7 @@ use clap::{ArgMatches, Values};
 use colored_json::write_colored_json;
 use drogue_client::discovery::v1::Client;
 use drogue_client::discovery::v1::Endpoints;
+use drogue_client::openid::NoTokenProvider;
 use drogue_client::registry::v1::labels::LabelSelector;
 use log::LevelFilter;
 use serde::de::DeserializeOwned;
@@ -136,7 +137,7 @@ pub async fn print_version(config: &Result<Config>) {
 
 // use drogue's well known endpoint to retrieve endpoints.
 pub async fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
-    let client: Client<Option<&Context>> = Client::new_anonymous(reqwest::Client::new(), url);
+    let client: Client<NoTokenProvider> = Client::new_anonymous(reqwest::Client::new(), url);
 
     let endpoints = client
         .get_public_endpoints()
@@ -233,7 +234,7 @@ pub fn log_level(matches: &ArgMatches) -> LevelFilter {
 
 // use drogue's well known endpoint to retrieve version.
 async fn get_drogue_services_version(url: &Url) -> Result<String> {
-    let client: Client<Option<&Context>> =
+    let client: Client<NoTokenProvider> =
         Client::new_anonymous(reqwest::Client::new(), url.clone());
 
     client
