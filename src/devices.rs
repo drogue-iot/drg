@@ -10,7 +10,6 @@ use tabular::{Row, Table};
 
 use drogue_client::registry::v1::Password::Sha512;
 use drogue_client::registry::v1::{Client, Credential, Device};
-use webbrowser::Browser::Default;
 
 pub async fn delete(
     config: &Context,
@@ -71,7 +70,7 @@ pub async fn create(
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
     match client.create_device(&device).await {
         Ok(_) => {
-            println!("Device {} created", device_id);
+            println!("Device {} created", device.metadata.name);
             Ok(())
         }
         Err(e) => Err(e.into()),
@@ -172,7 +171,7 @@ pub async fn set_password(
         Some(user) => Credential::UsernamePassword {
             username: user.to_string(),
             password: Sha512(hash),
-            ..Default::default()
+            unique: false,
         },
         None => Credential::Password { 0: Sha512(hash) },
     };
