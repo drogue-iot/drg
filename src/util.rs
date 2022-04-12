@@ -142,13 +142,18 @@ pub async fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
     let endpoints = client
         .get_public_endpoints()
         .await?
-        .ok_or(anyhow!("Error fetching drogue-cloud endpoints."))?;
+        .ok_or_else(|| anyhow!("Error fetching drogue-cloud endpoints."))?;
 
     let registry = endpoints
         .registry
-        .ok_or(anyhow!("Missing SSO endpoint."))?
+        .ok_or_else(|| anyhow!("Missing SSO endpoint."))?
         .url;
-    let sso = endpoints.sso.ok_or(anyhow!("Missing SSO endpoint."))?;
+    let sso = endpoints
+        .issuer_url
+        .ok_or_else(|| anyhow!("Missing SSO endpoint."))?;
+    // Url::join remove the last segment if there is no trailing slash so we append it there
+    let registry = format!("{registry}/");
+    let sso = format!("{sso}/");
 
     Ok((Url::parse(sso.as_str())?, Url::parse(registry.as_str())?))
 }
@@ -163,14 +168,14 @@ async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Endpoin
     client
         .get_authenticated_endpoints()
         .await?
-        .ok_or(anyhow!("Error fetching drogue-cloud endpoints."))
+        .ok_or_else(|| anyhow!("Error fetching drogue-cloud endpoints."))
 }
 
 pub async fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let console = endpoints
         .console
-        .ok_or(anyhow!("No `console` service in drogue endpoints list"))?;
+        .ok_or_else(|| anyhow!("No `console` service in drogue endpoints list"))?;
 
     Url::parse(console.as_str()).context("Cannot parse console url to a valid url")
     //url_validation(ws)
@@ -180,7 +185,7 @@ pub async fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let ws = endpoints
         .websocket_integration
-        .ok_or(anyhow!("No `console` service in drogue endpoints list"))?;
+        .ok_or_else(|| anyhow!("No `console` service in drogue endpoints list"))?;
 
     Url::parse(ws.url.as_str()).context("Cannot parse console url to a valid url")
 }
@@ -240,7 +245,7 @@ async fn get_drogue_services_version(url: &Url) -> Result<String> {
     client
         .get_drogue_cloud_version()
         .await?
-        .ok_or(anyhow!("Error retrieving drogue version"))
+        .ok_or_else(|| anyhow!("Error retrieving drogue version"))
         .map(|v| v.version)
 }
 

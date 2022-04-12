@@ -27,8 +27,9 @@ pub async fn login(
 ) -> Result<Context> {
     log::info!("Starting authentication process with {}", api_endpoint);
 
-    let (sso_url, registry_url) = util::get_drogue_services_endpoints(api_endpoint.clone()).await?;
-    let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url).await?;
+    let (issuer_url, registry_url) =
+        util::get_drogue_services_endpoints(api_endpoint.clone()).await?;
+    let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(issuer_url).await?;
     let token = match refresh_token_val {
         Some(refresh_token_val) => {
             exchange_token(

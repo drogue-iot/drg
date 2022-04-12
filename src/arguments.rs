@@ -6,8 +6,6 @@ use clap::{App, AppSettings, Arg, ArgGroup, ArgMatches};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
 
-use crate::admin::Role;
-
 /// Drg CLI follows a "action resourceType resourceId options" pattern.
 /// Rarely, the resource Id is optional
 
