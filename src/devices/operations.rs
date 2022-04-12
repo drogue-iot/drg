@@ -8,88 +8,52 @@ use serde_json::{json, Value};
 use sha_crypt::sha512_simple;
 use tabular::{Row, Table};
 
+use crate::devices::{DeviceOperation, Outcome};
 use drogue_client::registry::v1::Password::Sha512;
 use drogue_client::registry::v1::{Client, Credential, Device};
+use crate::devices::Outcome::SuccessWithJsonData;
 
+
+impl DeviceOperation {
 pub async fn delete(
+    &self,
     config: &Context,
-    app: AppId,
-    device_id: DeviceId,
     ignore_missing: bool,
-) -> Result<()> {
+) -> Result<Outcome<()>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    match (client.delete_device(app, &device_id).await, ignore_missing) {
-        (Ok(true), _) => {
-            println!("Device {} deleted", &device_id);
-            Ok(())
-        }
-        (Ok(false), false) => {
-            println!("Device {} not found", &device_id);
-            Ok(())
-        }
-        (Ok(false), true) => Ok(()),
+    match (client.delete_device(&self.app, self.device.unwrap()).await, ignore_missing) {
+        (Ok(true), _) => Ok(Outcome::SuccessWithMessage(format!("Device deleted"))),
+        (Ok(false), false) => Err(anyhow!("Application or device not found")),
+        (Ok(false), true) => Ok(Outcome::Success),
         (Err(e), _) => Err(e.into()),
     }
 }
 
-pub async fn read(config: &Context, app: AppId, device_id: DeviceId) -> Result<()> {
+pub async fn read(&self, config: &Context) -> Result<Outcome<Device>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    match client.get_device(app, &device_id).await {
-        Ok(Some(dev)) => {
-            util::show_json(serde_json::to_string(&dev)?);
-            Ok(())
-        }
-        Ok(None) => {
-            println!("Device {} not found", &device_id);
-            Ok(())
-        }
+    match client.get_device(&self.app, self.device.unwrap()).await {
+        Ok(Some(dev)) => Ok(SuccessWithJsonData(dev)),
+        Ok(None) => Err(anyhow!("Device or application not found")),
         Err(e) => Err(e.into()),
     }
 }
 
-pub async fn create(
-    config: &Context,
-    device_id: DeviceId,
-    data: serde_json::Value,
-    app_id: AppId,
-    file: Option<&str>,
-) -> Result<()> {
-    let device: Device = match file {
-        Some(f) => util::get_data_from_file(f)?,
-        None => {
-            let mut device = Device::new(app_id, device_id);
-            if let Some(spec) = data.as_object() {
-                device.spec = spec.clone();
-            }
-            device
-        }
-    };
-
+pub async fn create(&self, config: &Context) -> Result<Outcome<()>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
-    match client.create_device(&device).await {
-        Ok(_) => {
-            println!("Device {} created", device.metadata.name);
-            Ok(())
-        }
-        Err(e) => Err(e.into()),
+
+    Ok(client.create_device(&self.payload.unwrap()).await
+        .map(|_| Outcome::SuccessWithMessage(format!("Device created")))?)
     }
-}
 
-pub async fn edit(
+pub async fn edit(&self,
     config: &Context,
-    app: AppId,
-    device_id: Option<DeviceId>,
-    file: Option<&str>,
-) -> Result<()> {
+) -> Result<Outcome<()>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let op = match (device_id, file) {
-        (None, Some(f)) => {
-            let data: Device = util::get_data_from_file(f)?;
-            client.update_device(&data).await
-        }
+    let op = match (&self.device, &self.payload) {
+        (None, Some(d)) => client.update_device(d).await,
         (Some(id), None) => {
             //read device data
             let data = client.get_device(app, &id).await?;
@@ -106,37 +70,24 @@ pub async fn edit(
     };
 
     match op {
-        Ok(true) => {
-            println!("Device updated");
-            Ok(())
-        }
-        Ok(false) => {
-            println!("Device or application not found");
-            Ok(())
-        }
+        Ok(true) => Ok(Outcome::SuccessWithMessage(format!("Device updated"))),
+        Ok(false) => Err(anyhow!(format!("Device or application not found"))),
         Err(e) => Err(e.into()),
     }
 }
 
 pub async fn list(
+    &self,
     config: &Context,
-    app: AppId,
     labels: Option<Values<'_>>,
-    wide: bool,
-) -> Result<()> {
+) -> Result<Outcome<Vec<Device>>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     let labels = util::clap_values_to_labels(labels);
 
     match client.list_devices(app, labels).await {
-        Ok(Some(apps)) => {
-            pretty_list(apps, wide);
-            Ok(())
-        }
-        Ok(None) => {
-            println!("No applications");
-            Ok(())
-        }
+        Ok(Some(devices)) => Ok(SuccessWithJsonData(devices)),
+        Ok(None) => Err(anyhow!("Application not found")),
         Err(e) => Err(e.into()),
     }
 }
