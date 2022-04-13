@@ -1,5 +1,5 @@
 use crate::config::Context;
-use crate::{util, AppId, DeviceId};
+use crate::util;
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use clap::Values;
 use json_value_merge::Merge;
@@ -8,192 +8,180 @@ use serde_json::{json, Value};
 use sha_crypt::sha512_simple;
 use tabular::{Row, Table};
 
-use crate::devices::{DeviceOperation, Outcome};
+use crate::devices::Outcome::SuccessWithJsonData;
+use crate::devices::{DeviceOperation, OperationType, Outcome};
 use drogue_client::registry::v1::Password::Sha512;
 use drogue_client::registry::v1::{Client, Credential, Device};
-use crate::devices::Outcome::SuccessWithJsonData;
-
 
 impl DeviceOperation {
-pub async fn delete(
-    &self,
-    config: &Context,
-    ignore_missing: bool,
-) -> Result<Outcome<()>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    async fn delete(&self, config: &Context, ignore_missing: bool) -> Result<Outcome<()>> {
+        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    match (client.delete_device(&self.app, self.device.unwrap()).await, ignore_missing) {
-        (Ok(true), _) => Ok(Outcome::SuccessWithMessage(format!("Device deleted"))),
-        (Ok(false), false) => Err(anyhow!("Application or device not found")),
-        (Ok(false), true) => Ok(Outcome::Success),
-        (Err(e), _) => Err(e.into()),
-    }
-}
-
-pub async fn read(&self, config: &Context) -> Result<Outcome<Device>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
-
-    match client.get_device(&self.app, self.device.unwrap()).await {
-        Ok(Some(dev)) => Ok(SuccessWithJsonData(dev)),
-        Ok(None) => Err(anyhow!("Device or application not found")),
-        Err(e) => Err(e.into()),
-    }
-}
-
-pub async fn create(&self, config: &Context) -> Result<Outcome<()>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
-
-    Ok(client.create_device(&self.payload.unwrap()).await
-        .map(|_| Outcome::SuccessWithMessage(format!("Device created")))?)
+        match (
+            client
+                .delete_device(&self.app, &self.device.as_ref().unwrap())
+                .await,
+            ignore_missing,
+        ) {
+            (Ok(true), _) => Ok(Outcome::SuccessWithMessage(format!("Device deleted"))),
+            (Ok(false), false) => Err(anyhow!("Application or device not found")),
+            (Ok(false), true) => Ok(Outcome::Success),
+            (Err(e), _) => Err(e.into()),
+        }
     }
 
-pub async fn edit(&self,
-    config: &Context,
-) -> Result<Outcome<()>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    async fn read(&self, config: &Context) -> Result<Outcome<Device>> {
+        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let op = match (&self.device, &self.payload) {
-        (None, Some(d)) => client.update_device(d).await,
-        (Some(id), None) => {
-            //read device data
-            let data = client.get_device(app, &id).await?;
-            match data {
-                Some(dev) => {
-                    let edited = util::editor(dev)?;
-                    client.update_app(&edited).await
+        match client
+            .get_device(&self.app, &self.device.as_ref().unwrap())
+            .await
+        {
+            Ok(Some(dev)) => Ok(SuccessWithJsonData(dev)),
+            Ok(None) => Err(anyhow!("Device or application not found")),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    async fn create(&self, config: &Context) -> Result<Outcome<()>> {
+        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+        Ok(client
+            .create_device(&self.payload.as_ref().unwrap())
+            .await
+            .map(|_| Outcome::SuccessWithMessage(format!("Device created")))?)
+    }
+
+    async fn edit(&self, config: &Context) -> Result<Outcome<()>> {
+        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+        let op = match (&self.device, &self.payload) {
+            (None, Some(d)) => client.update_device(d).await,
+            (Some(id), None) => {
+                //read device data
+                let data = client
+                    .get_device(&self.app, &self.device.as_ref().unwrap())
+                    .await?;
+                match data {
+                    Some(dev) => {
+                        let edited = util::editor(dev)?;
+                        client.update_app(&edited).await
+                    }
+                    None => Ok(false),
                 }
-                None => Ok(false),
             }
+            // Clap is making sure the arguments are mutually exclusive.
+            _ => unreachable!(),
+        };
+
+        match op {
+            Ok(true) => Ok(Outcome::SuccessWithMessage(format!("Device updated"))),
+            Ok(false) => Err(anyhow!(format!("Device or application not found"))),
+            Err(e) => Err(e.into()),
         }
-        // Clap is making sure the arguments are mutually exclusive.
-        _ => unreachable!(),
-    };
-
-    match op {
-        Ok(true) => Ok(Outcome::SuccessWithMessage(format!("Device updated"))),
-        Ok(false) => Err(anyhow!(format!("Device or application not found"))),
-        Err(e) => Err(e.into()),
     }
-}
 
-pub async fn list(
-    &self,
-    config: &Context,
-    labels: Option<Values<'_>>,
-) -> Result<Outcome<Vec<Device>>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    async fn list(
+        &self,
+        config: &Context,
+        labels: Option<Values<'_>>,
+    ) -> Result<Outcome<Vec<Device>>> {
+        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    let labels = util::clap_values_to_labels(labels);
+        let labels = util::clap_values_to_labels(labels);
 
-    match client.list_devices(app, labels).await {
-        Ok(Some(devices)) => Ok(SuccessWithJsonData(devices)),
-        Ok(None) => Err(anyhow!("Application not found")),
-        Err(e) => Err(e.into()),
-    }
-}
-
-pub async fn set_gateway(
-    config: &Context,
-    app: AppId,
-    device_id: DeviceId,
-    gateway_id: DeviceId,
-) -> Result<()> {
-    // prepare json data to merge
-    let data = json!({"spec": {
-    "gatewaySelector": {
-        "matchNames": [gateway_id]
-    }
-    }});
-
-    merge_in(app, device_id, data, config).await
-}
-
-pub async fn set_password(
-    config: &Context,
-    app: AppId,
-    device_id: DeviceId,
-    password: String,
-    username: Option<&str>,
-) -> Result<()> {
-    let hash = sha512_simple(&password, &Default::default())
-        .map_err(|err| anyhow!("Failed to hash password: {:?}", err))?;
-
-    let credential = match username {
-        Some(user) => Credential::UsernamePassword {
-            username: user.to_string(),
-            password: Sha512(hash),
-            unique: false,
-        },
-        None => Credential::Password { 0: Sha512(hash) },
-    };
-
-    // prepare json data to merge
-    let data = json!({"spec": {
-    "credentials": {
-        "credentials": [
-          credential
-        ]
-    }
-    }});
-
-    merge_in(app, device_id, data, config).await
-}
-
-pub async fn add_alias(
-    config: &Context,
-    app: AppId,
-    device_id: DeviceId,
-    new_alias: String,
-) -> Result<()> {
-    // prepare json data to merge
-    let data = json!({"spec": {
-    "alias": [
-          new_alias
-        ]
-    }});
-
-    merge_in(app, device_id, data, config).await
-}
-
-pub async fn add_labels(
-    config: &Context,
-    app: AppId,
-    device_id: DeviceId,
-    args: Values<'_>,
-) -> Result<()> {
-    let data = util::process_labels(&args);
-    merge_in(app, device_id, data, config).await
-}
-
-//todo merge that with the same method in apps ?
-/// merges a serde Value into the device object that exist on the server
-async fn merge_in<A, D>(app: A, device: D, data: Value, config: &Context) -> Result<()>
-where
-    A: AsRef<str>,
-    D: AsRef<str>,
-{
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
-
-    //read app data
-    let op = match client.get_device(app.as_ref(), device.as_ref()).await {
-        Ok(Some(device)) => {
-            serde_json::to_value(&device)?.merge(data);
-            client.update_device(&device).await
+        match client.list_devices(&self.app, labels).await {
+            Ok(Some(devices)) => Ok(SuccessWithJsonData(devices)),
+            Ok(None) => Err(anyhow!("Application not found")),
+            Err(e) => Err(e.into()),
         }
-        Ok(None) => Ok(false),
-        Err(e) => Err(e),
-    };
+    }
 
-    match op {
-        Ok(true) => {
-            println!("Device {} was successfully updated", device.as_ref());
-            Ok(())
+    async fn set_gateway(&self, config: &Context, gateway_id: String) -> Result<Outcome<()>> {
+        // prepare json data to merge
+        let data = json!({"spec": {
+        "gatewaySelector": {
+            "matchNames": [gateway_id]
         }
-        Ok(false) => {
-            println!("Device or application does not exist");
-            Ok(())
+        }});
+
+        self.merge_in(data, config).await
+    }
+
+    async fn set_password(
+        &self,
+        config: &Context,
+        password: String,
+        username: Option<&str>,
+    ) -> Result<Outcome<()>> {
+        let hash = sha512_simple(&password, &Default::default())
+            .map_err(|err| anyhow!("Failed to hash password: {:?}", err))?;
+
+        let credential = match username {
+            Some(user) => Credential::UsernamePassword {
+                username: user.to_string(),
+                password: Sha512(hash),
+                unique: false,
+            },
+            None => Credential::Password { 0: Sha512(hash) },
+        };
+
+        // prepare json data to merge
+        let data = json!({"spec": {
+        "credentials": {
+            "credentials": [
+              credential
+            ]
         }
-        Err(e) => Err(e.into()),
+        }});
+
+        self.merge_in(data, config).await
+    }
+
+    async fn add_alias(&self, config: &Context, new_alias: String) -> Result<Outcome<()>> {
+        // prepare json data to merge
+        let data = json!({"spec": {
+        "alias": [
+              new_alias
+            ]
+        }});
+
+        self.merge_in(data, config).await
+    }
+
+    async fn add_labels(&self, config: &Context, args: Values<'_>) -> Result<Outcome<()>> {
+        let data = util::process_labels(&args);
+        self.merge_in(data, config).await
+    }
+
+    /// todo merge that with the same method in apps ?
+    /// merges a serde Value into the device object that exist on the server
+    async fn merge_in(&self, data: Value, config: &Context) -> Result<Outcome<()>> {
+        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+
+        //retrieve device
+        let op = match client
+            .get_device(
+                &self.app,
+                self.device
+                    .as_ref()
+                    .ok_or(anyhow!("No device name provided"))?,
+            )
+            .await
+        {
+            Ok(Some(device)) => {
+                serde_json::to_value(&device)?.merge(data);
+                client.update_device(&device).await
+            }
+            Ok(None) => Ok(false),
+            Err(e) => Err(e),
+        };
+
+        match op {
+            Ok(true) => Ok(Outcome::Success),
+            Ok(false) => Err(anyhow!("Device or application not found")),
+            Err(e) => Err(e.into()),
+        }
     }
 }
 
