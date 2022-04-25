@@ -600,6 +600,7 @@ dependencies = [
  "strum_macros",
  "tabular",
  "tempfile",
+ "thiserror",
  "tiny_http",
  "tokio",
  "tungstenite",
@@ -612,6 +613,8 @@ dependencies = [
 [[package]]
 name = "drogue-client"
 version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a25252d6223a05f677b99adf86fb84768b087002e5f10640aecc77bb5ad0e08f"
 dependencies = [
  "async-std",
  "async-trait",
@@ -621,9 +624,7 @@ dependencies = [
  "futures",
  "http",
  "humantime-serde",
- "indexmap",
  "log",
- "nom 6.1.2",
  "openid",
  "opentelemetry",
  "opentelemetry-http",
@@ -1030,7 +1031,6 @@ checksum = "282a6247722caba404c065016bbfa522806e51714c34f5dfc3e4a3a46fcb4223"
 dependencies = [
  "autocfg 1.1.0",
  "hashbrown",
- "serde",
 ]
 
 [[package]]
@@ -2893,3 +2893,7 @@ dependencies = [
  "syn",
  "synstructure",
 ]
+
+[[patch.unused]]
+name = "drogue-client"
+version = "0.10.0"
