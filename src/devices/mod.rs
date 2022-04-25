@@ -1,10 +1,14 @@
 mod operations;
+mod outcome;
+
+pub use outcome::*;
 
 use crate::util;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use drogue_client::registry::v1::{Client, Device};
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
+use crate::util::show_json;
 
 /// DeviceOperation
 struct DeviceOperation {
@@ -13,48 +17,17 @@ struct DeviceOperation {
     payload: Option<Device>,
 
     json_output: bool,
-
-    op: OperationType,
 }
-
-// todo : move this to a separate mod ?
-/// When it comes to operation results there are a two possible outputs:
-enum Outcome<T: Serialize> {
-    Success,
-    SuccessWithMessage(String),
-    SuccessWithJsonData(T),
-}
-
-enum OperationType {
-    Read,
-    List,
-    Create,
-    Delete,
-    Update,
-}
-
-/// custom errors ?
-///  ServiceError,   ---> error we find out after sending request
-///  UserError,      ---> error we catch before sending the request
 
 impl DeviceOperation {
-    pub fn read(application: String, device_name: String, json: bool) -> Result<Self> {
-        Ok(DeviceOperation {
-            json_output: json,
-            device: Some(device_name),
-            app: application,
-            payload: None,
-            op: OperationType::Read,
-        })
-    }
+   pub fn new(
+       application: String,
+       device_name: Option<String>,
+       file: Option<&str>,
+       data: Option<Value>,
+       json: bool,
+   ) -> Self {
 
-    pub fn creation(
-        application: String,
-        device_name: Option<String>,
-        file: Option<&str>,
-        data: Option<Value>,
-        json: bool,
-    ) -> Result<Self> {
         let device: Option<Device> = match (file, data) {
             (Some(f), None) => Some(util::get_data_from_file(f)?),
             (None, Some(data)) => {
@@ -69,11 +42,9 @@ impl DeviceOperation {
         };
 
         Ok(DeviceOperation {
-            json_output: json,
             device: device_name,
             app: application,
-            payload: device,
-            op: OperationType::Create,
-        })
+            payload: Some(device),
+        }
     }
 }

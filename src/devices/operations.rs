@@ -8,8 +8,7 @@ use serde_json::{json, Value};
 use sha_crypt::sha512_simple;
 use tabular::{Row, Table};
 
-use crate::devices::Outcome::SuccessWithJsonData;
-use crate::devices::{DeviceOperation, OperationType, Outcome};
+use crate::devices::{DeviceOperation, DrogueError, Outcome};
 use drogue_client::registry::v1::Password::Sha512;
 use drogue_client::registry::v1::{Client, Credential, Device};
 
@@ -24,9 +23,9 @@ impl DeviceOperation {
             ignore_missing,
         ) {
             (Ok(true), _) => Ok(Outcome::SuccessWithMessage(format!("Device deleted"))),
-            (Ok(false), false) => Err(anyhow!("Application or device not found")),
+            (Ok(false), false) => DrogueError::NotFound,
             (Ok(false), true) => Ok(Outcome::Success),
-            (Err(e), _) => Err(e.into()),
+            (Err(e), _) => DrogueError::Service(e),
         }
     }
 
@@ -36,10 +35,10 @@ impl DeviceOperation {
         match client
             .get_device(&self.app, &self.device.as_ref().unwrap())
             .await
-        {
+            {
             Ok(Some(dev)) => Ok(SuccessWithJsonData(dev)),
-            Ok(None) => Err(anyhow!("Device or application not found")),
-            Err(e) => Err(e.into()),
+            Ok(None) => DrogueError::NotFound,
+            Err(e) => DrogueError::Service(e),
         }
     }
 
@@ -49,7 +48,8 @@ impl DeviceOperation {
         Ok(client
             .create_device(&self.payload.as_ref().unwrap())
             .await
-            .map(|_| Outcome::SuccessWithMessage(format!("Device created")))?)
+            .map(|_| Outcome::SuccessWithMessage(format!("Device created")))
+            .map_err(DrogueError::Service(e))?)
     }
 
     async fn edit(&self, config: &Context) -> Result<Outcome<()>> {
@@ -76,8 +76,8 @@ impl DeviceOperation {
 
         match op {
             Ok(true) => Ok(Outcome::SuccessWithMessage(format!("Device updated"))),
-            Ok(false) => Err(anyhow!(format!("Device or application not found"))),
-            Err(e) => Err(e.into()),
+            Ok(false) => DrogueError::NotFound,
+            Err(e) => DrogueError::Service(e),
         }
     }
 
@@ -92,8 +92,8 @@ impl DeviceOperation {
 
         match client.list_devices(&self.app, labels).await {
             Ok(Some(devices)) => Ok(SuccessWithJsonData(devices)),
-            Ok(None) => Err(anyhow!("Application not found")),
-            Err(e) => Err(e.into()),
+            Ok(None) => DrogueError::NotFound,
+            Err(e) => DrogueError::Service(e),
         }
     }
 
@@ -165,7 +165,7 @@ impl DeviceOperation {
                 &self.app,
                 self.device
                     .as_ref()
-                    .ok_or(anyhow!("No device name provided"))?,
+                    .ok_or(DrogueError::User("No device name provided".to_string()))?,
             )
             .await
         {
@@ -179,8 +179,8 @@ impl DeviceOperation {
 
         match op {
             Ok(true) => Ok(Outcome::Success),
-            Ok(false) => Err(anyhow!("Device or application not found")),
-            Err(e) => Err(e.into()),
+            Ok(false) => DrogueError::NotFound,
+            Err(e) => DrogueError::Service(e),
         }
     }
 }
