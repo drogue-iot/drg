@@ -357,3 +357,19 @@ pub fn clap_values_to_labels(labels: Option<Values>) -> Option<LabelSelector> {
         None
     }
 }
+
+pub fn name_from_json_or_file(param: Option<String>, file: Option<&str>) -> Result<String> {
+    match (param, file) {
+        (Some(id), None) => Ok(id),
+        (None, Some(file)) => {
+            let f: Value = get_data_from_file(file)?;
+            let id = f["metadata"]["name"]
+                .as_str()
+                .context("Misisng `name` property in device definition file")?
+                .to_string();
+            Ok(id)
+        }
+        // we must have id or file, not both, not neither.
+        _ => unreachable!(),
+    }
+}
