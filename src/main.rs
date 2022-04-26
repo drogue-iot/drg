@@ -189,7 +189,8 @@ async fn main() -> Result<()> {
     let json_output = cmd
         .value_of(Parameters::output.as_ref())
         .map(|s| s == "json")
-        .unwrap();
+        .unwrap_or(false);
+
     match verb? {
         Action::create => {
             let (res, command) = cmd.subcommand().unwrap();
@@ -412,7 +413,7 @@ async fn main() -> Result<()> {
                     let wide = command
                         .value_of(Parameters::output.as_ref())
                         .map(|v| v == "wide")
-                        .unwrap();
+                        .unwrap_or(false);
                     let app_id = arguments::get_app_id(command, context)?;
                     let labels = command.values_of(Parameters::labels.as_ref());
                     let dev_id = command

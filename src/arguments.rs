@@ -139,10 +139,12 @@ pub fn app_arguments() -> clap::Command<'static> {
         .short('o')
         .takes_value(true)
         .possible_values(["json", "wide"])
+        .global(true)
         .help("Output format. Default is human readable text");
 
     let app_flag = Arg::new("app-flag")
         .short('a')
+        .alias("app")
         .long("application")
         .takes_value(true)
         .env("DRG_APP")

@@ -9,7 +9,7 @@ use anyhow::Result;
 use drogue_client::registry::v1::Device;
 use serde_json::Value;
 
-/// DeviceOperation
+#[derive(Debug)]
 pub struct DeviceOperation {
     app: String,
     device: Option<String>,
