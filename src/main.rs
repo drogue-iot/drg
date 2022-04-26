@@ -21,6 +21,7 @@ use std::process::exit;
 use std::str::FromStr;
 
 use crate::admin::Role;
+use crate::devices::DeviceOperation;
 
 type AppId = String;
 type DeviceId = String;
@@ -208,8 +209,10 @@ async fn main() -> Result<()> {
                     let dev_id = command
                         .value_of(ResourceId::deviceId.as_ref())
                         .map(|s| s.to_string());
-                    let dev_id = devices::name_from_json_or_file(dev_id, file)?;
 
+                    let dev_id = util::name_from_json_or_file(dev_id, file)?;
+
+                    // TODO : move into deviceOperation creation ?
                     // add an alias with the correct subject dn.
                     if command.is_present(Parameters::cert.as_ref()) {
                         let alias = format!("CN={}, O=Drogue IoT, OU={}", &dev_id, app_id);
@@ -217,7 +220,13 @@ async fn main() -> Result<()> {
                         data.merge_in("/alias", alias_spec)
                     }
 
-                    devices::create(context, dev_id, data, app_id, file).await
+                    let op = devices::DeviceOperation::new(
+                        app_id,
+                        Some(dev_id.clone()),
+                        file,
+                        Some(data),
+                    )?;
+                    op.create(context).await?.display_simple(true)
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -295,13 +304,11 @@ async fn main() -> Result<()> {
                         ) {
                             Ok(_) => {
                                 let alias = format!("CN={}, O=Drogue IoT, OU={}", dev_id, app_id);
-                                devices::add_alias(
-                                    context,
-                                    app_id.to_string(),
-                                    dev_id.to_string(),
-                                    alias,
-                                )
-                                .await
+
+                                DeviceOperation::new(app_id, Some(dev_id.to_string()), None, None)?
+                                    .add_alias(context, alias)
+                                    .await?
+                                    .display_simple(true)
                             }
                             _ => Err(anyhow!("Cannot create trust anchor")),
                         }
@@ -331,7 +338,11 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::deviceId.as_ref())
                         .unwrap()
                         .to_string();
-                    devices::delete(context, app_id, id, ignore_missing).await
+
+                    DeviceOperation::new(app_id, Some(id), None, None)?
+                        .delete(context, ignore_missing)
+                        .await?
+                        .display_simple(true)
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -367,7 +378,8 @@ async fn main() -> Result<()> {
                     let file = command.value_of(Parameters::filename.as_ref());
                     let app_id = arguments::get_app_id(command, context)?;
 
-                    devices::edit(context, app_id, dev_id, file).await
+                    let op = DeviceOperation::new(app_id, dev_id.clone(), file, None)?;
+                    op.edit(context).await?.display_simple(true)
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -400,9 +412,22 @@ async fn main() -> Result<()> {
                     let dev_id = command
                         .value_of(ResourceId::deviceId.as_ref())
                         .map(|s| s.to_string());
+
+                    let op = DeviceOperation::new(app_id, dev_id.clone(), None, None)?;
                     match dev_id {
-                        Some(id) => devices::read(context, app_id, id as DeviceId).await,
-                        None => devices::list(context, app_id, labels, wide).await,
+                        //fixme : add a pretty print for the one device
+                        Some(id) => op.read(context).await?.display(
+                            false,
+                            |d: &drogue_client::registry::v1::Device| {
+                                devices::pretty_list(&vec![d.clone()], wide)
+                            },
+                        ),
+                        None => op.list(context, labels).await?.display(
+                            false,
+                            |d: &Vec<drogue_client::registry::v1::Device>| {
+                                devices::pretty_list(d, wide)
+                            },
+                        ),
                     }?;
                 }
                 ResourceType::member => {
@@ -419,49 +444,49 @@ async fn main() -> Result<()> {
         Action::set => {
             let (target, command) = cmd.subcommand().unwrap();
             let app_id = arguments::get_app_id(command, context)?;
+            let id = command
+                .value_of(ResourceId::deviceId.as_ref())
+                .map(|s| s.to_string());
+
+            let op = DeviceOperation::new(app_id.clone(), id, None, None)?;
 
             match ResourceType::from_str(target)? {
                 ResourceType::gateway => {
-                    let id = command
-                        .value_of(ResourceId::deviceId.as_ref())
-                        .unwrap()
-                        .to_string();
                     let gateway_id = command
                         .value_of(ResourceId::gatewayId.as_ref())
                         .unwrap()
                         .to_string();
-                    devices::set_gateway(context, app_id, id as DeviceId, gateway_id).await?;
+                    op.set_gateway(context, gateway_id)
+                        .await?
+                        .display_simple(true);
                 }
                 ResourceType::password => {
-                    let id = command
-                        .value_of(ResourceId::deviceId.as_ref())
-                        .unwrap()
-                        .to_string();
                     let password = command
                         .value_of(Parameters::password.as_ref())
                         .unwrap()
                         .to_string();
                     let username = command.value_of(ResourceId::username.as_ref());
-                    devices::set_password(context, app_id, id as DeviceId, password, username)
-                        .await?;
+                    op.set_password(context, password, username)
+                        .await?
+                        .display_simple(true);
                 }
                 ResourceType::alias => {
-                    let id = command
-                        .value_of(ResourceId::deviceId.as_ref())
-                        .unwrap()
-                        .to_string();
                     let alias = command
                         .value_of(Parameters::alias.as_ref())
                         .unwrap()
                         .to_string();
-                    devices::add_alias(context, app_id, id as DeviceId, alias).await?;
+
+                    op.add_alias(context, alias).await?.display_simple(true);
                 }
                 ResourceType::label => {
                     let labels = command.values_of(ResourceType::label.as_ref()).unwrap();
 
                     match command.value_of("dev-flag") {
                         Some(dev_id) => {
-                            devices::add_labels(context, app_id, dev_id.to_string(), labels).await
+                            DeviceOperation::new(app_id, Some(dev_id.to_string()), None, None)?
+                                .add_labels(context, labels)
+                                .await?
+                                .display_simple(true)
                         }
                         None => apps::add_labels(context, app_id, &labels).await,
                     }?;

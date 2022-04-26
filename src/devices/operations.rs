@@ -1,6 +1,6 @@
 use crate::config::Context;
 use crate::util;
-use anyhow::{anyhow, Context as AnyhowContext, Result};
+use anyhow::{anyhow, Result};
 use clap::Values;
 use json_value_merge::Merge;
 
@@ -13,7 +13,7 @@ use drogue_client::registry::v1::Password::Sha512;
 use drogue_client::registry::v1::{Client, Credential, Device};
 
 impl DeviceOperation {
-    async fn delete(&self, config: &Context, ignore_missing: bool) -> Result<Outcome<()>> {
+    pub async fn delete(&self, config: &Context, ignore_missing: bool) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         match (
@@ -23,41 +23,43 @@ impl DeviceOperation {
             ignore_missing,
         ) {
             (Ok(true), _) => Ok(Outcome::SuccessWithMessage(format!("Device deleted"))),
-            (Ok(false), false) => DrogueError::NotFound,
-            (Ok(false), true) => Ok(Outcome::Success),
-            (Err(e), _) => DrogueError::Service(e),
+            (Ok(false), false) => Err(DrogueError::NotFound.into()),
+            (Ok(false), true) => Ok(Outcome::SuccessWithMessage(format!(
+                "No device to delete, ignoring."
+            ))),
+            (Err(e), _) => Err(e.into()),
         }
     }
 
-    async fn read(&self, config: &Context) -> Result<Outcome<Device>> {
+    pub async fn read(&self, config: &Context) -> Result<Outcome<Device>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         match client
             .get_device(&self.app, &self.device.as_ref().unwrap())
             .await
-            {
-            Ok(Some(dev)) => Ok(SuccessWithJsonData(dev)),
-            Ok(None) => DrogueError::NotFound,
-            Err(e) => DrogueError::Service(e),
+        {
+            Ok(Some(dev)) => Ok(Outcome::SuccessWithJsonData(dev)),
+            Ok(None) => Err(DrogueError::NotFound.into()),
+            Err(e) => Err(e.into()),
         }
     }
 
-    async fn create(&self, config: &Context) -> Result<Outcome<()>> {
+    pub async fn create(&self, config: &Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         Ok(client
             .create_device(&self.payload.as_ref().unwrap())
             .await
-            .map(|_| Outcome::SuccessWithMessage(format!("Device created")))
-            .map_err(DrogueError::Service(e))?)
+            .map(|_| Outcome::SuccessWithMessage(format!("Device created")))?)
+        // .map_err(DrogueError::Service(e))?)
     }
 
-    async fn edit(&self, config: &Context) -> Result<Outcome<()>> {
+    pub async fn edit(&self, config: &Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         let op = match (&self.device, &self.payload) {
             (None, Some(d)) => client.update_device(d).await,
-            (Some(id), None) => {
+            (Some(_), None) => {
                 //read device data
                 let data = client
                     .get_device(&self.app, &self.device.as_ref().unwrap())
@@ -76,28 +78,32 @@ impl DeviceOperation {
 
         match op {
             Ok(true) => Ok(Outcome::SuccessWithMessage(format!("Device updated"))),
-            Ok(false) => DrogueError::NotFound,
-            Err(e) => DrogueError::Service(e),
+            Ok(false) => Err(DrogueError::NotFound.into()),
+            Err(e) => Err(e.into()),
         }
     }
 
-    async fn list(
+    pub async fn list(
         &self,
         config: &Context,
         labels: Option<Values<'_>>,
-    ) -> Result<Outcome<Vec<Device>>> {
+    ) -> Result<Outcome<Vec<Device>>, DrogueError> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         let labels = util::clap_values_to_labels(labels);
 
         match client.list_devices(&self.app, labels).await {
-            Ok(Some(devices)) => Ok(SuccessWithJsonData(devices)),
-            Ok(None) => DrogueError::NotFound,
-            Err(e) => DrogueError::Service(e),
+            Ok(Some(devices)) => Ok(Outcome::SuccessWithJsonData(devices)),
+            Ok(None) => Err(DrogueError::NotFound.into()),
+            Err(e) => Err(e.into()),
         }
     }
 
-    async fn set_gateway(&self, config: &Context, gateway_id: String) -> Result<Outcome<()>> {
+    pub async fn set_gateway(
+        &self,
+        config: &Context,
+        gateway_id: String,
+    ) -> Result<Outcome<String>> {
         // prepare json data to merge
         let data = json!({"spec": {
         "gatewaySelector": {
@@ -108,12 +114,12 @@ impl DeviceOperation {
         self.merge_in(data, config).await
     }
 
-    async fn set_password(
+    pub async fn set_password(
         &self,
         config: &Context,
         password: String,
         username: Option<&str>,
-    ) -> Result<Outcome<()>> {
+    ) -> Result<Outcome<String>> {
         let hash = sha512_simple(&password, &Default::default())
             .map_err(|err| anyhow!("Failed to hash password: {:?}", err))?;
 
@@ -138,7 +144,7 @@ impl DeviceOperation {
         self.merge_in(data, config).await
     }
 
-    async fn add_alias(&self, config: &Context, new_alias: String) -> Result<Outcome<()>> {
+    pub async fn add_alias(&self, config: &Context, new_alias: String) -> Result<Outcome<String>> {
         // prepare json data to merge
         let data = json!({"spec": {
         "alias": [
@@ -149,14 +155,14 @@ impl DeviceOperation {
         self.merge_in(data, config).await
     }
 
-    async fn add_labels(&self, config: &Context, args: Values<'_>) -> Result<Outcome<()>> {
+    pub async fn add_labels(&self, config: &Context, args: Values<'_>) -> Result<Outcome<String>> {
         let data = util::process_labels(&args);
         self.merge_in(data, config).await
     }
 
     /// todo merge that with the same method in apps ?
     /// merges a serde Value into the device object that exist on the server
-    async fn merge_in(&self, data: Value, config: &Context) -> Result<Outcome<()>> {
+    async fn merge_in(&self, data: Value, config: &Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         //retrieve device
@@ -178,9 +184,9 @@ impl DeviceOperation {
         };
 
         match op {
-            Ok(true) => Ok(Outcome::Success),
-            Ok(false) => DrogueError::NotFound,
-            Err(e) => DrogueError::Service(e),
+            Ok(true) => Ok(Outcome::SuccessWithMessage(format!("Device updated."))),
+            Ok(false) => Err(DrogueError::NotFound.into()),
+            Err(e) => Err(e.into()),
         }
     }
 }
@@ -189,7 +195,7 @@ impl DeviceOperation {
 // where there is a need for a generic schema extension mechanism that the CLI tool can handle,
 // this part needs to be refactored.
 
-fn pretty_list(data: Vec<Device>, wide: bool) {
+pub fn pretty_list(data: &Vec<Device>, wide: bool) {
     let mut header = Row::new().with_cell("NAME").with_cell("AGE");
     let mut table = if wide {
         header.add_cell("FIRMWARE");
@@ -203,7 +209,7 @@ fn pretty_list(data: Vec<Device>, wide: bool) {
     table.add_row(header);
 
     for dev in data {
-        let name = dev.metadata.name;
+        let name = dev.metadata.name.clone();
         let creation = dev.metadata.creation_timestamp;
 
         let mut row = Row::new()
@@ -252,20 +258,4 @@ fn pretty_list(data: Vec<Device>, wide: bool) {
     }
 
     print!("{}", table);
-}
-
-pub fn name_from_json_or_file(param: Option<String>, file: Option<&str>) -> Result<String> {
-    match (param, file) {
-        (Some(id), None) => Ok(id),
-        (None, Some(file)) => {
-            let f: Value = util::get_data_from_file(file)?;
-            let id = f["metadata"]["name"]
-                .as_str()
-                .context("Misisng `name` property in device definition file")?
-                .to_string();
-            Ok(id)
-        }
-        // we must have id or file, not both, not neither.
-        _ => unreachable!(),
-    }
 }

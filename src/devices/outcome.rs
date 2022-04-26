@@ -1,50 +1,68 @@
+use anyhow::Result;
 use drogue_client::error::ClientError;
 use serde::Serialize;
 use serde_json::json;
 
-/// When it comes to operation results there are a two possible outputs:
-enum Outcome<T: Serialize> {
-    Success,
+use crate::util::show_json;
+use thiserror::Error;
+
+/// When it comes to operation results there are a three possible outputs:
+///
+pub enum Outcome<T: Serialize> {
     SuccessWithMessage(String),
     SuccessWithJsonData(T),
 }
 
-impl Outcome<T>
-    where T: Serialize,
+impl<T> Outcome<T>
+where
+    T: Serialize,
 {
-    fn display(&self, json: bool, f: Fn(Option<T>)) {
+    pub fn display<F>(&self, json: bool, f_data: F) -> Result<()>
+    where
+        F: FnOnce(&T),
+    {
         match (self, json) {
-            (Ok(outcome), true) => {
-                match outcome {
-                    Outcome::SuccessWithJsonData(data) => show_json(data),
-                    Outcome::Success => show_json(json!({"success": true})),
-                    Outcome::SuccessWithMessage(msg) => show_json(json!({"status": "success", "message": msg})),
+            (outcome, true) => match outcome {
+                Outcome::SuccessWithMessage(msg) => {
+                    show_json(json!({"status": "success", "message": msg}).to_string())
                 }
+                Outcome::SuccessWithJsonData(data) => show_json(serde_json::to_string(data)?),
             },
-            (Ok(outcome), false) => {
-                match outcome {
-                    Outcome::SuccessWithJsonData(data) => f(data),
-                    Outcome::Success => f(None),
-                    Outcome::SuccessWithMessage(msg) => f(msg),
-                }
-            },
-            (Err(error), true) => show_json(json!({"status": "error", "message": error.0})),
-            (Err(error), false) => {
-                println!("Error: {}", error.0)
+            (outcome, false) => match outcome {
+                Outcome::SuccessWithMessage(msg) => println!("{msg}"),
+                Outcome::SuccessWithJsonData(data) => f_data(data),
             },
         }
+        Ok(())
+    }
+
+    pub fn display_simple(&self, json: bool) -> Result<()> {
+        match (self, json) {
+            (outcome, true) => match outcome {
+                Outcome::SuccessWithMessage(msg) => {
+                    show_json(json!({"status": "success", "message": msg}).to_string())
+                }
+                Outcome::SuccessWithJsonData(data) => show_json(serde_json::to_string(data)?),
+            },
+            (outcome, false) => match outcome {
+                Outcome::SuccessWithMessage(msg) => println!("{msg}"),
+                Outcome::SuccessWithJsonData(data) => show_json(serde_json::to_string(data)?),
+            },
+        }
+        Ok(())
     }
 }
 
-use thiserror::Error;
-use crate::util::show_json;
-
+// TODO : wrap errors into JSON
 #[derive(Error, Debug)]
 pub enum DrogueError {
     #[error("The operation was not completed because `{0}`")]
     User(String),
     #[error("The application or device was not found")]
     NotFound,
-    #[error("Error from drogue cloud {}")]
-    Service(ClientError<reqwest::Error>),
+    #[error("Error from drogue cloud")]
+    Service {
+        #[from]
+        source: ClientError<reqwest::Error>,
+    },
 }
