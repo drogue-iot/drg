@@ -24,7 +24,6 @@ use crate::admin::Role;
 use crate::devices::DeviceOperation;
 
 type AppId = String;
-type DeviceId = String;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -187,6 +186,10 @@ async fn main() -> Result<()> {
     let verb = Action::from_str(command);
     let cmd = submatches;
 
+    let json_output = cmd
+        .value_of(Parameters::output.as_ref())
+        .map(|s| s == "json")
+        .unwrap();
     match verb? {
         Action::create => {
             let (res, command) = cmd.subcommand().unwrap();
@@ -226,7 +229,7 @@ async fn main() -> Result<()> {
                         file,
                         Some(data),
                     )?;
-                    op.create(context).await?.display_simple(true)
+                    op.create(context).await?.display_simple(json_output)
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -308,7 +311,7 @@ async fn main() -> Result<()> {
                                 DeviceOperation::new(app_id, Some(dev_id.to_string()), None, None)?
                                     .add_alias(context, alias)
                                     .await?
-                                    .display_simple(true)
+                                    .display_simple(json_output)
                             }
                             _ => Err(anyhow!("Cannot create trust anchor")),
                         }
@@ -342,7 +345,7 @@ async fn main() -> Result<()> {
                     DeviceOperation::new(app_id, Some(id), None, None)?
                         .delete(context, ignore_missing)
                         .await?
-                        .display_simple(true)
+                        .display_simple(json_output)
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -379,7 +382,7 @@ async fn main() -> Result<()> {
                     let app_id = arguments::get_app_id(command, context)?;
 
                     let op = DeviceOperation::new(app_id, dev_id.clone(), file, None)?;
-                    op.edit(context).await?.display_simple(true)
+                    op.edit(context).await?.display_simple(json_output)
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -406,7 +409,10 @@ async fn main() -> Result<()> {
                     }?;
                 }
                 ResourceType::device => {
-                    let wide = arguments::get_wide(command);
+                    let wide = command
+                        .value_of(Parameters::output.as_ref())
+                        .map(|v| v == "wide")
+                        .unwrap();
                     let app_id = arguments::get_app_id(command, context)?;
                     let labels = command.values_of(Parameters::labels.as_ref());
                     let dev_id = command
@@ -416,14 +422,14 @@ async fn main() -> Result<()> {
                     let op = DeviceOperation::new(app_id, dev_id.clone(), None, None)?;
                     match dev_id {
                         //fixme : add a pretty print for the one device
-                        Some(id) => op.read(context).await?.display(
-                            false,
+                        Some(_) => op.read(context).await?.display(
+                            json_output,
                             |d: &drogue_client::registry::v1::Device| {
                                 devices::pretty_list(&vec![d.clone()], wide)
                             },
                         ),
                         None => op.list(context, labels).await?.display(
-                            false,
+                            json_output,
                             |d: &Vec<drogue_client::registry::v1::Device>| {
                                 devices::pretty_list(d, wide)
                             },
@@ -458,7 +464,7 @@ async fn main() -> Result<()> {
                         .to_string();
                     op.set_gateway(context, gateway_id)
                         .await?
-                        .display_simple(true);
+                        .display_simple(json_output)
                 }
                 ResourceType::password => {
                     let password = command
@@ -468,7 +474,7 @@ async fn main() -> Result<()> {
                     let username = command.value_of(ResourceId::username.as_ref());
                     op.set_password(context, password, username)
                         .await?
-                        .display_simple(true);
+                        .display_simple(json_output)
                 }
                 ResourceType::alias => {
                     let alias = command
@@ -476,7 +482,9 @@ async fn main() -> Result<()> {
                         .unwrap()
                         .to_string();
 
-                    op.add_alias(context, alias).await?.display_simple(true);
+                    op.add_alias(context, alias)
+                        .await?
+                        .display_simple(json_output)
                 }
                 ResourceType::label => {
                     let labels = command.values_of(ResourceType::label.as_ref()).unwrap();
@@ -486,14 +494,14 @@ async fn main() -> Result<()> {
                             DeviceOperation::new(app_id, Some(dev_id.to_string()), None, None)?
                                 .add_labels(context, labels)
                                 .await?
-                                .display_simple(true)
+                                .display_simple(json_output)
                         }
                         None => apps::add_labels(context, app_id, &labels).await,
-                    }?;
+                    }
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
-            }
+            }?
         }
         Action::command => {
             let command = cmd.value_of(Parameters::command.as_ref()).unwrap();

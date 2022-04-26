@@ -133,6 +133,7 @@ pub fn create_trust_anchor(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_device_certificate(
     app_id: &str,
     device_id: &str,
@@ -289,20 +290,13 @@ mod trust_test {
     #[test]
     fn test_create_trust_anchor() {
         let resp = create_trust_anchor("app10", Some("key.pem"), None, None, None).unwrap();
-        assert!(
-            resp["anchors"][0]["certificate"].is_string(),
-            "Invalid JSON response."
-        );
+        assert!(!resp.certificate.is_empty(), "Invalid JSON response.");
         assert!(
             Path::new("key.pem").is_file(),
             "Error exporting private key to file."
         );
 
-        let cert_ca = resp["anchors"][0]["certificate"]
-            .to_string()
-            .replace("\"", "");
-
-        let resp_cert_base64 = base64::decode(&cert_ca).unwrap();
+        let resp_cert_base64 = base64::decode(&resp.certificate).unwrap();
         let resp_cert_pem = from_utf8(&resp_cert_base64).unwrap();
 
         assert!(

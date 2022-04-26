@@ -36,8 +36,8 @@ where
         Ok(())
     }
 
+    /// fallback to showing the serialized object
     pub fn display_simple(&self, json: bool) -> Result<()> {
-        const FN_NONE: fn(&str) = |_| {};
         self.display(json, |data| show_json(serde_json::to_string(data).unwrap()))
     }
 }

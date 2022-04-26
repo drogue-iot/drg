@@ -2,7 +2,7 @@ use crate::{trust, util, AppId};
 
 use crate::config::Context;
 use anyhow::{anyhow, Result};
-use clap::{App, AppSettings, Arg, ArgGroup, ArgMatches};
+use clap::{Arg, ArgGroup, ArgMatches, Command};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
 
@@ -81,6 +81,7 @@ pub enum Parameters {
     verbose,
     config,
     context,
+    output,
 
     // login command
     url,
@@ -102,7 +103,6 @@ pub enum Parameters {
     key_output,
     #[strum(serialize = "ca-key")]
     ca_key,
-    #[strum(serialize = "output")]
     cert_output,
     days,
     algo,
@@ -130,16 +130,16 @@ pub enum Parameters {
     access_token,
 }
 
-pub fn app_arguments() -> clap::App<'static> {
+pub fn app_arguments() -> clap::Command<'static> {
     let device_id = Arg::new(ResourceId::deviceId.as_ref()).help("The id of the device.");
 
     let app_id = Arg::new(ResourceId::applicationId.as_ref()).help("The id of the application.");
 
-    let wide_flag = Arg::new("wide-flag")
-        .short('w')
-        .long("wide")
-        .takes_value(false)
-        .help("Wide display output format");
+    let output_format = Arg::new(Parameters::output.as_ref())
+        .short('o')
+        .takes_value(true)
+        .possible_values(["json", "wide"])
+        .help("Output format. Default is human readable text");
 
     let app_flag = Arg::new("app-flag")
         .short('a')
@@ -244,12 +244,12 @@ pub fn app_arguments() -> clap::App<'static> {
         .takes_value(true);
 
     // create subcommand
-    let create = App::new(Action::create.as_ref())
+    let create = Command::new(Action::create.as_ref())
         .visible_alias("add")
         .about("Create a resource.")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .subcommand(
-            App::new(ResourceType::device.as_ref())
+            Command::new(ResourceType::device.as_ref())
                 .about("Create a device in Drogue Cloud")
                 .arg(&device_id)
                 .arg(&spec.clone().conflicts_with(Parameters::filename.as_ref()))
@@ -263,7 +263,7 @@ pub fn app_arguments() -> clap::App<'static> {
                 ),
         )
         .subcommand(
-            App::new(ResourceType::application.as_ref())
+            Command::new(ResourceType::application.as_ref())
                 .alias("app")
                 .about("Create an application in Drogue Cloud")
                 .arg(app_id.clone())
@@ -278,14 +278,14 @@ pub fn app_arguments() -> clap::App<'static> {
                 ])),
         )
         .subcommand(
-            App::new(ResourceType::member.as_ref())
+            Command::new(ResourceType::member.as_ref())
                 .about("Allow a member to access an application")
                 .arg(&app_flag)
                 .arg(&member)
                 .arg(&role),
         )
         .subcommand(
-            App::new(ResourceType::app_cert.as_ref())
+            Command::new(ResourceType::app_cert.as_ref())
                 .about("Create a trust-anchor for an application.")
                 .arg(&app_flag)
                 .arg(&key_pair_algorithm)
@@ -294,7 +294,7 @@ pub fn app_arguments() -> clap::App<'static> {
                 .arg(&keyout),
         )
         .subcommand(
-            App::new(ResourceType::device_cert.as_ref())
+            Command::new(ResourceType::device_cert.as_ref())
                 .about("Generate and sign a device certificate using application's private key.")
                 .arg(&device_id)
                 .arg(&app_flag)
@@ -306,18 +306,18 @@ pub fn app_arguments() -> clap::App<'static> {
                 .arg(&key_input),
         )
         .subcommand(
-            App::new(ResourceType::token.as_ref())
+            Command::new(ResourceType::token.as_ref())
                 .about("Generate a new API access token")
                 .alias("tokens")
                 .arg(&access_token_description),
         );
 
     // edit subcommand
-    let edit = App::new(Action::edit.as_ref())
+    let edit = Command::new(Action::edit.as_ref())
         .about("Modify an existing resource.")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .subcommand(
-            App::new(ResourceType::device.as_ref())
+            Command::new(ResourceType::device.as_ref())
                 .about("Edit a device in Drogue Cloud")
                 .arg(&device_id)
                 .arg(&app_flag)
@@ -329,7 +329,7 @@ pub fn app_arguments() -> clap::App<'static> {
                 ),
         )
         .subcommand(
-            App::new(ResourceType::application.as_ref())
+            Command::new(ResourceType::application.as_ref())
                 .about("Edit an application in Drogue Cloud")
                 .arg(&app_id)
                 .arg(&spec)
@@ -340,7 +340,7 @@ pub fn app_arguments() -> clap::App<'static> {
                 ])),
         )
         .subcommand(
-            App::new(ResourceType::member.as_ref())
+            Command::new(ResourceType::member.as_ref())
                 .about("Edit application members")
                 .arg(&app_flag),
         );
@@ -349,38 +349,37 @@ pub fn app_arguments() -> clap::App<'static> {
         .required(false)
         .short('l')
         .long(Parameters::labels.as_ref())
-        .use_delimiter(true)
+        .use_value_delimiter(true)
         .multiple_values(true)
         .help("A comma separated list of the label filters to filter the list with.");
 
     // get subcommand
-    let get = App::new(Action::get.as_ref())
+    let get = Command::new(Action::get.as_ref())
         .about("Display one or multiple resources from the drogue-cloud registry")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .subcommand(
-            App::new(ResourceType::device.as_ref())
+            Command::new(ResourceType::device.as_ref())
                 .alias("devices")
                 .about("Retrieve a device spec. If no device ID is passed, list all devices for the app.")
                 .arg(&device_id)
                 .arg(&app_flag)
                 .arg(&labels)
-                .arg(&wide_flag)
         )
         .subcommand(
-            App::new(ResourceType::application.as_ref())
+            Command::new(ResourceType::application.as_ref())
                 .aliases(&["applications", "app", "apps"])
                 .about("Retrieve application details. If no application ID is passed, list all apps the user have access to.")
                 .arg(&app_id)
                 .arg(&labels)
         )
         .subcommand(
-            App::new(ResourceType::member.as_ref())
+            Command::new(ResourceType::member.as_ref())
                 .alias("members")
                 .about("List all members of the application")
                 .arg(&app_flag)
         )
         .subcommand(
-            App::new(ResourceType::token.as_ref())
+            Command::new(ResourceType::token.as_ref())
                 .alias("tokens")
                 .about("List created access tokens for this account")
         );
@@ -396,30 +395,30 @@ pub fn app_arguments() -> clap::App<'static> {
         .help("The token prefix.");
 
     // delete subcommand
-    let delete = App::new(Action::delete.as_ref())
+    let delete = Command::new(Action::delete.as_ref())
         .about("Delete resources in Drogue Cloud")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .arg(&ignore_missing.global(true))
         .subcommand(
-            App::new(ResourceType::application.as_ref())
+            Command::new(ResourceType::application.as_ref())
                 .alias("app")
                 .about("Delete an application")
                 .arg(&app_id.clone().required(true)),
         )
         .subcommand(
-            App::new(ResourceType::device.as_ref())
+            Command::new(ResourceType::device.as_ref())
                 .about("Delete a device from an application.")
                 .arg(&device_id.clone().required(true))
                 .arg(&app_flag),
         )
         .subcommand(
-            App::new(ResourceType::member.as_ref())
+            Command::new(ResourceType::member.as_ref())
                 .about("Remove a user from the members list for this application")
                 .arg(&app_flag)
                 .arg(&member),
         )
         .subcommand(
-            App::new(ResourceType::token.as_ref())
+            Command::new(ResourceType::token.as_ref())
                 .about("Delete an API access token")
                 .arg(&token_prefix),
         );
@@ -429,22 +428,22 @@ pub fn app_arguments() -> clap::App<'static> {
         .required(true);
 
     // transfer subcommand
-    let transfer = App::new(Action::transfer.as_ref())
+    let transfer = Command::new(Action::transfer.as_ref())
         .about("Transfer ownership of an application to another member")
-        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg_required_else_help(true)
         .subcommand(
-            App::new(Transfer::init.as_ref())
+            Command::new(Transfer::init.as_ref())
                 .about("Initiate the application transfer")
                 .arg(&app_flag)
                 .arg(&username),
         )
         .subcommand(
-            App::new(Transfer::accept.as_ref())
+            Command::new(Transfer::accept.as_ref())
                 .about("Accept an application transfer")
                 .arg(app_id.clone().required(true)),
         )
         .subcommand(
-            App::new(Transfer::cancel.as_ref())
+            Command::new(Transfer::cancel.as_ref())
                 .about("Cancel an application transfer")
                 .arg(app_id.clone().required(true)),
         );
@@ -482,31 +481,31 @@ pub fn app_arguments() -> clap::App<'static> {
         .help("Device to attach the label(s). If omitted, the label will be applied to the app.");
 
     // set subcommand
-    let set = App::new(Action::set.as_ref())
+    let set = Command::new(Action::set.as_ref())
         .about("Shortcuts to configure properties for apps or devices")
-        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg_required_else_help(true)
         .arg(app_flag.clone().global(true))
         .subcommand(
-            App::new(ResourceType::gateway.as_ref())
+            Command::new(ResourceType::gateway.as_ref())
                 .about("Allow another device to act as gateway for a device")
                 .arg(device_id.clone().required(true))
                 .arg(&gateway_id),
         )
         .subcommand(
-            App::new(ResourceType::password.as_ref())
+            Command::new(ResourceType::password.as_ref())
                 .about("Set a password credentials for a device")
                 .arg(&password)
                 .arg(device_id.clone().required(true))
                 .arg(&set_password_username),
         )
         .subcommand(
-            App::new(ResourceType::alias.as_ref())
+            Command::new(ResourceType::alias.as_ref())
                 .about("Add an alias for a device")
                 .arg(device_id.clone().required(true))
                 .arg(alias_id),
         )
         .subcommand(
-            App::new(ResourceType::label.as_ref())
+            Command::new(ResourceType::label.as_ref())
                 .about("Set a label to a device or application")
                 .arg(&label)
                 .arg(dev_flag)
@@ -520,7 +519,7 @@ pub fn app_arguments() -> clap::App<'static> {
         .global(true)
         .help("The number of messages to stream before exiting.");
 
-    let stream = App::new(Action::stream.as_ref())
+    let stream = Command::new(Action::stream.as_ref())
         .about("Stream all events going through drogue cloud")
         .arg(&app_flag)
         .arg(&count)
@@ -537,35 +536,37 @@ pub fn app_arguments() -> clap::App<'static> {
         .required(true)
         .help("The context Id");
 
-    let config = App::new(Action::config.as_ref())
+    let config = Command::new(Action::config.as_ref())
         .about("Manage the configuration file")
         .alias("context")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .subcommand(
-            App::new(Action::create.as_ref())
-                .setting(AppSettings::Hidden)
+            Command::new(Action::create.as_ref())
+                .hide(true)
                 .about("This subcommand is invalid. To create a new context use drg login."),
         )
-        .subcommand(App::new("list").about("List existing contexts names in configuration file"))
-        .subcommand(App::new("show").about("Show full configuration file"))
         .subcommand(
-            App::new("default-context")
+            Command::new("list").about("List existing contexts names in configuration file"),
+        )
+        .subcommand(Command::new("show").about("Show full configuration file"))
+        .subcommand(
+            Command::new("default-context")
                 .about("Set a context as the active context")
                 .arg(&context_id),
         )
         .subcommand(
-            App::new("delete")
+            Command::new("delete")
                 .alias("remove")
                 .about("Delete a context")
                 .arg(&context_id),
         )
         .subcommand(
-            App::new("default-app")
+            Command::new("default-app")
                 .about("Set a default-app for a context.")
                 .arg(&app_id),
         )
         .subcommand(
-            App::new("rename")
+            Command::new("rename")
                 .about("Rename a context.")
                 .arg(&context_id)
                 .arg(
@@ -575,7 +576,7 @@ pub fn app_arguments() -> clap::App<'static> {
                 ),
         )
         .subcommand(
-            App::new("default-algo")
+            Command::new("default-algo")
                 .about("Set a default key generation algorithm for a context.")
                 .arg(&algo_param),
         );
@@ -636,14 +637,15 @@ pub fn app_arguments() -> clap::App<'static> {
         .short('k')
         .help("Do not activate the new context.");
 
-    App::new("Drogue Command Line Tool")
+    Command::new("Drogue Command Line Tool")
         .version(util::VERSION)
         .author("Jb Trystram <jbtrystram@redhat.com>")
         .about("Allows to manage drogue apps and devices in a drogue-cloud instance")
         .arg(config_file_arg)
         .arg(verbose)
         .arg(&context_arg)
-        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg(&output_format)
+        .arg_required_else_help(true)
         .subcommand(create)
         .subcommand(delete)
         .subcommand(edit)
@@ -653,10 +655,10 @@ pub fn app_arguments() -> clap::App<'static> {
         .subcommand(config)
         .subcommand(transfer)
         .subcommand(
-            App::new(Action::command.as_ref())
+            Command::new(Action::command.as_ref())
                 .alias("cmd")
                 .about("Send a command to a device")
-                .setting(AppSettings::ArgRequiredElseHelp)
+                .arg_required_else_help(true)
                 .arg(&device_id.required(true))
                 .arg(&command)
                 .arg(&app_flag)
@@ -672,9 +674,9 @@ pub fn app_arguments() -> clap::App<'static> {
                         .args(&[Parameters::payload.as_ref(), Parameters::filename.as_ref()]),
                 ),
         )
-        .subcommand(App::new(Action::version.as_ref()).about("Print version information."))
+        .subcommand(Command::new(Action::version.as_ref()).about("Print version information."))
         .subcommand(
-            App::new(Action::login.as_ref())
+            Command::new(Action::login.as_ref())
                 .arg(&token_arg)
                 .arg(&access_token_arg)
                 .about("Log into a drogue cloud installation.")
@@ -682,13 +684,13 @@ pub fn app_arguments() -> clap::App<'static> {
                 .arg(&login_keep_current),
         )
         .subcommand(
-            App::new(Action::whoami.as_ref())
+            Command::new(Action::whoami.as_ref())
                 .about("Print cluster adress, version and default app(if any)")
                 .arg(token_arg.clone().takes_value(false).help(
                     "Pulls an valid token from the context to authenticate against drogue cloud.",
                 ))
                 .subcommand(
-                    App::new(Parameters::endpoints.as_ref())
+                    Command::new(Parameters::endpoints.as_ref())
                         .about("List drogue-cloud available endpoints.")
                         .aliases(&["-e", "endpoint", "--endpoints"])
                         .arg(
@@ -700,10 +702,6 @@ pub fn app_arguments() -> clap::App<'static> {
                         ),
                 ),
         )
-}
-
-pub fn get_wide<'a>(matches: &'a ArgMatches) -> bool {
-    matches.is_present("wide-flag")
 }
 
 pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Context) -> Result<AppId> {

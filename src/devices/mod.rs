@@ -26,7 +26,7 @@ impl DeviceOperation {
         let device: Option<Device> = match (file, data, device_name) {
             (Some(f), None, None) => Some(util::get_data_from_file(f)?),
             (None, Some(data), Some(name)) => {
-                let mut device = Device::new(application.clone(), name.clone());
+                let mut device = Device::new(application.clone(), name);
                 if let Some(spec) = data.as_object() {
                     device.spec = spec.clone();
                 }
