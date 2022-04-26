@@ -23,7 +23,6 @@ impl DeviceOperation {
         file: Option<&str>,
         data: Option<Value>,
     ) -> Result<Self> {
-
         let device: Option<Device> = match (file, data, device_name) {
             (Some(f), None, None) => Some(util::get_data_from_file(f)?),
             (None, Some(data), Some(name)) => {

@@ -37,19 +37,8 @@ where
     }
 
     pub fn display_simple(&self, json: bool) -> Result<()> {
-        match (self, json) {
-            (outcome, true) => match outcome {
-                Outcome::SuccessWithMessage(msg) => {
-                    show_json(json!({"status": "success", "message": msg}).to_string())
-                }
-                Outcome::SuccessWithJsonData(data) => show_json(serde_json::to_string(data)?),
-            },
-            (outcome, false) => match outcome {
-                Outcome::SuccessWithMessage(msg) => println!("{msg}"),
-                Outcome::SuccessWithJsonData(data) => show_json(serde_json::to_string(data)?),
-            },
-        }
-        Ok(())
+        const FN_NONE: fn(&str) = |_| {};
+        self.display(json, |data| show_json(serde_json::to_string(data).unwrap()))
     }
 }
 
