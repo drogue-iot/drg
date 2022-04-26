@@ -22,11 +22,11 @@ impl DeviceOperation {
                 .await,
             ignore_missing,
         ) {
-            (Ok(true), _) => Ok(Outcome::SuccessWithMessage(format!("Device deleted"))),
+            (Ok(true), _) => Ok(Outcome::SuccessWithMessage("Device deleted".to_string())),
             (Ok(false), false) => Err(DrogueError::NotFound.into()),
-            (Ok(false), true) => Ok(Outcome::SuccessWithMessage(format!(
-                "No device to delete, ignoring."
-            ))),
+            (Ok(false), true) => Ok(Outcome::SuccessWithMessage(
+                "No device to delete, ignoring.".to_string(),
+            )),
             (Err(e), _) => Err(e.into()),
         }
     }
@@ -48,9 +48,9 @@ impl DeviceOperation {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         Ok(client
-            .create_device(&self.payload.as_ref().unwrap())
+            .create_device(self.payload.as_ref().unwrap())
             .await
-            .map(|_| Outcome::SuccessWithMessage(format!("Device created")))?)
+            .map(|_| Outcome::SuccessWithMessage("Device created".to_string()))?)
         // .map_err(DrogueError::Service(e))?)
     }
 
@@ -77,7 +77,7 @@ impl DeviceOperation {
         };
 
         match op {
-            Ok(true) => Ok(Outcome::SuccessWithMessage(format!("Device updated"))),
+            Ok(true) => Ok(Outcome::SuccessWithMessage("Device updated".to_string())),
             Ok(false) => Err(DrogueError::NotFound.into()),
             Err(e) => Err(e.into()),
         }
@@ -87,7 +87,7 @@ impl DeviceOperation {
         &self,
         config: &Context,
         labels: Option<Values<'_>>,
-    ) -> Result<Outcome<Vec<Device>>, DrogueError> {
+    ) -> Result<Outcome<Vec<Device>>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         let labels = util::clap_values_to_labels(labels);
@@ -171,7 +171,7 @@ impl DeviceOperation {
                 &self.app,
                 self.device
                     .as_ref()
-                    .ok_or(DrogueError::User("No device name provided".to_string()))?,
+                    .ok_or_else(|| DrogueError::User("No device name provided".to_string()))?,
             )
             .await
         {
@@ -184,7 +184,7 @@ impl DeviceOperation {
         };
 
         match op {
-            Ok(true) => Ok(Outcome::SuccessWithMessage(format!("Device updated."))),
+            Ok(true) => Ok(Outcome::SuccessWithMessage("Device updated.".to_string())),
             Ok(false) => Err(DrogueError::NotFound.into()),
             Err(e) => Err(e.into()),
         }
@@ -195,7 +195,7 @@ impl DeviceOperation {
 // where there is a need for a generic schema extension mechanism that the CLI tool can handle,
 // this part needs to be refactored.
 
-pub fn pretty_list(data: &Vec<Device>, wide: bool) {
+pub fn pretty_list(data: &[Device], wide: bool) {
     let mut header = Row::new().with_cell("NAME").with_cell("AGE");
     let mut table = if wide {
         header.add_cell("FIRMWARE");
