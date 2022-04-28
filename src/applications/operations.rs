@@ -1,6 +1,7 @@
 use crate::applications::ApplicationOperation;
 use crate::config::Context;
-use crate::util::{self, handle_operation, DrogueError, Outcome};
+use crate::handle_operation;
+use crate::util::{self, DrogueError, Outcome};
 
 use anyhow::Result;
 use clap::Values;
@@ -88,7 +89,7 @@ impl ApplicationOperation {
         key_input: Option<rcgen::KeyPair>,
     ) -> Result<Outcome<String>> {
         let trust_anchor = util::create_trust_anchor(
-            &self.name.as_ref().unwrap(),
+            self.name.as_ref().unwrap(),
             keyout,
             key_pair_algorithm,
             days,

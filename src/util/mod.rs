@@ -5,7 +5,6 @@ mod outcome;
 
 pub use certs::*;
 pub use endpoints::*;
-pub use operations::*;
 pub use outcome::*;
 
 use crate::config::Config;
@@ -196,13 +195,12 @@ pub fn process_labels(args: &Values) -> Value {
     // split the labels around the =
     let labels: HashMap<&str, &str> = args
         .clone()
-        .map(|l| {
+        .filter_map(|l| {
             let mut s = l.split('=');
             let k = s.next();
             let v = s.next();
             k.zip(v)
         })
-        .flatten()
         .collect();
 
     // prepare json data to merge

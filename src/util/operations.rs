@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! handle_operation {
     ($res:expr, $msg:expr) => {{
         match $res {
@@ -14,4 +15,3 @@ macro_rules! handle_operation {
         }
     }};
 }
-pub(crate) use handle_operation;

@@ -121,7 +121,7 @@ impl DeviceOperation {
                 password: Sha512(hash),
                 unique: false,
             },
-            None => Credential::Password { 0: Sha512(hash) },
+            None => Credential::Password(Sha512(hash)),
         };
 
         // prepare json data to merge
@@ -148,7 +148,7 @@ impl DeviceOperation {
     }
 
     pub async fn add_labels(&self, config: &Context, args: &Values<'_>) -> Result<Outcome<String>> {
-        let data = util::process_labels(&args);
+        let data = util::process_labels(args);
         self.merge_in(data, config).await
     }
 
