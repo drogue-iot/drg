@@ -1,4 +1,4 @@
-use crate::certs_utils::SignAlgo;
+use crate::util::SignAlgo;
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use serde::{Deserialize, Serialize};
@@ -7,7 +7,6 @@ use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exi
 use async_trait::async_trait;
 use drogue_client::openid::{Credentials, TokenProvider};
 
-use crate::AppId;
 use chrono::{DateTime, Utc};
 use core::fmt;
 use dirs::config_dir;
@@ -33,7 +32,7 @@ pub struct Config {
 pub struct Context {
     pub name: ContextId,
     pub drogue_cloud_url: Url,
-    pub default_app: Option<AppId>,
+    pub default_app: Option<String>,
     pub default_algo: Option<String>,
     pub auth_url: Url,
     pub token_url: Url,
@@ -281,7 +280,7 @@ impl Context {
         self.name = new_name;
     }
 
-    pub fn set_default_app(&mut self, app: AppId) {
+    pub fn set_default_app(&mut self, app: String) {
         self.default_app = Some(app);
     }
 

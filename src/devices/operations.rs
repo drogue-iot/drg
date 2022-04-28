@@ -9,7 +9,7 @@ use sha_crypt::sha512_simple;
 use tabular::{Row, Table};
 
 use crate::devices::DeviceOperation;
-use crate::outcome::{DrogueError, Outcome};
+use crate::util::{DrogueError, Outcome};
 use drogue_client::registry::v1::Password::Sha512;
 use drogue_client::registry::v1::{Client, Credential, Device};
 

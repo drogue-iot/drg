@@ -1,6 +1,5 @@
-use crate::{certs_utils, util, AppId};
-
 use crate::config::Context;
+use crate::util;
 use anyhow::{anyhow, Result};
 use clap::{Arg, ArgGroup, ArgMatches, Command};
 use std::convert::AsRef;
@@ -229,9 +228,9 @@ pub fn app_arguments() -> clap::Command<'static> {
         .required(true)
         .help("Algorithm used to generate key pair.")
         .possible_values([
-            certs_utils::SignAlgo::ECDSA.as_ref(),
-            certs_utils::SignAlgo::EdDSA.as_ref(),
-            certs_utils::SignAlgo::RSA.as_ref(),
+            util::SignAlgo::ECDSA.as_ref(),
+            util::SignAlgo::EdDSA.as_ref(),
+            util::SignAlgo::RSA.as_ref(),
         ]);
 
     let key_pair_algorithm = algo_param
@@ -706,7 +705,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         )
 }
 
-pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Context) -> Result<AppId> {
+pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Context) -> Result<String> {
     match matches.value_of("app-flag") {
         Some(a) => Ok(a.to_string()),
         None => config

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use drogue_client::error::ClientError;
 use serde::Serialize;
 use serde_json::json;
@@ -39,15 +39,6 @@ where
     /// fallback to showing the serialized object
     pub fn display_simple(self, json: bool) -> Result<()> {
         self.display(json, |data| show_json(serde_json::to_string(data).unwrap()))
-    }
-
-    pub fn inner(self) -> Result<T> {
-        match self {
-            Outcome::SuccessWithMessage(s) => {
-                Err(anyhow!("This outcome contains a message: {}", s))
-            }
-            Outcome::SuccessWithJsonData(data) => Ok(data),
-        }
     }
 }
 
