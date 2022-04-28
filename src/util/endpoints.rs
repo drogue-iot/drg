@@ -81,8 +81,8 @@ pub async fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)
 
     let (auth, token) = endpoints["authorization_endpoint"]
         .as_str()
-        .map(|auth| url_validation(auth))
-        .zip(endpoints["token_endpoint"].as_str().map(|tok| url_validation(tok)))
+        .map(url_validation)
+        .zip(endpoints["token_endpoint"].as_str().map(url_validation))
         .context("Missing `authorization_endpoint` or `token_endpoint` in drogue openid-connect configuration")?;
 
     Ok((auth?, token?))

@@ -185,12 +185,11 @@ impl Config {
         );
 
         for config in &self.contexts {
-            let name;
-            if self.active_context == config.name {
-                name = format!("{} *", config.name);
+            let name = if self.active_context == config.name {
+                format!("{} *", config.name)
             } else {
-                name = config.name.clone();
-            }
+                config.name.clone()
+            };
             table.add_row(
                 Row::new()
                     .with_cell(&name)

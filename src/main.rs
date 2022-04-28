@@ -250,7 +250,7 @@ async fn main() -> Result<()> {
                     let description = command.value_of(Parameters::description.as_ref());
                     admin::tokens::create(context, description)
                         .await?
-                        .display(json_output, |tok| tokens::created_token_print(tok))
+                        .display(json_output, tokens::created_token_print)
                 }
                 //TODO verify appcert
                 ResourceType::app_cert | ResourceType::device_cert => {
@@ -428,7 +428,7 @@ async fn main() -> Result<()> {
                         None => op
                             .list(context, labels)
                             .await?
-                            .display(json_output, |app| applications::pretty_list(app)),
+                            .display(json_output, applications::pretty_list),
                     }?;
                 }
                 ResourceType::device => {
@@ -445,30 +445,25 @@ async fn main() -> Result<()> {
                     let op = DeviceOperation::new(app_id, dev_id.clone(), None, None)?;
                     match dev_id {
                         //fixme : add a pretty print for a single device ?
-                        Some(_) => op.read(context).await?.display(
-                            json_output,
-                            |d: &drogue_client::registry::v1::Device| {
-                                devices::pretty_list(&vec![d.clone()], wide)
-                            },
-                        ),
-                        None => op.list(context, labels).await?.display(
-                            json_output,
-                            |d: &Vec<drogue_client::registry::v1::Device>| {
-                                devices::pretty_list(d, wide)
-                            },
-                        ),
+                        Some(_) => op.read(context).await?.display(json_output, |d| {
+                            devices::pretty_list(&vec![d.clone()], wide)
+                        }),
+                        None => op
+                            .list(context, labels)
+                            .await?
+                            .display(json_output, |d| devices::pretty_list(d, wide)),
                     }?;
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
                     admin::member_list(context, &app_id)
                         .await?
-                        .display(json_output, |m| admin::members_table(m))?;
+                        .display(json_output, admin::members_table)?;
                 }
                 ResourceType::token => {
                     admin::tokens::get_api_keys(context)
                         .await?
-                        .display(json_output, |t| tokens::tokens_table(t))?;
+                        .display(json_output, tokens::tokens_table)?;
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -554,7 +549,7 @@ async fn main() -> Result<()> {
                     let id = arguments::get_app_id(cmd, context)?;
                     admin::transfer_app(context, id.as_str(), user)
                         .await?
-                        .display(json_output, |t| admin::app_transfer_guide(t))?;
+                        .display(json_output, admin::app_transfer_guide)?;
                 }
                 Transfer::accept => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();

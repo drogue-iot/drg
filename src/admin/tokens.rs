@@ -1,10 +1,11 @@
 use crate::config::Context;
+use crate::handle_operation;
 use crate::util;
 
 use anyhow::Result;
 use tabular::{Row, Table};
 
-use crate::util::{handle_operation, DrogueError, Outcome};
+use crate::util::{DrogueError, Outcome};
 use drogue_client::tokens::v1::{AccessToken, Client, CreatedAccessToken};
 
 pub async fn get_api_keys(config: &Context) -> Result<Outcome<Vec<AccessToken>>> {
