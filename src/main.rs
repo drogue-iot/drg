@@ -1,31 +1,27 @@
 mod admin;
 mod applications;
 mod arguments;
-mod certs_utils;
 mod command;
 mod config;
 mod devices;
 mod openid;
-mod outcome;
 mod stream;
 mod util;
 
 use arguments::{Action, Parameters, ResourceId, ResourceType};
 
 use crate::admin::tokens;
+use crate::applications::ApplicationOperation;
 use crate::arguments::Transfer;
 use crate::config::{AccessToken, Config, Context, ContextId, Token};
+use crate::devices::DeviceOperation;
+
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use drogue_client::admin::v1::Role;
 use json_value_merge::Merge;
 use serde_json::json;
 use std::process::exit;
 use std::str::FromStr;
-
-use crate::applications::ApplicationOperation;
-use crate::devices::DeviceOperation;
-
-type AppId = String;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -147,7 +143,7 @@ async fn main() -> Result<()> {
             "default-algo" => {
                 let algo = c
                     .value_of(&Parameters::algo.as_ref())
-                    .map(|a| certs_utils::SignAlgo::from_str(a).unwrap())
+                    .map(|a| util::SignAlgo::from_str(a).unwrap())
                     .unwrap();
                 let context = config.get_context_mut(&ctx_id)?;
 
@@ -268,13 +264,11 @@ async fn main() -> Result<()> {
                                 a
                             })
                         })
-                        .map(|algo| certs_utils::SignAlgo::from_str(algo).unwrap());
+                        .map(|algo| util::SignAlgo::from_str(algo).unwrap());
 
                     let (key_input, key_pair_algorithm) =
                         match command.value_of(&Parameters::key_input.as_ref()) {
-                            Some(f) => {
-                                certs_utils::verify_input_key(f).map(|s| (Some(s.0), Some(s.1)))?
-                            }
+                            Some(f) => util::verify_input_key(f).map(|s| (Some(s.0), Some(s.1)))?,
                             _ => (None, key_pair_algorithm),
                         };
 
@@ -302,7 +296,7 @@ async fn main() -> Result<()> {
                             .get_trust_anchor(context)
                             .await?;
 
-                        match certs_utils::create_device_certificate(
+                        match util::create_device_certificate(
                             &app_id,
                             dev_id,
                             ca_key,
@@ -450,7 +444,7 @@ async fn main() -> Result<()> {
 
                     let op = DeviceOperation::new(app_id, dev_id.clone(), None, None)?;
                     match dev_id {
-                        //fixme : add a pretty print for the one device
+                        //fixme : add a pretty print for a single device ?
                         Some(_) => op.read(context).await?.display(
                             json_output,
                             |d: &drogue_client::registry::v1::Device| {
@@ -467,10 +461,14 @@ async fn main() -> Result<()> {
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
-                    admin::member_list(context, &app_id).await?;
+                    admin::member_list(context, &app_id)
+                        .await?
+                        .display(json_output, |m| admin::members_table(m))?;
                 }
                 ResourceType::token => {
-                    admin::tokens::get_api_keys(context).await?;
+                    admin::tokens::get_api_keys(context)
+                        .await?
+                        .display(json_output, |t| tokens::tokens_table(t))?;
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -556,19 +554,19 @@ async fn main() -> Result<()> {
                     let id = arguments::get_app_id(cmd, context)?;
                     admin::transfer_app(context, id.as_str(), user)
                         .await?
-                        .display_simple(json_output);
+                        .display(json_output, |t| admin::app_transfer_guide(t))?;
                 }
                 Transfer::accept => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
                     admin::accept_transfer(context, id)
                         .await?
-                        .display_simple(json_output);
+                        .display_simple(json_output)?;
                 }
                 Transfer::cancel => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
                     admin::cancel_transfer(context, id)
                         .await?
-                        .display_simple(json_output);
+                        .display_simple(json_output)?;
                 }
             }
         }

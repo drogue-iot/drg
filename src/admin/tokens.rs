@@ -4,17 +4,12 @@ use crate::util;
 use anyhow::Result;
 use tabular::{Row, Table};
 
-use crate::outcome::{DrogueError, Outcome};
+use crate::util::{handle_operation, DrogueError, Outcome};
 use drogue_client::tokens::v1::{AccessToken, Client, CreatedAccessToken};
 
 pub async fn get_api_keys(config: &Context) -> Result<Outcome<Vec<AccessToken>>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
-
-    match client.get_tokens().await {
-        Ok(Some(tokens)) => Ok(Outcome::SuccessWithJsonData(tokens)),
-        Ok(None) => Err(DrogueError::NotFound.into()),
-        Err(e) => Err(e.into()),
-    }
+    handle_operation!(client.get_tokens().await)
 }
 
 pub async fn create(
@@ -23,23 +18,16 @@ pub async fn create(
 ) -> Result<Outcome<CreatedAccessToken>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    match client.create_token(description).await {
-        Ok(Some(token)) => Ok(Outcome::SuccessWithJsonData(token)),
-        Ok(None) => Err(DrogueError::NotFound.into()),
-        Err(e) => Err(e.into()),
-    }
+    handle_operation!(client.create_token(description).await)
 }
 
 pub async fn delete(config: &Context, prefix: &str) -> Result<Outcome<String>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    match client.delete_token(prefix).await {
-        Ok(true) => Ok(Outcome::SuccessWithMessage(
-            "Access token with deleted".to_string(),
-        )),
-        Ok(false) => Err(DrogueError::NotFound.into()),
-        Err(e) => Err(e.into()),
-    }
+    handle_operation!(
+        client.delete_token(prefix).await,
+        "Access token with deleted"
+    )
 }
 
 pub fn tokens_table(tokens: &Vec<AccessToken>) {

@@ -1,6 +1,5 @@
 mod operations;
 
-use crate::outcome::DrogueError;
 use crate::util;
 use anyhow::Result;
 use drogue_client::registry::v1::Application;
@@ -31,13 +30,5 @@ impl ApplicationOperation {
         };
 
         Ok(ApplicationOperation { name, payload: app })
-    }
-
-    // fixme : is this really better than `unwrap()`
-    // clap does a good job preventing missing arguments so this is likely dead code anyway
-    fn app_name(&self) -> Result<&String> {
-        self.name
-            .as_ref()
-            .ok_or_else(|| DrogueError::User("No application name provided".to_string()).into())
     }
 }

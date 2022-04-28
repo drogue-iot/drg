@@ -1,13 +1,13 @@
+use crate::applications::ApplicationOperation;
 use crate::config::Context;
-use crate::{certs_utils, util};
+use crate::util::{self, handle_operation, DrogueError, Outcome};
+
 use anyhow::Result;
 use clap::Values;
 use json_value_merge::Merge;
 use serde_json::{json, Value};
 use tabular::{Row, Table};
 
-use crate::applications::ApplicationOperation;
-use crate::outcome::{DrogueError, Outcome};
 use drogue_client::registry::v1::Client;
 use drogue_client::registry::v1::{Application, ApplicationSpecTrustAnchors};
 use drogue_client::Translator;
@@ -25,18 +25,17 @@ impl ApplicationOperation {
     pub async fn read(&self, config: &Context) -> Result<Outcome<Application>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-        // todo a shared trait between devices and app to refactor the result handling ?
-        match client.get_app(&self.app_name()?).await {
-            Ok(Some(app)) => Ok(Outcome::SuccessWithJsonData(app)),
-            Ok(None) => Err(DrogueError::NotFound.into()),
-            Err(e) => Err(e.into()),
-        }
+        let op = client.get_app(self.name.as_ref().unwrap()).await;
+        handle_operation!(op)
     }
 
     pub async fn delete(&self, config: &Context, ignore_missing: bool) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-        match (client.delete_app(&self.app_name()?).await, ignore_missing) {
+        match (
+            client.delete_app(&self.name.as_ref().unwrap()).await,
+            ignore_missing,
+        ) {
             (Ok(true), _) => Ok(Outcome::SuccessWithMessage(
                 "Application deleted".to_string(),
             )),
@@ -65,14 +64,7 @@ impl ApplicationOperation {
             }
         };
 
-        // todo handle response in trait ?
-        match op {
-            Ok(true) => Ok(Outcome::SuccessWithMessage(
-                "Application updated".to_string(),
-            )),
-            Ok(false) => Err(DrogueError::NotFound.into()),
-            Err(e) => Err(e.into()),
-        }
+        handle_operation!(op, "Application updated")
     }
 
     pub async fn list(
@@ -84,23 +76,19 @@ impl ApplicationOperation {
 
         let labels = util::clap_values_to_labels(labels);
 
-        match client.list_apps(labels).await {
-            Ok(Some(apps)) => Ok(Outcome::SuccessWithJsonData(apps)),
-            Ok(None) => Err(DrogueError::NotFound.into()),
-            Err(e) => Err(e.into()),
-        }
+        handle_operation!(client.list_apps(labels).await)
     }
 
     pub async fn add_trust_anchor(
         &self,
         config: &Context,
         keyout: Option<&str>,
-        key_pair_algorithm: Option<certs_utils::SignAlgo>,
+        key_pair_algorithm: Option<util::SignAlgo>,
         days: Option<&str>,
         key_input: Option<rcgen::KeyPair>,
     ) -> Result<Outcome<String>> {
-        let trust_anchor = certs_utils::create_trust_anchor(
-            self.app_name()?,
+        let trust_anchor = util::create_trust_anchor(
+            &self.name.as_ref().unwrap(),
             keyout,
             key_pair_algorithm,
             days,
@@ -117,7 +105,7 @@ impl ApplicationOperation {
     pub async fn get_trust_anchor(&self, config: &Context) -> Result<ApplicationSpecTrustAnchors> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-        match client.get_app(self.app_name()?).await {
+        match client.get_app(&self.name.as_ref().unwrap()).await {
             Ok(Some(application)) => {
                 match application
                     .section::<ApplicationSpecTrustAnchors>()
@@ -144,7 +132,7 @@ impl ApplicationOperation {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         //read app data
-        let op = match client.get_app(self.app_name()?).await {
+        let op = match client.get_app(&self.name.as_ref().unwrap()).await {
             Ok(Some(p)) => {
                 serde_json::to_value(&p)?.merge(data);
                 client.update_app(&p).await
@@ -153,13 +141,7 @@ impl ApplicationOperation {
             Err(e) => Err(e),
         };
 
-        match op {
-            Ok(true) => Ok(Outcome::SuccessWithMessage(
-                "Application updated.".to_string(),
-            )),
-            Ok(false) => Err(DrogueError::NotFound.into()),
-            Err(e) => Err(e.into()),
-        }
+        handle_operation!(op, "Application updated")
     }
 }
 

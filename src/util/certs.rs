@@ -1,5 +1,4 @@
-use crate::certs_utils;
-use crate::outcome::Outcome;
+use crate::util::Outcome;
 use anyhow::{anyhow, Result};
 use chrono::{Duration, Utc};
 use drogue_client::registry::v1::ApplicationSpecTrustAnchorEntry;
@@ -260,9 +259,7 @@ pub fn create_trust_anchor(
     // Private key printed to terminal, when keyout argument not specified.
     if !is_input_key {
         match keyout {
-            Some(file_name) => {
-                certs_utils::write_to_file(file_name, private_key, "App private key")
-            }
+            Some(file_name) => write_to_file(file_name, private_key, "App private key"),
             _ => {
                 println!("Private key for an application is used to sign device certificates, see `drg trust add --help`\n");
                 println!("{}", &private_key)

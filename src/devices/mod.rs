@@ -2,8 +2,7 @@ mod operations;
 
 pub use operations::pretty_list;
 
-use crate::outcome::DrogueError;
-use crate::util;
+use crate::util::{self, DrogueError};
 use anyhow::Result;
 use drogue_client::registry::v1::Device;
 use serde_json::Value;
