@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use drogue_client::error::ClientError;
 use serde::Serialize;
 use serde_json::json;
@@ -17,7 +17,7 @@ impl<T> Outcome<T>
 where
     T: Serialize,
 {
-    pub fn display<F>(&self, json: bool, f_data: F) -> Result<()>
+    pub fn display<F>(self, json: bool, f_data: F) -> Result<()>
     where
         F: FnOnce(&T),
     {
@@ -26,19 +26,28 @@ where
                 Outcome::SuccessWithMessage(msg) => {
                     show_json(json!({"status": "success", "message": msg}).to_string())
                 }
-                Outcome::SuccessWithJsonData(data) => show_json(serde_json::to_string(data)?),
+                Outcome::SuccessWithJsonData(data) => show_json(serde_json::to_string(&data)?),
             },
             (outcome, false) => match outcome {
                 Outcome::SuccessWithMessage(msg) => println!("{msg}"),
-                Outcome::SuccessWithJsonData(data) => f_data(data),
+                Outcome::SuccessWithJsonData(data) => f_data(&data),
             },
         }
         Ok(())
     }
 
     /// fallback to showing the serialized object
-    pub fn display_simple(&self, json: bool) -> Result<()> {
+    pub fn display_simple(self, json: bool) -> Result<()> {
         self.display(json, |data| show_json(serde_json::to_string(data).unwrap()))
+    }
+
+    pub fn inner(self) -> Result<T> {
+        match self {
+            Outcome::SuccessWithMessage(s) => {
+                Err(anyhow!("This outcome contains a message: {}", s))
+            }
+            Outcome::SuccessWithJsonData(data) => Ok(data),
+        }
     }
 }
 

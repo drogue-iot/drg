@@ -1,4 +1,4 @@
-use crate::trust::SignAlgo;
+use crate::certs_utils::SignAlgo;
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use serde::{Deserialize, Serialize};

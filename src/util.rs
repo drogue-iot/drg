@@ -258,7 +258,7 @@ where
     serde_json::from_str(contents.as_str()).context("Invalid JSON in file")
 }
 
-pub fn age_from_timestamp(time: DateTime<Utc>) -> String {
+pub fn age_from_timestamp(time: &DateTime<Utc>) -> String {
     let age = Utc::now().naive_utc() - time.naive_utc();
 
     if age > Duration::days(7) {
