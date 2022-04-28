@@ -1,4 +1,4 @@
-use crate::{trust, util, AppId};
+use crate::{certs_utils, util, AppId};
 
 use crate::config::Context;
 use anyhow::{anyhow, Result};
@@ -229,9 +229,9 @@ pub fn app_arguments() -> clap::Command<'static> {
         .required(true)
         .help("Algorithm used to generate key pair.")
         .possible_values([
-            trust::SignAlgo::ECDSA.as_ref(),
-            trust::SignAlgo::EdDSA.as_ref(),
-            trust::SignAlgo::RSA.as_ref(),
+            certs_utils::SignAlgo::ECDSA.as_ref(),
+            certs_utils::SignAlgo::EdDSA.as_ref(),
+            certs_utils::SignAlgo::RSA.as_ref(),
         ]);
 
     let key_pair_algorithm = algo_param

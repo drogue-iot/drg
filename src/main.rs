@@ -1,26 +1,28 @@
 mod admin;
-mod apps;
+mod applications;
 mod arguments;
+mod certs_utils;
 mod command;
 mod config;
 mod devices;
 mod openid;
+mod outcome;
 mod stream;
-mod tokens;
-mod trust;
 mod util;
 
 use arguments::{Action, Parameters, ResourceId, ResourceType};
 
+use crate::admin::tokens;
 use crate::arguments::Transfer;
 use crate::config::{AccessToken, Config, Context, ContextId, Token};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
+use drogue_client::admin::v1::Role;
 use json_value_merge::Merge;
 use serde_json::json;
 use std::process::exit;
 use std::str::FromStr;
 
-use crate::admin::Role;
+use crate::applications::ApplicationOperation;
 use crate::devices::DeviceOperation;
 
 type AppId = String;
@@ -145,7 +147,7 @@ async fn main() -> Result<()> {
             "default-algo" => {
                 let algo = c
                     .value_of(&Parameters::algo.as_ref())
-                    .map(|a| trust::SignAlgo::from_str(a).unwrap())
+                    .map(|a| certs_utils::SignAlgo::from_str(a).unwrap())
                     .unwrap();
                 let context = config.get_context_mut(&ctx_id)?;
 
@@ -204,7 +206,10 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::applicationId.as_ref())
                         .map(|s| s.to_string());
 
-                    apps::create(context, app_id, data, file).await
+                    ApplicationOperation::new(app_id, file, Some(data))?
+                        .create(context)
+                        .await?
+                        .display_simple(json_output)
                 }
                 ResourceType::device => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -241,11 +246,15 @@ async fn main() -> Result<()> {
 
                     let user = command.value_of(ResourceType::member.as_ref()).unwrap();
 
-                    admin::member_add(context, &app_id, user, role).await
+                    admin::member_add(context, &app_id, user, role)
+                        .await?
+                        .display_simple(json_output)
                 }
                 ResourceType::token => {
                     let description = command.value_of(Parameters::description.as_ref());
-                    tokens::create_api_key(context, description).await
+                    admin::tokens::create(context, description)
+                        .await?
+                        .display(json_output, |tok| tokens::created_token_print(tok))
                 }
                 //TODO verify appcert
                 ResourceType::app_cert | ResourceType::device_cert => {
@@ -259,14 +268,15 @@ async fn main() -> Result<()> {
                                 a
                             })
                         })
-                        .map(|algo| trust::SignAlgo::from_str(algo).unwrap());
+                        .map(|algo| certs_utils::SignAlgo::from_str(algo).unwrap());
 
-                    let (key_input, key_pair_algorithm) = match command
-                        .value_of(&Parameters::key_input.as_ref())
-                    {
-                        Some(f) => trust::verify_input_key(f).map(|s| (Some(s.0), Some(s.1)))?,
-                        _ => (None, key_pair_algorithm),
-                    };
+                    let (key_input, key_pair_algorithm) =
+                        match command.value_of(&Parameters::key_input.as_ref()) {
+                            Some(f) => {
+                                certs_utils::verify_input_key(f).map(|s| (Some(s.0), Some(s.1)))?
+                            }
+                            _ => (None, key_pair_algorithm),
+                        };
 
                     let keyout = command.value_of(&Parameters::key_output.as_ref());
 
@@ -279,27 +289,24 @@ async fn main() -> Result<()> {
 
                     let device_key = command.value_of(&Parameters::key_output.as_ref());
 
-                    let cert = apps::get_trust_anchor(context, &app_id).await?;
-
                     if resource == ResourceType::app_cert {
-                        apps::add_trust_anchor(
-                            context,
-                            &app_id,
-                            keyout,
-                            key_pair_algorithm,
-                            days,
-                            key_input,
-                        )
-                        .await
+                        ApplicationOperation::new(Some(app_id), None, None)?
+                            .add_trust_anchor(context, keyout, key_pair_algorithm, days, key_input)
+                            .await?
+                            .display_simple(json_output)
                     } else {
                         // Safe unwrap because clap makes sure the argument is provided
                         let dev_id = command.value_of(ResourceId::deviceId.as_ref()).unwrap();
 
-                        match trust::create_device_certificate(
+                        let cert = ApplicationOperation::new(Some(app_id.clone()), None, None)?
+                            .get_trust_anchor(context)
+                            .await?;
+
+                        match certs_utils::create_device_certificate(
                             &app_id,
                             dev_id,
                             ca_key,
-                            &cert,
+                            cert.anchors[0].certificate.as_slice(),
                             device_key,
                             device_cert,
                             key_pair_algorithm,
@@ -334,7 +341,10 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::applicationId.as_ref())
                         .unwrap()
                         .to_string();
-                    apps::delete(context, id, ignore_missing).await
+                    ApplicationOperation::new(Some(id), None, None)?
+                        .delete(context, ignore_missing)
+                        .await?
+                        .display_simple(json_output)
                 }
                 ResourceType::device => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -352,11 +362,15 @@ async fn main() -> Result<()> {
                     let app_id = arguments::get_app_id(command, context)?;
                     let user = command.value_of(ResourceType::member.as_ref()).unwrap();
 
-                    admin::member_delete(context, app_id.as_str(), user).await
+                    admin::member_delete(context, app_id.as_str(), user)
+                        .await?
+                        .display_simple(json_output)
                 }
                 ResourceType::token => {
                     let prefix = command.value_of(ResourceId::tokenPrefix.as_ref()).unwrap();
-                    tokens::delete_api_key(context, prefix).await
+                    admin::tokens::delete(context, prefix)
+                        .await?
+                        .display_simple(json_output)
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -373,7 +387,11 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::applicationId.as_ref())
                         .map(|s| s.to_string())
                         .unwrap();
-                    apps::edit(context, id, file).await
+
+                    ApplicationOperation::new(Some(id), file, None)?
+                        .edit(context)
+                        .await?
+                        .display_simple(json_output)
                 }
                 ResourceType::device => {
                     let dev_id = command
@@ -382,12 +400,16 @@ async fn main() -> Result<()> {
                     let file = command.value_of(Parameters::filename.as_ref());
                     let app_id = arguments::get_app_id(command, context)?;
 
-                    let op = DeviceOperation::new(app_id, dev_id.clone(), file, None)?;
-                    op.edit(context).await?.display_simple(json_output)
+                    DeviceOperation::new(app_id, dev_id.clone(), file, None)?
+                        .edit(context)
+                        .await?
+                        .display_simple(json_output)
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
-                    admin::member_edit(context, &app_id).await
+                    admin::member_edit(context, &app_id)
+                        .await?
+                        .display_simple(json_output)
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -404,9 +426,15 @@ async fn main() -> Result<()> {
                         .map(|s| s.to_string());
                     let labels = command.values_of(Parameters::labels.as_ref());
 
+                    let op = ApplicationOperation::new(app_id.clone(), None, None)?;
                     match app_id {
-                        Some(id) => apps::read(context, id as AppId).await,
-                        None => apps::list(context, labels).await,
+                        Some(_) => op.read(context).await?.display(json_output, |app| {
+                            applications::pretty_list(&vec![app.clone()])
+                        }),
+                        None => op
+                            .list(context, labels)
+                            .await?
+                            .display(json_output, |app| applications::pretty_list(app)),
                     }?;
                 }
                 ResourceType::device => {
@@ -442,7 +470,7 @@ async fn main() -> Result<()> {
                     admin::member_list(context, &app_id).await?;
                 }
                 ResourceType::token => {
-                    tokens::get_api_keys(context).await?;
+                    admin::tokens::get_api_keys(context).await?;
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -493,11 +521,14 @@ async fn main() -> Result<()> {
                     match command.value_of("dev-flag") {
                         Some(dev_id) => {
                             DeviceOperation::new(app_id, Some(dev_id.to_string()), None, None)?
-                                .add_labels(context, labels)
+                                .add_labels(context, &labels)
                                 .await?
                                 .display_simple(json_output)
                         }
-                        None => apps::add_labels(context, app_id, &labels).await,
+                        None => ApplicationOperation::new(Some(app_id), None, None)?
+                            .add_labels(context, &labels)
+                            .await?
+                            .display_simple(json_output),
                     }
                 }
                 // The other enum variants are not exposed by clap
@@ -523,15 +554,21 @@ async fn main() -> Result<()> {
                 Transfer::init => {
                     let user = cmd.value_of(Parameters::username.as_ref()).unwrap();
                     let id = arguments::get_app_id(cmd, context)?;
-                    admin::transfer_app(context, id.as_str(), user).await?;
+                    admin::transfer_app(context, id.as_str(), user)
+                        .await?
+                        .display_simple(json_output);
                 }
                 Transfer::accept => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
-                    admin::accept_transfer(context, id).await?
+                    admin::accept_transfer(context, id)
+                        .await?
+                        .display_simple(json_output);
                 }
                 Transfer::cancel => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
-                    admin::cancel_transfer(context, id).await?
+                    admin::cancel_transfer(context, id)
+                        .await?
+                        .display_simple(json_output);
                 }
             }
         }

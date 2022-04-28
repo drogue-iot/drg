@@ -1,9 +1,8 @@
 mod operations;
-mod outcome;
 
 pub use operations::pretty_list;
-pub use outcome::*;
 
+use crate::outcome::DrogueError;
 use crate::util;
 use anyhow::Result;
 use drogue_client::registry::v1::Device;
@@ -13,7 +12,7 @@ use serde_json::Value;
 pub struct DeviceOperation {
     app: String,
     device: Option<String>,
-    payload: Option<Device>,
+    payload: Device,
 }
 
 impl DeviceOperation {
@@ -23,25 +22,32 @@ impl DeviceOperation {
         file: Option<&str>,
         data: Option<Value>,
     ) -> Result<Self> {
-        let device: Option<Device> = match (file, data, device_name) {
-            (Some(f), None, None) => Some(util::get_data_from_file(f)?),
+        let (device, name) = match (file, data, device_name) {
+            (Some(f), None, None) => util::get_data_from_file(f)?,
             (None, Some(data), Some(name)) => {
-                let mut device = Device::new(application.clone(), name);
+                let mut device = Device::new(application.clone(), name.clone());
                 if let Some(spec) = data.as_object() {
                     device.spec = spec.clone();
                 }
-                Some(device)
+                (device, Some(name))
             }
-            (None, None, Some(name)) => Some(Device::new(application.clone(), name)),
-            (None, None, None) => None,
+            (None, None, Some(name)) => {
+                (Device::new(application.clone(), name.clone()), Some(name))
+            }
+            (None, None, None) => (Device::new(application.clone(), "none"), None),
             _ => unreachable!(),
         };
-        let name = device.as_ref().map(|d| d.metadata.name.clone());
 
         Ok(DeviceOperation {
             device: name,
             app: application,
             payload: device,
         })
+    }
+
+    fn device_id(&self) -> Result<&String> {
+        self.device
+            .as_ref()
+            .ok_or_else(|| DrogueError::User("No device name provided".to_string()).into())
     }
 }

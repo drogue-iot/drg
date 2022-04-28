@@ -8,7 +8,8 @@ use serde_json::{json, Value};
 use sha_crypt::sha512_simple;
 use tabular::{Row, Table};
 
-use crate::devices::{DeviceOperation, DrogueError, Outcome};
+use crate::devices::DeviceOperation;
+use crate::outcome::{DrogueError, Outcome};
 use drogue_client::registry::v1::Password::Sha512;
 use drogue_client::registry::v1::{Client, Credential, Device};
 
@@ -17,9 +18,7 @@ impl DeviceOperation {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         match (
-            client
-                .delete_device(&self.app, &self.device.as_ref().unwrap())
-                .await,
+            client.delete_device(&self.app, self.device_id()?).await,
             ignore_missing,
         ) {
             (Ok(true), _) => Ok(Outcome::SuccessWithMessage("Device deleted".to_string())),
@@ -34,10 +33,7 @@ impl DeviceOperation {
     pub async fn read(&self, config: &Context) -> Result<Outcome<Device>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-        match client
-            .get_device(&self.app, &self.device.as_ref().unwrap())
-            .await
-        {
+        match client.get_device(&self.app, self.device_id()?).await {
             Ok(Some(dev)) => Ok(Outcome::SuccessWithJsonData(dev)),
             Ok(None) => Err(DrogueError::NotFound.into()),
             Err(e) => Err(e.into()),
@@ -48,7 +44,7 @@ impl DeviceOperation {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         Ok(client
-            .create_device(self.payload.as_ref().unwrap())
+            .create_device(&self.payload)
             .await
             .map(|_| Outcome::SuccessWithMessage("Device created".to_string()))?)
         // .map_err(DrogueError::Service(e))?)
@@ -57,23 +53,19 @@ impl DeviceOperation {
     pub async fn edit(&self, config: &Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-        let op = match (&self.device, &self.payload) {
-            (None, Some(d)) => client.update_device(d).await,
-            (Some(_), None) => {
+        let op = match &self.device {
+            None => client.update_device(&self.payload).await,
+            Some(name) => {
                 //read device data
-                let data = client
-                    .get_device(&self.app, &self.device.as_ref().unwrap())
-                    .await?;
+                let data = client.get_device(&self.app, name).await?;
                 match data {
                     Some(dev) => {
                         let edited = util::editor(dev)?;
-                        client.update_app(&edited).await
+                        client.update_device(&edited).await
                     }
                     None => Ok(false),
                 }
             }
-            // Clap is making sure the arguments are mutually exclusive.
-            _ => unreachable!(),
         };
 
         match op {
@@ -155,7 +147,7 @@ impl DeviceOperation {
         self.merge_in(data, config).await
     }
 
-    pub async fn add_labels(&self, config: &Context, args: Values<'_>) -> Result<Outcome<String>> {
+    pub async fn add_labels(&self, config: &Context, args: &Values<'_>) -> Result<Outcome<String>> {
         let data = util::process_labels(&args);
         self.merge_in(data, config).await
     }
@@ -166,15 +158,7 @@ impl DeviceOperation {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         //retrieve device
-        let op = match client
-            .get_device(
-                &self.app,
-                self.device
-                    .as_ref()
-                    .ok_or_else(|| DrogueError::User("No device name provided".to_string()))?,
-            )
-            .await
-        {
+        let op = match client.get_device(&self.app, self.device_id()?).await {
             Ok(Some(device)) => {
                 serde_json::to_value(&device)?.merge(data);
                 client.update_device(&device).await
@@ -214,7 +198,7 @@ pub fn pretty_list(data: &[Device], wide: bool) {
 
         let mut row = Row::new()
             .with_cell(name)
-            .with_cell(util::age_from_timestamp(creation));
+            .with_cell(util::age_from_timestamp(&creation));
 
         if wide {
             if let Some(firmware) = dev.status.get("firmware") {
