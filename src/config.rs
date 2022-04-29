@@ -16,21 +16,19 @@ use oauth2::TokenResponse;
 use tabular::{Row, Table};
 use url::Url;
 
-pub type ContextId = String;
-
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Config {
-    pub active_context: ContextId,
+pub struct Config<'a> {
+    pub active_context: String,
     pub contexts: Vec<Context>,
     //todo : when loading, put a ref to the active context for faster access
     // to avoid looping through the contexts each time.
-    // #[serde(skip)]
-    // active_ctx_ref: Option<&Context>
+    #[serde(skip)]
+    pub active_ctx_ref: Option<&'a Context>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Context {
-    pub name: ContextId,
+    pub name: String,
     pub drogue_cloud_url: Url,
     pub default_app: Option<String>,
     pub default_algo: Option<String>,
@@ -83,12 +81,12 @@ impl RequestBuilderExt for tungstenite::http::request::Builder {
     }
 }
 
-impl Config {
-    pub fn empty() -> Config {
+impl Config<'_> {
+    pub fn empty() -> Config<'static> {
         Config {
             active_context: String::new(),
             contexts: Vec::new(),
-            //            active_ctx_ref: None,
+            active_ctx_ref: None,
         }
     }
     pub fn from(path: Option<&str>) -> Result<Config> {
@@ -101,7 +99,8 @@ impl Config {
         let config: Config =
             serde_yaml::from_reader(file).context("Invalid configuration file.")?;
 
-        //       config.active_ctx_ref = config.get_active_context().ok();
+        // let active_ref = config.get_active_context()?;
+        // config.active_ctx_ref = Some(active_ref);
         Ok(config)
     }
 
@@ -128,22 +127,27 @@ impl Config {
         Ok(())
     }
 
-    pub fn get_context(&self, name: &Option<ContextId>) -> Result<&Context> {
+    pub fn get_context(&self, name: &Option<String>) -> Result<&Context> {
         match name {
             Some(n) => self.get_context_as_ref(n),
             None => self.get_active_context(),
         }
     }
 
-    pub fn get_context_mut(&mut self, name: &Option<ContextId>) -> Result<&mut Context> {
+    pub fn get_context_mut(&mut self, name: &Option<String>) -> Result<&mut Context> {
         match name {
             Some(n) => self.get_context_as_mut(n),
             None => self.get_active_context_mut(),
         }
     }
     fn get_active_context(&self) -> Result<&Context> {
-        let default_context = &self.active_context;
-        self.get_context_as_ref(default_context)
+        match self.active_ctx_ref {
+            Some(c) => Ok(c),
+            None => {
+                let default_context = &self.active_context;
+                self.get_context_as_ref(default_context)
+            }
+        }
     }
     fn get_active_context_mut(&mut self) -> Result<&mut Context> {
         // todo : avoid the clone ?
@@ -206,7 +210,7 @@ impl Config {
         print!("{}", table);
     }
 
-    pub fn set_active_context(&mut self, name: ContextId) -> Result<()> {
+    pub fn set_active_context(&mut self, name: String) -> Result<()> {
         if self.contains_context(&name) {
             println!("Switched active context to: {}", &name);
             self.active_context = name;
@@ -247,7 +251,7 @@ impl Config {
     // see fnOnce ?
     // https://github.com/ctron/operator-framework/blob/e827775e023dfbe22a9defbf31e6a87f46d38ef5/src/install/container/env.rs#L259-L277
 
-    pub fn rename_context(&mut self, name: ContextId, new_name: ContextId) -> Result<()> {
+    pub fn rename_context(&mut self, name: String, new_name: String) -> Result<()> {
         if self.contains_context(&name) {
             let ctx = self.get_context_as_mut(&name)?;
             ctx.rename(new_name.clone());
@@ -262,7 +266,7 @@ impl Config {
     }
 }
 
-impl fmt::Display for Config {
+impl fmt::Display for Config<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -275,7 +279,23 @@ impl fmt::Display for Config {
 }
 
 impl Context {
-    fn rename(&mut self, new_name: ContextId) {
+    pub fn init_with_access_token(name: String, api: Url, auth: AccessToken) -> Self {
+        let dummy_url = Url::parse("https://example.net").unwrap();
+        Context {
+            name,
+            drogue_cloud_url: api,
+            token: Token::AccessToken(auth),
+
+            default_app: None,
+            default_algo: None,
+            auth_url: dummy_url.clone(),
+            token_url: dummy_url.clone(),
+            registry_url: dummy_url,
+            token_exp_date: chrono::MAX_DATETIME,
+        }
+    }
+
+    fn rename(&mut self, new_name: String) {
         self.name = new_name;
     }
 
@@ -285,6 +305,12 @@ impl Context {
 
     pub fn set_default_algo(&mut self, algo: SignAlgo) {
         self.default_algo = Some(algo.as_ref().to_string())
+    }
+
+    pub fn fill_urls(&mut self, auth: Url, registry: Url, token: Url) {
+        self.token_url = token;
+        self.registry_url = registry;
+        self.auth_url = auth;
     }
 }
 

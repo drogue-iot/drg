@@ -61,6 +61,10 @@ sha-crypt = "0.3.2"
 
 tungstenite = { version = "0.12.0", features = ["native-tls"]}
 
+[dev-dependencies]
+assert_cmd = "2.0.4"
+test-utils = { path = "test-utils" }
+
 [patch.crates-io]
 drogue-client = { git = "https://github.com/drogue-iot/drogue-client", branch = "main" } # FIXME: awaiting release
 #drogue-client = { path = "../drogue-client" }

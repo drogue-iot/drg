@@ -13,7 +13,7 @@ use arguments::{Action, Parameters, ResourceId, ResourceType};
 use crate::admin::tokens;
 use crate::applications::ApplicationOperation;
 use crate::arguments::Transfer;
-use crate::config::{AccessToken, Config, Context, ContextId, Token};
+use crate::config::{AccessToken, Config, Context};
 use crate::devices::DeviceOperation;
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
@@ -48,23 +48,13 @@ async fn main() -> Result<()> {
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
         let context = if let Some(access_token) = access_token_val {
             if let Some((id, token)) = access_token.split_once(':') {
-                let (sso_url, registry_url) =
-                    util::get_drogue_services_endpoints(url.clone()).await?;
-                let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url).await?;
-                Ok(Context {
-                    name: context_arg.unwrap_or("default".to_string() as ContextId),
-                    drogue_cloud_url: url.clone(),
-                    default_app: None,
-                    default_algo: None,
-                    token: Token::AccessToken(AccessToken {
-                        id: id.to_string(),
-                        token: token.to_string(),
-                    }),
-                    token_url,
-                    auth_url,
-                    registry_url,
-                    token_exp_date: chrono::MAX_DATETIME,
-                })
+                util::context_from_access_token(
+                    context_arg.unwrap_or("default".to_string()),
+                    url.clone(),
+                    id,
+                    token,
+                )
+                .await
             } else {
                 Err(anyhow!(
                     "Invalid access token. Format should be username:token"
@@ -75,7 +65,7 @@ async fn main() -> Result<()> {
             openid::login(
                 url.clone(),
                 refresh_token_val,
-                context_arg.unwrap_or("default".to_string() as ContextId),
+                context_arg.unwrap_or("default".to_string()),
             )
             .await
         }?;
