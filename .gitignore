@@ -19,3 +19,6 @@
 *.pem
 *.crt
 *.pk8
+
+## system tests credentials
+.env

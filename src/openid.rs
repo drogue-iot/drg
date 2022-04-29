@@ -13,7 +13,7 @@ use tiny_http::{Response, Server};
 use qstring::QString;
 use reqwest::Url;
 
-use crate::config::{self, Context, Token};
+use crate::config::{Context, Token};
 use crate::util;
 use chrono::{DateTime, Duration, Utc};
 use std::net::{Ipv4Addr, SocketAddr};
@@ -23,12 +23,11 @@ const CLIENT_ID: &str = "drogue";
 pub async fn login(
     api_endpoint: Url,
     refresh_token_val: Option<&str>,
-    context_name: config::ContextId,
+    context_name: String,
 ) -> Result<Context> {
     log::info!("Starting authentication process with {}", api_endpoint);
 
-    let (issuer_url, registry_url) =
-        util::get_drogue_services_endpoints(api_endpoint.clone()).await?;
+    let (issuer_url, registry_url) = util::get_drogue_endpoints(api_endpoint.clone()).await?;
     let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(issuer_url).await?;
     let token = match refresh_token_val {
         Some(refresh_token_val) => {
@@ -191,7 +190,7 @@ async fn exchange_token(
         .await
         .map_err(|e| {
             log::warn!("{:?}", e);
-            Error::msg(format!("While refreshing token : {}", e))
+            Error::msg(format!("Refreshing token : {}", e))
         })
 }
 

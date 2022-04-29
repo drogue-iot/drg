@@ -25,10 +25,7 @@ pub async fn create(
 pub async fn delete(config: &Context, prefix: &str) -> Result<Outcome<String>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
-    handle_operation!(
-        client.delete_token(prefix).await,
-        "Access token with deleted"
-    )
+    handle_operation!(client.delete_token(prefix).await, "Access token deleted")
 }
 
 pub fn tokens_table(tokens: &Vec<AccessToken>) {
