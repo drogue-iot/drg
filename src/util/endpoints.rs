@@ -10,7 +10,7 @@ use tabular::{Row, Table};
 use url::Url;
 
 // use drogue's well known endpoint to retrieve endpoints.
-pub async fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
+pub async fn get_drogue_endpoints(url: Url) -> Result<(Url, Url)> {
     let client: Client<NoTokenProvider> = Client::new_anonymous(reqwest::Client::new(), url);
 
     let endpoints = client
@@ -30,7 +30,7 @@ pub async fn get_drogue_services_endpoints(url: Url) -> Result<(Url, Url)> {
     Ok((Url::parse(sso.as_str())?, Url::parse(registry.as_str())?))
 }
 
-async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Endpoints> {
+pub async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Endpoints> {
     let client = Client::new_authenticated(
         reqwest::Client::new(),
         context.drogue_cloud_url.clone(),

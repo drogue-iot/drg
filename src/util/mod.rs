@@ -8,7 +8,7 @@ pub use endpoints::*;
 pub use outcome::*;
 
 use crate::config::Config;
-use crate::Parameters;
+use crate::{util, AccessToken, Context, Parameters};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use chrono::{DateTime, Duration, Utc};
 use clap::crate_version;
@@ -101,7 +101,7 @@ where
     }
 }
 
-pub async fn print_version(config: &Result<Config>) {
+pub async fn print_version(config: &Result<Config<'_>>) {
     println!("Drg Version: {}", VERSION);
 
     match config {
@@ -237,4 +237,30 @@ pub fn name_from_json_or_file(param: Option<String>, file: Option<&str>) -> Resu
         // we must have id or file, not both, not neither.
         _ => unreachable!(),
     }
+}
+
+// Verify the access token before pulling the urls
+pub async fn context_from_access_token(
+    name: String,
+    api: Url,
+    user: &str,
+    key: &str,
+) -> Result<Context> {
+    let token = AccessToken {
+        token: key.to_string(),
+        id: user.to_string(),
+    };
+    let mut cfg = Context::init_with_access_token(name, api.clone(), token);
+
+    let (sso_url, registry_url) = util::get_drogue_endpoints(api).await?;
+    let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url).await?;
+
+    cfg.fill_urls(auth_url, registry_url, token_url);
+
+    // test if the token is valid
+    let _ = get_drogue_endpoints_authenticated(&cfg)
+        .await
+        .context("Access token or username not valid")?;
+
+    Ok(cfg)
 }
