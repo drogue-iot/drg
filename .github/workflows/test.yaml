@@ -1,7 +1,7 @@
 name: Tests
 
 # all the branches is fine. This shouldn't run on external PRs though
-on: push
+on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
