@@ -186,20 +186,22 @@ async fn main() -> Result<()> {
 
             match resource {
                 ResourceType::application => {
-                    let data = util::json_parse(command.value_of(Parameters::spec.as_ref()))?;
+                    let data =
+                        util::json_parse_option(command.value_of(Parameters::spec.as_ref()))?;
                     let file = command.value_of(Parameters::filename.as_ref());
                     let app_id = command
                         .value_of(ResourceId::applicationId.as_ref())
                         .map(|s| s.to_string());
 
-                    ApplicationOperation::new(app_id, file, Some(data))?
+                    ApplicationOperation::new(app_id, file, data)?
                         .create(context)
                         .await?
                         .display_simple(json_output)
                 }
                 ResourceType::device => {
                     let app_id = arguments::get_app_id(command, context)?;
-                    let mut data = util::json_parse(command.value_of(Parameters::spec.as_ref()))?;
+                    let mut data =
+                        util::json_parse_option(command.value_of(Parameters::spec.as_ref()))?;
                     let file = command.value_of(Parameters::filename.as_ref());
                     let dev_id = command
                         .value_of(ResourceId::deviceId.as_ref())
@@ -212,15 +214,17 @@ async fn main() -> Result<()> {
                     if command.is_present(Parameters::cert.as_ref()) {
                         let alias = format!("CN={}, O=Drogue IoT, OU={}", &dev_id, app_id);
                         let alias_spec = json!([alias]);
-                        data.merge_in("/alias", alias_spec)
+
+                        data = match data {
+                            Some(mut d) => {
+                                d.merge_in("/alias", alias_spec.clone());
+                                Some(d)
+                            }
+                            None => Some(alias_spec),
+                        };
                     }
 
-                    let op = devices::DeviceOperation::new(
-                        app_id,
-                        Some(dev_id.clone()),
-                        file,
-                        Some(data),
-                    )?;
+                    let op = DeviceOperation::new(app_id, Some(dev_id.clone()), file, data)?;
                     op.create(context).await?.display_simple(json_output)
                 }
                 ResourceType::member => {
@@ -369,10 +373,11 @@ async fn main() -> Result<()> {
                     let file = command.value_of(Parameters::filename.as_ref());
                     let id = command
                         .value_of(ResourceId::applicationId.as_ref())
-                        .map(|s| s.to_string())
-                        .unwrap();
+                        .map(|s| s.to_string());
+                    let spec =
+                        util::json_parse_option(command.value_of(Parameters::spec.as_ref()))?;
 
-                    ApplicationOperation::new(Some(id), file, None)?
+                    ApplicationOperation::new(id, file, spec)?
                         .edit(context)
                         .await?
                         .display_simple(json_output)
@@ -462,10 +467,13 @@ async fn main() -> Result<()> {
         Action::set => {
             let (target, command) = cmd.subcommand().unwrap();
             let app_id = arguments::get_app_id(command, context)?;
-            let id = command
-                .value_of(ResourceId::deviceId.as_ref())
-                .map(|s| s.to_string());
 
+            let id = match ResourceType::from_str(target)? {
+                ResourceType::label => None,
+                _ => command
+                    .value_of(ResourceId::deviceId.as_ref())
+                    .map(|s| s.to_string()),
+            };
             let op = DeviceOperation::new(app_id.clone(), id, None, None)?;
 
             match ResourceType::from_str(target)? {
@@ -525,7 +533,11 @@ async fn main() -> Result<()> {
 
             let body = match cmd.value_of(Parameters::filename.as_ref()) {
                 Some(f) => util::get_data_from_file(f)?,
-                None => util::json_parse(cmd.value_of(Parameters::payload.as_ref()))?,
+                None => {
+                    let data = cmd.value_of(Parameters::payload.as_ref()).unwrap();
+                    serde_json::from_str(data)
+                        .context(format!("Can't parse data args: \'{data}\' into json",))?
+                }
             };
 
             command::send_command(context, app_id.as_str(), device, command, body).await?;

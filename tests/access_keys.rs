@@ -34,6 +34,8 @@ fn list_access_tokens() {
         .arg("json")
         .assert();
 
+    // fixme
+    // this deserialization is flaky
     let output: Vec<AccessToken> = serde_json::from_slice(&list.get_output().stdout).unwrap();
     list.success();
 
@@ -68,7 +70,7 @@ fn delete_access_tokens() {
         .arg("json")
         .assert();
 
-    let output: Value = serde_json::from_slice(&delete.get_output().stdout).unwrap();
+    let output: JsonOutcome = serde_json::from_slice(&delete.get_output().stdout).unwrap();
 
     assert_eq!(output.get("status").unwrap(), "success");
     delete.success();

@@ -7,8 +7,10 @@ edition = "2021"
 assert_cmd = "2.0.4"
 dotenv = "0.15.0"
 drogue-client = "0.10.0"
+serde = "1.0"
 serde_json = "1.0"
 url = "2.2"
+uuid = {version= "1.0", features = ["v4"]}
 
 [lib]
 name = "drg_test_utils"
