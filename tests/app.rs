@@ -7,6 +7,9 @@ use std::io::Write;
 use tempfile::Builder;
 use uuid::Uuid;
 
+// fixme : maybe run tests with several threads but only some of them in serial ?
+// use serial_test::serial;
+
 #[test]
 fn create_and_delete_app() {
     setup().success();

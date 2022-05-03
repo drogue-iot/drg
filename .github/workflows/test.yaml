@@ -1,0 +1,22 @@
+name: Tests
+
+# all the branches is fine. This shouldn't run on external PRs though
+on: push
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    if: github.event.pull_request.head.repo.full_name == "drogue-iot/drg"
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Tests
+        run: cargo test -- --nocapture --test-threads 1
+        env:
+          DROGUE_SANDBOX_URL: ${{secrets.DROGUE_SANDBOX_URL}}
+          DROGUE_SANDBOX_ACCESS_KEY: ${{secrets.DROGUE_SANDBOX_ACCESS_KEY}}
+          DROGUE_SANDBOX_KEY_PREFIX: ${{secrets.DROGUE_SANDBOX_KEY_PREFIX}}
+          DROGUE_SANDBOX_USERNAME: ${{secrets.DROGUE_SANDBOX_USERNAME}}
