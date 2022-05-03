@@ -1,7 +1,6 @@
 use assert_cmd::Command;
-use drg_test_utils::{cleanup_tokens, setup};
+use drg_test_utils::{cleanup_tokens, setup, JsonOutcome};
 use drogue_client::tokens::v1::{AccessToken, CreatedAccessToken};
-use serde_json::Value;
 
 #[test]
 fn create_access_token() {
@@ -72,6 +71,6 @@ fn delete_access_tokens() {
 
     let output: JsonOutcome = serde_json::from_slice(&delete.get_output().stdout).unwrap();
 
-    assert_eq!(output.get("status").unwrap(), "success");
+    assert!(output.is_success());
     delete.success();
 }
