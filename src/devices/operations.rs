@@ -160,8 +160,9 @@ impl DeviceOperation {
         //retrieve device
         let op = match client.get_device(&self.app, self.device_id()?).await {
             Ok(Some(device)) => {
-                serde_json::to_value(&device)?.merge(data);
-                client.update_device(&device).await
+                let mut new = serde_json::to_value(&device)?;
+                new.merge(data);
+                client.update_device(&serde_json::from_value(new)?).await
             }
             Ok(None) => Ok(false),
             Err(e) => Err(e),
