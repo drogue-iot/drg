@@ -134,9 +134,10 @@ impl ApplicationOperation {
 
         //read app data
         let op = match client.get_app(&self.name.as_ref().unwrap()).await {
-            Ok(Some(p)) => {
-                serde_json::to_value(&p)?.merge(data);
-                client.update_app(&p).await
+            Ok(Some(app)) => {
+                let mut new = serde_json::to_value(&app)?;
+                new.merge(data);
+                client.update_app(&serde_json::from_value(new)?).await
             }
             Ok(None) => Ok(false),
             Err(e) => Err(e),
