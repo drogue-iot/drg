@@ -332,6 +332,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         .subcommand(
             Command::new(ResourceType::application.as_ref())
                 .about("Edit an application in Drogue Cloud")
+                .alias("app")
                 .arg(&app_id)
                 .arg(&spec)
                 .arg(&file)

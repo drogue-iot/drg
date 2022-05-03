@@ -1,8 +1,12 @@
+mod outcome;
+pub use outcome::*;
+
 use assert_cmd::Command;
 use dotenv;
 use drogue_client::tokens::v1::AccessToken;
 use std::env;
 use assert_cmd::assert::Assert;
+use uuid::Uuid;
 
 pub fn setup() -> Assert {
     let mut cmd = Command::cargo_bin("drg").unwrap();
@@ -55,4 +59,24 @@ fn load_credentials() -> String {
     let key = env::var("DROGUE_SANDBOX_ACCESS_KEY").unwrap();
 
     format!("{username}:{key}")
+}
+
+pub fn app_delete(id: String) -> Assert {
+    Command::cargo_bin("drg").unwrap()
+        .arg("delete")
+        .arg("app")
+        .arg(id)
+        .assert()
+}
+
+pub fn app_create() -> String {
+    let id = Uuid::new_v4().to_string();
+
+    Command::cargo_bin("drg").unwrap()
+        .arg("create")
+        .arg("app")
+        .arg(id.clone())
+        .assert()
+        .success();
+    id
 }

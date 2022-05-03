@@ -20,7 +20,7 @@ use drogue_client::registry::v1::labels::LabelSelector;
 use log::LevelFilter;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_json::{from_str, json, Value};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs;
@@ -53,11 +53,15 @@ pub fn url_validation(url: &str) -> Result<Url> {
     })
 }
 
-pub fn json_parse(data: Option<&str>) -> Result<Value> {
-    from_str(data.unwrap_or("{}")).context(format!(
-        "Can't parse data args: \'{}\' into json",
-        data.unwrap_or("")
-    ))
+pub fn json_parse_option(data: Option<&str>) -> Result<Option<Value>> {
+    match data {
+        Some(data) => {
+            let json: Value = serde_json::from_str(data)
+                .context(format!("Can't parse data args: \'{data}\' into json",))?;
+            Ok(Some(json))
+        }
+        None => Ok(None),
+    }
 }
 
 pub fn editor<S, T>(original: S) -> Result<T>

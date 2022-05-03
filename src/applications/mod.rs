@@ -15,14 +15,17 @@ pub struct ApplicationOperation {
 
 impl ApplicationOperation {
     pub fn new(name: Option<String>, file: Option<&str>, data: Option<Value>) -> Result<Self> {
-        let (app, name) = match (file, data, name) {
-            (Some(f), None, None) => util::get_data_from_file(f)?,
+        let (app, name) = match (file, data, name.clone()) {
+            (Some(f), None, None) => {
+                let app: Application = util::get_data_from_file(f)?;
+                (app, None)
+            }
             (None, Some(data), Some(name)) => {
                 let mut app = Application::new(name.clone());
                 if let Some(spec) = data.as_object() {
                     app.spec = spec.clone();
                 }
-                (app, Some(name))
+                (app, None)
             }
             (None, None, Some(name)) => (Application::new(name.clone()), Some(name)),
             (None, None, None) => (Application::new("empty"), None),
@@ -32,3 +35,5 @@ impl ApplicationOperation {
         Ok(ApplicationOperation { name, payload: app })
     }
 }
+
+//fixme : this must have unit tests !

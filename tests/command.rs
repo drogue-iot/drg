@@ -1,5 +1,3 @@
-// verify config is correctly saved and loaded
-//
 // config
 //
 // log in & verify the config exist
