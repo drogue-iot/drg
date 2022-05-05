@@ -1,3 +1,14 @@
+# Version 0.9.0
+
+## New features
+- Add a json output : `-o json`
+- Add a `-o wide` option when listing devices to show more information. Thanks to [lulf](https://github.com/lulf) !
+- Drg now uses `drogue-client` under the hood.
+
+## Misc. changes
+- Big internal refactoring improving code maintainability.
+- Add integration tests
+
 # Version 0.8.1
 
 ## New features
