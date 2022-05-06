@@ -29,11 +29,11 @@ pub async fn get_drogue_endpoints(url: Url) -> Result<(Url, Url)> {
     Ok((Url::parse(sso.as_str())?, Url::parse(registry.as_str())?))
 }
 
-pub async fn get_drogue_endpoints_authenticated(context: &'static Context) -> Result<Endpoints> {
+pub async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Endpoints> {
     let client = Client::new_authenticated(
         reqwest::Client::new(),
         context.drogue_cloud_url.clone(),
-        context,
+        context.token.clone(),
     );
 
     client
@@ -42,7 +42,7 @@ pub async fn get_drogue_endpoints_authenticated(context: &'static Context) -> Re
         .ok_or_else(|| anyhow!("Error fetching drogue-cloud endpoints."))
 }
 
-pub async fn get_drogue_console_endpoint(context: &'static Context) -> Result<Url> {
+pub async fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let console = endpoints
         .console
@@ -52,7 +52,7 @@ pub async fn get_drogue_console_endpoint(context: &'static Context) -> Result<Ur
     //url_validation(ws)
 }
 
-pub async fn get_drogue_websocket_endpoint(context: &'static Context) -> Result<Url> {
+pub async fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let ws = endpoints
         .websocket_integration
@@ -87,7 +87,7 @@ pub async fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)
     Ok((auth?, token?))
 }
 
-pub async fn print_endpoints(context: &'static Context, service: Option<&str>) -> Result<()> {
+pub async fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let endpoints = serde_json::to_value(endpoints)?;
     let endpoints = endpoints.as_object().unwrap();

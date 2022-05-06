@@ -15,6 +15,7 @@ use crate::applications::ApplicationOperation;
 use crate::arguments::Transfer;
 use crate::config::{AccessToken, Config, Context};
 use crate::devices::DeviceOperation;
+use crate::util::{display, display_simple};
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use drogue_client::admin::v1::Role;
@@ -49,7 +50,7 @@ async fn main() -> Result<()> {
         let context = if let Some(access_token) = access_token_val {
             if let Some((id, token)) = access_token.split_once(':') {
                 util::context_from_access_token(
-                    context_arg.unwrap_or("default".to_string()),
+                    context_arg.unwrap_or_else(|| "default".to_string()),
                     url.clone(),
                     id,
                     token,
@@ -65,7 +66,7 @@ async fn main() -> Result<()> {
             openid::login(
                 url.clone(),
                 refresh_token_val,
-                context_arg.unwrap_or("default".to_string()),
+                context_arg.unwrap_or_else(|| "default".to_string()),
             )
             .await
         }?;
@@ -193,10 +194,12 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::applicationId.as_ref())
                         .map(|s| s.to_string());
 
-                    ApplicationOperation::new(app_id, file, data)?
-                        .create(context)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(
+                        ApplicationOperation::new(app_id, file, data)?
+                            .create(context)
+                            .await,
+                        json_output,
+                    )
                 }
                 ResourceType::device => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -217,7 +220,7 @@ async fn main() -> Result<()> {
 
                         data = match data {
                             Some(mut d) => {
-                                d.merge_in("/alias", alias_spec.clone());
+                                d.merge_in("/alias", alias_spec);
                                 Some(d)
                             }
                             None => Some(alias_spec),
@@ -225,7 +228,7 @@ async fn main() -> Result<()> {
                     }
 
                     let op = DeviceOperation::new(app_id, Some(dev_id.clone()), file, data)?;
-                    op.create(context).await?.display_simple(json_output)
+                    display_simple(op.create(context).await, json_output)
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -236,15 +239,18 @@ async fn main() -> Result<()> {
 
                     let user = command.value_of(ResourceType::member.as_ref()).unwrap();
 
-                    admin::member_add(context, &app_id, user, role)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(
+                        admin::member_add(context, &app_id, user, role).await,
+                        json_output,
+                    )
                 }
                 ResourceType::token => {
                     let description = command.value_of(Parameters::description.as_ref());
-                    admin::tokens::create(context, description)
-                        .await?
-                        .display(json_output, tokens::created_token_print)
+                    display(
+                        tokens::create(context, description).await,
+                        json_output,
+                        tokens::created_token_print,
+                    )
                 }
                 //TODO verify appcert
                 ResourceType::app_cert | ResourceType::device_cert => {
@@ -278,10 +284,18 @@ async fn main() -> Result<()> {
                     let device_key = command.value_of(&Parameters::key_output.as_ref());
 
                     if resource == ResourceType::app_cert {
-                        ApplicationOperation::new(Some(app_id), None, None)?
-                            .add_trust_anchor(context, keyout, key_pair_algorithm, days, key_input)
-                            .await?
-                            .display_simple(json_output)
+                        display_simple(
+                            ApplicationOperation::new(Some(app_id), None, None)?
+                                .add_trust_anchor(
+                                    context,
+                                    keyout,
+                                    key_pair_algorithm,
+                                    days,
+                                    key_input,
+                                )
+                                .await,
+                            json_output,
+                        )
                     } else {
                         // Safe unwrap because clap makes sure the argument is provided
                         let dev_id = command.value_of(ResourceId::deviceId.as_ref()).unwrap();
@@ -304,10 +318,17 @@ async fn main() -> Result<()> {
                             Ok(_) => {
                                 let alias = format!("CN={}, O=Drogue IoT, OU={}", dev_id, app_id);
 
-                                DeviceOperation::new(app_id, Some(dev_id.to_string()), None, None)?
+                                display_simple(
+                                    DeviceOperation::new(
+                                        app_id,
+                                        Some(dev_id.to_string()),
+                                        None,
+                                        None,
+                                    )?
                                     .add_alias(context, alias)
-                                    .await?
-                                    .display_simple(json_output)
+                                    .await,
+                                    json_output,
+                                )
                             }
                             _ => Err(anyhow!("Cannot create trust anchor")),
                         }
@@ -329,10 +350,12 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::applicationId.as_ref())
                         .unwrap()
                         .to_string();
-                    ApplicationOperation::new(Some(id), None, None)?
-                        .delete(context, ignore_missing)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(
+                        ApplicationOperation::new(Some(id), None, None)?
+                            .delete(context, ignore_missing)
+                            .await,
+                        json_output,
+                    )
                 }
                 ResourceType::device => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -341,24 +364,25 @@ async fn main() -> Result<()> {
                         .unwrap()
                         .to_string();
 
-                    DeviceOperation::new(app_id, Some(id), None, None)?
-                        .delete(context, ignore_missing)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(
+                        DeviceOperation::new(app_id, Some(id), None, None)?
+                            .delete(context, ignore_missing)
+                            .await,
+                        json_output,
+                    )
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
                     let user = command.value_of(ResourceType::member.as_ref()).unwrap();
 
-                    admin::member_delete(context, app_id.as_str(), user)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(
+                        admin::member_delete(context, app_id.as_str(), user).await,
+                        json_output,
+                    )
                 }
                 ResourceType::token => {
                     let prefix = command.value_of(ResourceId::tokenPrefix.as_ref()).unwrap();
-                    admin::tokens::delete(context, prefix)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(tokens::delete(context, prefix).await, json_output)
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -377,10 +401,12 @@ async fn main() -> Result<()> {
                     let spec =
                         util::json_parse_option(command.value_of(Parameters::spec.as_ref()))?;
 
-                    ApplicationOperation::new(id, file, spec)?
-                        .edit(context)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(
+                        ApplicationOperation::new(id, file, spec)?
+                            .edit(context)
+                            .await,
+                        json_output,
+                    )
                 }
                 ResourceType::device => {
                     let dev_id = command
@@ -389,16 +415,16 @@ async fn main() -> Result<()> {
                     let file = command.value_of(Parameters::filename.as_ref());
                     let app_id = arguments::get_app_id(command, context)?;
 
-                    DeviceOperation::new(app_id, dev_id.clone(), file, None)?
-                        .edit(context)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(
+                        DeviceOperation::new(app_id, dev_id.clone(), file, None)?
+                            .edit(context)
+                            .await,
+                        json_output,
+                    )
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
-                    admin::member_edit(context, &app_id)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(admin::member_edit(context, &app_id).await, json_output)
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -417,13 +443,14 @@ async fn main() -> Result<()> {
 
                     let op = ApplicationOperation::new(app_id.clone(), None, None)?;
                     match app_id {
-                        Some(_) => op.read(context).await?.display(json_output, |app| {
+                        Some(_) => display(op.read(context).await, json_output, |app| {
                             applications::pretty_list(&vec![app.clone()])
                         }),
-                        None => op
-                            .list(context, labels)
-                            .await?
-                            .display(json_output, applications::pretty_list),
+                        None => display(
+                            op.list(context, labels).await,
+                            json_output,
+                            applications::pretty_list,
+                        ),
                     }?;
                 }
                 ResourceType::device => {
@@ -440,25 +467,28 @@ async fn main() -> Result<()> {
                     let op = DeviceOperation::new(app_id, dev_id.clone(), None, None)?;
                     match dev_id {
                         //fixme : add a pretty print for a single device ?
-                        Some(_) => op.read(context).await?.display(json_output, |d| {
+                        Some(_) => display(op.read(context).await, json_output, |d| {
                             devices::pretty_list(&vec![d.clone()], wide)
                         }),
-                        None => op
-                            .list(context, labels)
-                            .await?
-                            .display(json_output, |d| devices::pretty_list(d, wide)),
+                        None => display(op.list(context, labels).await, json_output, |d| {
+                            devices::pretty_list(d, wide)
+                        }),
                     }?;
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
-                    admin::member_list(context, &app_id)
-                        .await?
-                        .display(json_output, admin::members_table)?;
+                    display(
+                        admin::member_list(context, &app_id).await,
+                        json_output,
+                        admin::members_table,
+                    )?;
                 }
                 ResourceType::token => {
-                    admin::tokens::get_api_keys(context)
-                        .await?
-                        .display(json_output, tokens::tokens_table)?;
+                    display(
+                        tokens::get_api_keys(context).await,
+                        json_output,
+                        tokens::tokens_table,
+                    )?;
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -482,9 +512,7 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::gatewayId.as_ref())
                         .unwrap()
                         .to_string();
-                    op.set_gateway(context, gateway_id)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(op.set_gateway(context, gateway_id).await, json_output)
                 }
                 ResourceType::password => {
                     let password = command
@@ -492,9 +520,10 @@ async fn main() -> Result<()> {
                         .unwrap()
                         .to_string();
                     let username = command.value_of(ResourceId::username.as_ref());
-                    op.set_password(context, password, username)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(
+                        op.set_password(context, password, username).await,
+                        json_output,
+                    )
                 }
                 ResourceType::alias => {
                     let alias = command
@@ -502,24 +531,24 @@ async fn main() -> Result<()> {
                         .unwrap()
                         .to_string();
 
-                    op.add_alias(context, alias)
-                        .await?
-                        .display_simple(json_output)
+                    display_simple(op.add_alias(context, alias).await, json_output)
                 }
                 ResourceType::label => {
                     let labels = command.values_of(ResourceType::label.as_ref()).unwrap();
 
                     match command.value_of("dev-flag") {
-                        Some(dev_id) => {
+                        Some(dev_id) => display_simple(
                             DeviceOperation::new(app_id, Some(dev_id.to_string()), None, None)?
                                 .add_labels(context, &labels)
-                                .await?
-                                .display_simple(json_output)
-                        }
-                        None => ApplicationOperation::new(Some(app_id), None, None)?
-                            .add_labels(context, &labels)
-                            .await?
-                            .display_simple(json_output),
+                                .await,
+                            json_output,
+                        ),
+                        None => display_simple(
+                            ApplicationOperation::new(Some(app_id), None, None)?
+                                .add_labels(context, &labels)
+                                .await,
+                            json_output,
+                        ),
                     }
                 }
                 // The other enum variants are not exposed by clap
@@ -549,21 +578,19 @@ async fn main() -> Result<()> {
                 Transfer::init => {
                     let user = cmd.value_of(Parameters::username.as_ref()).unwrap();
                     let id = arguments::get_app_id(cmd, context)?;
-                    admin::transfer_app(context, id.as_str(), user)
-                        .await?
-                        .display(json_output, admin::app_transfer_guide)?;
+                    display(
+                        admin::transfer_app(context, id.as_str(), user).await,
+                        json_output,
+                        admin::app_transfer_guide,
+                    )?;
                 }
                 Transfer::accept => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
-                    admin::accept_transfer(context, id)
-                        .await?
-                        .display_simple(json_output)?;
+                    display_simple(admin::accept_transfer(context, id).await, json_output)?;
                 }
                 Transfer::cancel => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
-                    admin::cancel_transfer(context, id)
-                        .await?
-                        .display_simple(json_output)?;
+                    display_simple(admin::cancel_transfer(context, id).await, json_output)?;
                 }
             }
         }

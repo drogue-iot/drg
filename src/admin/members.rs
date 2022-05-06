@@ -2,21 +2,28 @@ use crate::config::Context;
 use crate::handle_operation;
 use crate::util::{self, DrogueError, Outcome};
 
-use anyhow::Result;
 use drogue_client::admin::v1::{Client, MemberEntry, Members, Role};
 use tabular::{Row, Table};
 
-pub async fn member_list(config: &'static Context, app: &str) -> Result<Outcome<Members>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+pub async fn member_list(config: &Context, app: &str) -> Result<Outcome<Members>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     handle_operation!(client.get_members(app).await)
 }
 pub async fn member_delete(
-    config: &'static Context,
+    config: &Context,
     app: &str,
     username: &str,
-) -> Result<Outcome<String>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+) -> Result<Outcome<String>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     let op = match client.get_members(app).await {
         Ok(Some(mut members)) => {
@@ -31,8 +38,12 @@ pub async fn member_delete(
     handle_operation!(op, "Application members updated")
 }
 
-pub async fn member_edit(config: &'static Context, app: &str) -> Result<Outcome<String>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+pub async fn member_edit(config: &Context, app: &str) -> Result<Outcome<String>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     let op = match client.get_members(app).await {
         Ok(Some(members)) => {
@@ -47,12 +58,16 @@ pub async fn member_edit(config: &'static Context, app: &str) -> Result<Outcome<
 }
 
 pub async fn member_add(
-    config: &'static Context,
+    config: &Context,
     app: &str,
     user: &str,
     role: Role,
-) -> Result<Outcome<String>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+) -> Result<Outcome<String>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     let op = match client.get_members(app).await {
         Ok(Some(mut members)) => {

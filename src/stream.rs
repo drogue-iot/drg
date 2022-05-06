@@ -9,7 +9,7 @@ use crate::config::{Context, RequestBuilderExt};
 use crate::util;
 
 pub async fn stream_app(
-    config: &'static Context,
+    config: &Context,
     app: &str,
     device: Option<&str>,
     mut count: usize,
