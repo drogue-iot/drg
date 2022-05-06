@@ -37,13 +37,3 @@ impl From<serde_json::Error> for DrogueError {
         DrogueError::InvalidInput(format!("Deserialization error: {}", e))
     }
 }
-
-impl DrogueError {
-    pub fn status(&self) -> Option<u16> {
-        if let DrogueError::Service(_, status) = self {
-            Some(*status)
-        } else {
-            None
-        }
-    }
-}
