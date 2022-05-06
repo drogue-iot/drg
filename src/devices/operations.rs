@@ -14,7 +14,11 @@ use drogue_client::registry::v1::Password::Sha512;
 use drogue_client::registry::v1::{Client, Credential, Device};
 
 impl DeviceOperation {
-    pub async fn delete(&self, config: &Context, ignore_missing: bool) -> Result<Outcome<String>> {
+    pub async fn delete(
+        &self,
+        config: &'static Context,
+        ignore_missing: bool,
+    ) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         match (
@@ -30,7 +34,7 @@ impl DeviceOperation {
         }
     }
 
-    pub async fn read(&self, config: &Context) -> Result<Outcome<Device>> {
+    pub async fn read(&self, config: &'static Context) -> Result<Outcome<Device>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         match client.get_device(&self.app, self.device_id()?).await {
@@ -40,7 +44,7 @@ impl DeviceOperation {
         }
     }
 
-    pub async fn create(&self, config: &Context) -> Result<Outcome<String>> {
+    pub async fn create(&self, config: &'static Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         Ok(client
@@ -50,7 +54,7 @@ impl DeviceOperation {
         // .map_err(DrogueError::Service(e))?)
     }
 
-    pub async fn edit(&self, config: &Context) -> Result<Outcome<String>> {
+    pub async fn edit(&self, config: &'static Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         let op = match &self.device {
@@ -77,7 +81,7 @@ impl DeviceOperation {
 
     pub async fn list(
         &self,
-        config: &Context,
+        config: &'static Context,
         labels: Option<Values<'_>>,
     ) -> Result<Outcome<Vec<Device>>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
@@ -93,7 +97,7 @@ impl DeviceOperation {
 
     pub async fn set_gateway(
         &self,
-        config: &Context,
+        config: &'static Context,
         gateway_id: String,
     ) -> Result<Outcome<String>> {
         // prepare json data to merge
@@ -108,7 +112,7 @@ impl DeviceOperation {
 
     pub async fn set_password(
         &self,
-        config: &Context,
+        config: &'static Context,
         password: String,
         username: Option<&str>,
     ) -> Result<Outcome<String>> {
@@ -136,7 +140,11 @@ impl DeviceOperation {
         self.merge_in(data, config).await
     }
 
-    pub async fn add_alias(&self, config: &Context, new_alias: String) -> Result<Outcome<String>> {
+    pub async fn add_alias(
+        &self,
+        config: &'static Context,
+        new_alias: String,
+    ) -> Result<Outcome<String>> {
         // prepare json data to merge
         let data = json!({"spec": {
         "alias": [
@@ -147,14 +155,18 @@ impl DeviceOperation {
         self.merge_in(data, config).await
     }
 
-    pub async fn add_labels(&self, config: &Context, args: &Values<'_>) -> Result<Outcome<String>> {
+    pub async fn add_labels(
+        &self,
+        config: &'static Context,
+        args: &Values<'_>,
+    ) -> Result<Outcome<String>> {
         let data = util::process_labels(args);
         self.merge_in(data, config).await
     }
 
     /// todo merge that with the same method in apps ?
     /// merges a serde Value into the device object that exist on the server
-    async fn merge_in(&self, data: Value, config: &Context) -> Result<Outcome<String>> {
+    async fn merge_in(&self, data: Value, config: &'static Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         //retrieve device
