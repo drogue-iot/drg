@@ -3,7 +3,6 @@ use crate::util::url_validation;
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use drogue_client::discovery::v1::{Client, Endpoints};
-use drogue_client::openid::NoTokenProvider;
 use serde_json::Value;
 use serde_json::Value::String as serde_string;
 use tabular::{Row, Table};
@@ -11,7 +10,7 @@ use url::Url;
 
 // use drogue's well known endpoint to retrieve endpoints.
 pub async fn get_drogue_endpoints(url: Url) -> Result<(Url, Url)> {
-    let client: Client<NoTokenProvider> = Client::new_anonymous(reqwest::Client::new(), url);
+    let client: Client = Client::new_anonymous(reqwest::Client::new(), url);
 
     let endpoints = client
         .get_public_endpoints()
@@ -30,7 +29,7 @@ pub async fn get_drogue_endpoints(url: Url) -> Result<(Url, Url)> {
     Ok((Url::parse(sso.as_str())?, Url::parse(registry.as_str())?))
 }
 
-pub async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Endpoints> {
+pub async fn get_drogue_endpoints_authenticated(context: &'static Context) -> Result<Endpoints> {
     let client = Client::new_authenticated(
         reqwest::Client::new(),
         context.drogue_cloud_url.clone(),
@@ -43,7 +42,7 @@ pub async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<End
         .ok_or_else(|| anyhow!("Error fetching drogue-cloud endpoints."))
 }
 
-pub async fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
+pub async fn get_drogue_console_endpoint(context: &'static Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let console = endpoints
         .console
@@ -53,7 +52,7 @@ pub async fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
     //url_validation(ws)
 }
 
-pub async fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
+pub async fn get_drogue_websocket_endpoint(context: &'static Context) -> Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let ws = endpoints
         .websocket_integration
@@ -88,7 +87,7 @@ pub async fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)
     Ok((auth?, token?))
 }
 
-pub async fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
+pub async fn print_endpoints(context: &'static Context, service: Option<&str>) -> Result<()> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let endpoints = serde_json::to_value(endpoints)?;
     let endpoints = endpoints.as_object().unwrap();

@@ -47,6 +47,6 @@ impl DeviceOperation {
     fn device_id(&self) -> Result<&String> {
         self.device
             .as_ref()
-            .ok_or_else(|| DrogueError::User("No device name provided".to_string()).into())
+            .ok_or_else(|| DrogueError::InvalidInput("No device name provided".to_string()).into())
     }
 }

@@ -6,7 +6,7 @@ use serde_json::Value;
 use drogue_client::command::v1::Client;
 
 pub async fn send_command(
-    config: &Context,
+    config: &'static Context,
     app: &str,
     device: &str,
     command: &str,

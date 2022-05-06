@@ -1,10 +1,12 @@
 mod certs;
 mod endpoints;
+mod error;
 mod operations;
 mod outcome;
 
 pub use certs::*;
 pub use endpoints::*;
+pub use error::*;
 pub use outcome::*;
 
 use crate::config::Config;
@@ -15,7 +17,6 @@ use clap::crate_version;
 use clap::{ArgMatches, Values};
 use colored_json::write_colored_json;
 use drogue_client::discovery::v1::Client;
-use drogue_client::openid::NoTokenProvider;
 use drogue_client::registry::v1::labels::LabelSelector;
 use log::LevelFilter;
 use serde::de::DeserializeOwned;
@@ -105,7 +106,7 @@ where
     }
 }
 
-pub async fn print_version(config: &Result<Config<'_>>) {
+pub async fn print_version(config: &Result<Config>) {
     println!("Drg Version: {}", VERSION);
 
     match config {
@@ -157,8 +158,7 @@ pub fn log_level(matches: &ArgMatches) -> LevelFilter {
 
 // use drogue's well known endpoint to retrieve version.
 async fn get_drogue_services_version(url: &Url) -> Result<String> {
-    let client: Client<NoTokenProvider> =
-        Client::new_anonymous(reqwest::Client::new(), url.clone());
+    let client: Client = Client::new_anonymous(reqwest::Client::new(), url.clone());
 
     client
         .get_drogue_cloud_version()
@@ -243,7 +243,7 @@ pub fn name_from_json_or_file(param: Option<String>, file: Option<&str>) -> Resu
     }
 }
 
-// Verify the access token before pulling the urls
+// Verify the access token while constructing a Context
 pub async fn context_from_access_token(
     name: String,
     api: Url,
@@ -256,8 +256,8 @@ pub async fn context_from_access_token(
     };
     let mut cfg = Context::init_with_access_token(name, api.clone(), token);
 
-    let (sso_url, registry_url) = util::get_drogue_endpoints(api).await?;
-    let (auth_url, token_url) = util::get_auth_and_tokens_endpoints(sso_url).await?;
+    let (sso_url, registry_url) = get_drogue_endpoints(api).await?;
+    let (auth_url, token_url) = get_auth_and_tokens_endpoints(sso_url).await?;
 
     cfg.fill_urls(auth_url, registry_url, token_url);
 

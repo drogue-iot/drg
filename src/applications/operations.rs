@@ -14,7 +14,7 @@ use drogue_client::registry::v1::{Application, ApplicationSpecTrustAnchors};
 use drogue_client::Translator;
 
 impl ApplicationOperation {
-    pub async fn create(&self, config: &Context) -> Result<Outcome<String>> {
+    pub async fn create(&self, config: &'static Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         Ok(client
@@ -23,14 +23,18 @@ impl ApplicationOperation {
             .map(|_| Outcome::SuccessWithMessage("Application created".to_string()))?)
     }
 
-    pub async fn read(&self, config: &Context) -> Result<Outcome<Application>> {
+    pub async fn read(&self, config: &'static Context) -> Result<Outcome<Application>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         let op = client.get_app(self.name.as_ref().unwrap()).await;
         handle_operation!(op)
     }
 
-    pub async fn delete(&self, config: &Context, ignore_missing: bool) -> Result<Outcome<String>> {
+    pub async fn delete(
+        &self,
+        config: &'static Context,
+        ignore_missing: bool,
+    ) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         match (
@@ -48,7 +52,7 @@ impl ApplicationOperation {
         }
     }
 
-    pub async fn edit(&self, config: &Context) -> Result<Outcome<String>> {
+    pub async fn edit(&self, config: &'static Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         let op = match &self.name {
@@ -70,7 +74,7 @@ impl ApplicationOperation {
 
     pub async fn list(
         &self,
-        config: &Context,
+        config: &'static Context,
         labels: Option<Values<'_>>,
     ) -> Result<Outcome<Vec<Application>>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
@@ -82,7 +86,7 @@ impl ApplicationOperation {
 
     pub async fn add_trust_anchor(
         &self,
-        config: &Context,
+        config: &'static Context,
         keyout: Option<&str>,
         key_pair_algorithm: Option<util::SignAlgo>,
         days: Option<&str>,
@@ -103,7 +107,10 @@ impl ApplicationOperation {
         self.merge_in(data, config).await
     }
 
-    pub async fn get_trust_anchor(&self, config: &Context) -> Result<ApplicationSpecTrustAnchors> {
+    pub async fn get_trust_anchor(
+        &self,
+        config: &'static Context,
+    ) -> Result<ApplicationSpecTrustAnchors> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         match client.get_app(&self.name.as_ref().unwrap()).await {
@@ -113,9 +120,10 @@ impl ApplicationOperation {
                     .transpose()?
                 {
                     Some(anchors) => Ok(anchors),
-                    None => {
-                        Err(DrogueError::User("No trust anchors for this app".to_string()).into())
-                    }
+                    None => Err(DrogueError::InvalidInput(
+                        "No trust anchors for this app".to_string(),
+                    )
+                    .into()),
                 }
             }
             Ok(None) => Err(DrogueError::NotFound.into()),
@@ -123,13 +131,17 @@ impl ApplicationOperation {
         }
     }
 
-    pub async fn add_labels(&self, config: &Context, args: &Values<'_>) -> Result<Outcome<String>> {
+    pub async fn add_labels(
+        &self,
+        config: &'static Context,
+        args: &Values<'_>,
+    ) -> Result<Outcome<String>> {
         let data = util::process_labels(args);
         self.merge_in(data, config).await
     }
 
     // merges a serde Value into the application object that exist on the server
-    async fn merge_in(&self, data: Value, config: &Context) -> Result<Outcome<String>> {
+    async fn merge_in(&self, data: Value, config: &'static Context) -> Result<Outcome<String>> {
         let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
         //read app data

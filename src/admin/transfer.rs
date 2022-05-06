@@ -7,7 +7,11 @@ use drogue_client::admin::v1::Client;
 use serde::Serialize;
 use url::Url;
 
-pub async fn transfer_app(config: &Context, app: &str, user: &str) -> Result<Outcome<AppTransfer>> {
+pub async fn transfer_app(
+    config: &'static Context,
+    app: &str,
+    user: &str,
+) -> Result<Outcome<AppTransfer>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     match client.initiate_app_transfer(app, user).await {
@@ -23,7 +27,7 @@ pub async fn transfer_app(config: &Context, app: &str, user: &str) -> Result<Out
     }
 }
 
-pub async fn cancel_transfer(config: &Context, app: &str) -> Result<Outcome<String>> {
+pub async fn cancel_transfer(config: &'static Context, app: &str) -> Result<Outcome<String>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     handle_operation!(
@@ -32,7 +36,7 @@ pub async fn cancel_transfer(config: &Context, app: &str) -> Result<Outcome<Stri
     )
 }
 
-pub async fn accept_transfer(config: &Context, app: &str) -> Result<Outcome<String>> {
+pub async fn accept_transfer(config: &'static Context, app: &str) -> Result<Outcome<String>> {
     let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
 
     handle_operation!(
