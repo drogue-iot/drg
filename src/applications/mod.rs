@@ -15,13 +15,13 @@ pub struct ApplicationOperation {
 
 impl ApplicationOperation {
     pub fn new(name: Option<String>, file: Option<&str>, data: Option<Value>) -> Result<Self> {
-        let (app, name) = match (file, data, name.clone()) {
+        let (app, name) = match (file, data, name) {
             (Some(f), None, None) => {
                 let app: Application = util::get_data_from_file(f)?;
                 (app, None)
             }
             (None, Some(data), Some(name)) => {
-                let mut app = Application::new(name.clone());
+                let mut app = Application::new(name);
                 if let Some(spec) = data.as_object() {
                     app.spec = spec.clone();
                 }

@@ -1,7 +1,6 @@
-use crate::util::JsonOutcome;
 use anyhow::anyhow;
 use drogue_client::error::ClientError;
-use std::fmt::{Display, Formatter};
+use serde_json::Error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -33,10 +32,16 @@ impl From<ClientError> for DrogueError {
     }
 }
 
+impl From<serde_json::Error> for DrogueError {
+    fn from(e: Error) -> Self {
+        DrogueError::InvalidInput(format!("Deserialization error: {}", e))
+    }
+}
+
 impl DrogueError {
     pub fn status(&self) -> Option<u16> {
         if let DrogueError::Service(_, status) = self {
-            Some(status.clone())
+            Some(*status)
         } else {
             None
         }

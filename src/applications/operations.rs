@@ -3,7 +3,6 @@ use crate::config::Context;
 use crate::handle_operation;
 use crate::util::{self, DrogueError, Outcome};
 
-use anyhow::Result;
 use clap::Values;
 use json_value_merge::Merge;
 use serde_json::{json, Value};
@@ -14,8 +13,12 @@ use drogue_client::registry::v1::{Application, ApplicationSpecTrustAnchors};
 use drogue_client::Translator;
 
 impl ApplicationOperation {
-    pub async fn create(&self, config: &'static Context) -> Result<Outcome<String>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    pub async fn create(&self, config: &Context) -> Result<Outcome<String>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         Ok(client
             .create_app(&self.payload)
@@ -23,8 +26,12 @@ impl ApplicationOperation {
             .map(|_| Outcome::SuccessWithMessage("Application created".to_string()))?)
     }
 
-    pub async fn read(&self, config: &'static Context) -> Result<Outcome<Application>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    pub async fn read(&self, config: &Context) -> Result<Outcome<Application>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         let op = client.get_app(self.name.as_ref().unwrap()).await;
         handle_operation!(op)
@@ -32,10 +39,14 @@ impl ApplicationOperation {
 
     pub async fn delete(
         &self,
-        config: &'static Context,
+        config: &Context,
         ignore_missing: bool,
-    ) -> Result<Outcome<String>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    ) -> Result<Outcome<String>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         match (
             client.delete_app(&self.name.as_ref().unwrap()).await,
@@ -44,7 +55,7 @@ impl ApplicationOperation {
             (Ok(true), _) => Ok(Outcome::SuccessWithMessage(
                 "Application deleted".to_string(),
             )),
-            (Ok(false), false) => Err(DrogueError::NotFound.into()),
+            (Ok(false), false) => Err(DrogueError::NotFound),
             (Ok(false), true) => Ok(Outcome::SuccessWithMessage(
                 "No application to delete, ignoring.".to_string(),
             )),
@@ -52,8 +63,12 @@ impl ApplicationOperation {
         }
     }
 
-    pub async fn edit(&self, config: &'static Context) -> Result<Outcome<String>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    pub async fn edit(&self, config: &Context) -> Result<Outcome<String>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         let op = match &self.name {
             None => client.update_app(&self.payload).await,
@@ -74,10 +89,14 @@ impl ApplicationOperation {
 
     pub async fn list(
         &self,
-        config: &'static Context,
+        config: &Context,
         labels: Option<Values<'_>>,
-    ) -> Result<Outcome<Vec<Application>>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    ) -> Result<Outcome<Vec<Application>>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         let labels = util::clap_values_to_labels(labels);
 
@@ -86,12 +105,12 @@ impl ApplicationOperation {
 
     pub async fn add_trust_anchor(
         &self,
-        config: &'static Context,
+        config: &Context,
         keyout: Option<&str>,
         key_pair_algorithm: Option<util::SignAlgo>,
         days: Option<&str>,
         key_input: Option<rcgen::KeyPair>,
-    ) -> Result<Outcome<String>> {
+    ) -> Result<Outcome<String>, DrogueError> {
         let trust_anchor = util::create_trust_anchor(
             self.name.as_ref().unwrap(),
             keyout,
@@ -109,9 +128,13 @@ impl ApplicationOperation {
 
     pub async fn get_trust_anchor(
         &self,
-        config: &'static Context,
-    ) -> Result<ApplicationSpecTrustAnchors> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+        config: &Context,
+    ) -> Result<ApplicationSpecTrustAnchors, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         match client.get_app(&self.name.as_ref().unwrap()).await {
             Ok(Some(application)) => {
@@ -122,27 +145,34 @@ impl ApplicationOperation {
                     Some(anchors) => Ok(anchors),
                     None => Err(DrogueError::InvalidInput(
                         "No trust anchors for this app".to_string(),
-                    )
-                    .into()),
+                    )),
                 }
             }
-            Ok(None) => Err(DrogueError::NotFound.into()),
+            Ok(None) => Err(DrogueError::NotFound),
             Err(e) => Err(e.into()),
         }
     }
 
     pub async fn add_labels(
         &self,
-        config: &'static Context,
+        config: &Context,
         args: &Values<'_>,
-    ) -> Result<Outcome<String>> {
+    ) -> Result<Outcome<String>, DrogueError> {
         let data = util::process_labels(args);
         self.merge_in(data, config).await
     }
 
     // merges a serde Value into the application object that exist on the server
-    async fn merge_in(&self, data: Value, config: &'static Context) -> Result<Outcome<String>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    async fn merge_in(
+        &self,
+        data: Value,
+        config: &Context,
+    ) -> Result<Outcome<String>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         //read app data
         let op = match client.get_app(&self.name.as_ref().unwrap()).await {

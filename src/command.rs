@@ -6,13 +6,17 @@ use serde_json::Value;
 use drogue_client::command::v1::Client;
 
 pub async fn send_command(
-    config: &'static Context,
+    config: &Context,
     app: &str,
     device: &str,
     command: &str,
     body: Value,
 ) -> Result<()> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     match client
         .publish_command(app, device, command, Some(body))
