@@ -17,13 +17,13 @@ use tabular::{Row, Table};
 use url::Url;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Config<'a> {
+pub struct Config {
     pub active_context: String,
     pub contexts: Vec<Context>,
     //todo : when loading, put a ref to the active context for faster access
     // to avoid looping through the contexts each time.
-    #[serde(skip)]
-    pub active_ctx_ref: Option<&'a Context>,
+    //#[serde(skip)]
+    //pub active_ctx_ref: Option<&'a Context>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -81,12 +81,12 @@ impl RequestBuilderExt for tungstenite::http::request::Builder {
     }
 }
 
-impl Config<'_> {
-    pub fn empty() -> Config<'static> {
+impl Config {
+    pub fn empty() -> Config {
         Config {
             active_context: String::new(),
             contexts: Vec::new(),
-            active_ctx_ref: None,
+            //active_ctx_ref: None,
         }
     }
     pub fn from(path: Option<&str>) -> Result<Config> {
@@ -141,13 +141,13 @@ impl Config<'_> {
         }
     }
     fn get_active_context(&self) -> Result<&Context> {
-        match self.active_ctx_ref {
-            Some(c) => Ok(c),
-            None => {
-                let default_context = &self.active_context;
-                self.get_context_as_ref(default_context)
-            }
-        }
+        // match self.active_ctx_ref {
+        //     Some(c) => Ok(c),
+        //     None => {
+        let default_context = &self.active_context;
+        self.get_context_as_ref(default_context)
+        // }
+        // }
     }
     fn get_active_context_mut(&mut self) -> Result<&mut Context> {
         // todo : avoid the clone ?
@@ -266,7 +266,7 @@ impl Config<'_> {
     }
 }
 
-impl fmt::Display for Config<'_> {
+impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -316,11 +316,7 @@ impl Context {
 
 #[async_trait]
 impl TokenProvider for &Context {
-    type Error = reqwest::Error;
-
-    async fn provide_access_token(
-        &self,
-    ) -> std::result::Result<Option<Credentials>, ClientError<Self::Error>> {
+    async fn provide_access_token(&self) -> std::result::Result<Option<Credentials>, ClientError> {
         match &self.token {
             Token::AccessToken(basic) => Ok(Some(Credentials::Basic(
                 basic.id.clone(),
