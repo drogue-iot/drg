@@ -315,9 +315,9 @@ impl Context {
 }
 
 #[async_trait]
-impl TokenProvider for &Context {
+impl TokenProvider for Token {
     async fn provide_access_token(&self) -> std::result::Result<Option<Credentials>, ClientError> {
-        match &self.token {
+        match self {
             Token::AccessToken(basic) => Ok(Some(Credentials::Basic(
                 basic.id.clone(),
                 Some(basic.token.clone()),

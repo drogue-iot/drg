@@ -2,17 +2,20 @@ use crate::config::Context;
 use crate::handle_operation;
 use crate::util::{self, DrogueError, Outcome};
 
-use anyhow::Result;
 use drogue_client::admin::v1::Client;
 use serde::Serialize;
 use url::Url;
 
 pub async fn transfer_app(
-    config: &'static Context,
+    config: &Context,
     app: &str,
     user: &str,
-) -> Result<Outcome<AppTransfer>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+) -> Result<Outcome<AppTransfer>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     match client.initiate_app_transfer(app, user).await {
         Ok(true) => {
@@ -22,13 +25,17 @@ pub async fn transfer_app(
                 app: app.to_string(),
             }))
         }
-        Ok(false) => Err(DrogueError::NotFound.into()),
+        Ok(false) => Err(DrogueError::NotFound),
         Err(e) => Err(e.into()),
     }
 }
 
-pub async fn cancel_transfer(config: &'static Context, app: &str) -> Result<Outcome<String>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+pub async fn cancel_transfer(config: &Context, app: &str) -> Result<Outcome<String>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     handle_operation!(
         client.cancel_app_transfer(app).await,
@@ -36,8 +43,12 @@ pub async fn cancel_transfer(config: &'static Context, app: &str) -> Result<Outc
     )
 }
 
-pub async fn accept_transfer(config: &'static Context, app: &str) -> Result<Outcome<String>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+pub async fn accept_transfer(config: &Context, app: &str) -> Result<Outcome<String>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     handle_operation!(
         client.accept_app_transfer(app).await,

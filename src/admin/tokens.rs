@@ -2,28 +2,39 @@ use crate::config::Context;
 use crate::handle_operation;
 use crate::util;
 
-use anyhow::Result;
 use tabular::{Row, Table};
 
 use crate::util::{DrogueError, Outcome};
 use drogue_client::tokens::v1::{AccessToken, Client, CreatedAccessToken};
 
-pub async fn get_api_keys(config: &'static Context) -> Result<Outcome<Vec<AccessToken>>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+pub async fn get_api_keys(config: &Context) -> Result<Outcome<Vec<AccessToken>>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
     handle_operation!(client.get_tokens().await)
 }
 
 pub async fn create(
-    config: &'static Context,
+    config: &Context,
     description: Option<&str>,
-) -> Result<Outcome<CreatedAccessToken>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+) -> Result<Outcome<CreatedAccessToken>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     handle_operation!(client.create_token(description).await)
 }
 
-pub async fn delete(config: &'static Context, prefix: &str) -> Result<Outcome<String>> {
-    let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+pub async fn delete(config: &Context, prefix: &str) -> Result<Outcome<String>, DrogueError> {
+    let client = Client::new(
+        reqwest::Client::new(),
+        config.registry_url.clone(),
+        config.token.clone(),
+    );
 
     handle_operation!(client.delete_token(prefix).await, "Access token deleted")
 }

@@ -1,6 +1,6 @@
 use crate::config::Context;
 use crate::util;
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use clap::Values;
 use json_value_merge::Merge;
 
@@ -16,17 +16,21 @@ use drogue_client::registry::v1::{Client, Credential, Device};
 impl DeviceOperation {
     pub async fn delete(
         &self,
-        config: &'static Context,
+        config: &Context,
         ignore_missing: bool,
-    ) -> Result<Outcome<String>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    ) -> Result<Outcome<String>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         match (
             client.delete_device(&self.app, self.device_id()?).await,
             ignore_missing,
         ) {
             (Ok(true), _) => Ok(Outcome::SuccessWithMessage("Device deleted".to_string())),
-            (Ok(false), false) => Err(DrogueError::NotFound.into()),
+            (Ok(false), false) => Err(DrogueError::NotFound),
             (Ok(false), true) => Ok(Outcome::SuccessWithMessage(
                 "No device to delete, ignoring.".to_string(),
             )),
@@ -34,18 +38,26 @@ impl DeviceOperation {
         }
     }
 
-    pub async fn read(&self, config: &'static Context) -> Result<Outcome<Device>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    pub async fn read(&self, config: &Context) -> Result<Outcome<Device>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         match client.get_device(&self.app, self.device_id()?).await {
             Ok(Some(dev)) => Ok(Outcome::SuccessWithJsonData(dev)),
-            Ok(None) => Err(DrogueError::NotFound.into()),
+            Ok(None) => Err(DrogueError::NotFound),
             Err(e) => Err(e.into()),
         }
     }
 
-    pub async fn create(&self, config: &'static Context) -> Result<Outcome<String>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    pub async fn create(&self, config: &Context) -> Result<Outcome<String>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         Ok(client
             .create_device(&self.payload)
@@ -54,8 +66,12 @@ impl DeviceOperation {
         // .map_err(DrogueError::Service(e))?)
     }
 
-    pub async fn edit(&self, config: &'static Context) -> Result<Outcome<String>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    pub async fn edit(&self, config: &Context) -> Result<Outcome<String>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         let op = match &self.device {
             None => client.update_device(&self.payload).await,
@@ -74,32 +90,36 @@ impl DeviceOperation {
 
         match op {
             Ok(true) => Ok(Outcome::SuccessWithMessage("Device updated".to_string())),
-            Ok(false) => Err(DrogueError::NotFound.into()),
+            Ok(false) => Err(DrogueError::NotFound),
             Err(e) => Err(e.into()),
         }
     }
 
     pub async fn list(
         &self,
-        config: &'static Context,
+        config: &Context,
         labels: Option<Values<'_>>,
-    ) -> Result<Outcome<Vec<Device>>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    ) -> Result<Outcome<Vec<Device>>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         let labels = util::clap_values_to_labels(labels);
 
         match client.list_devices(&self.app, labels).await {
             Ok(Some(devices)) => Ok(Outcome::SuccessWithJsonData(devices)),
-            Ok(None) => Err(DrogueError::NotFound.into()),
+            Ok(None) => Err(DrogueError::NotFound),
             Err(e) => Err(e.into()),
         }
     }
 
     pub async fn set_gateway(
         &self,
-        config: &'static Context,
+        config: &Context,
         gateway_id: String,
-    ) -> Result<Outcome<String>> {
+    ) -> Result<Outcome<String>, DrogueError> {
         // prepare json data to merge
         let data = json!({"spec": {
         "gatewaySelector": {
@@ -112,10 +132,10 @@ impl DeviceOperation {
 
     pub async fn set_password(
         &self,
-        config: &'static Context,
+        config: &Context,
         password: String,
         username: Option<&str>,
-    ) -> Result<Outcome<String>> {
+    ) -> Result<Outcome<String>, DrogueError> {
         let hash = sha512_simple(&password, &Default::default())
             .map_err(|err| anyhow!("Failed to hash password: {:?}", err))?;
 
@@ -142,9 +162,9 @@ impl DeviceOperation {
 
     pub async fn add_alias(
         &self,
-        config: &'static Context,
+        config: &Context,
         new_alias: String,
-    ) -> Result<Outcome<String>> {
+    ) -> Result<Outcome<String>, DrogueError> {
         // prepare json data to merge
         let data = json!({"spec": {
         "alias": [
@@ -157,17 +177,25 @@ impl DeviceOperation {
 
     pub async fn add_labels(
         &self,
-        config: &'static Context,
+        config: &Context,
         args: &Values<'_>,
-    ) -> Result<Outcome<String>> {
+    ) -> Result<Outcome<String>, DrogueError> {
         let data = util::process_labels(args);
         self.merge_in(data, config).await
     }
 
     /// todo merge that with the same method in apps ?
     /// merges a serde Value into the device object that exist on the server
-    async fn merge_in(&self, data: Value, config: &'static Context) -> Result<Outcome<String>> {
-        let client = Client::new(reqwest::Client::new(), config.registry_url.clone(), config);
+    async fn merge_in(
+        &self,
+        data: Value,
+        config: &Context,
+    ) -> Result<Outcome<String>, DrogueError> {
+        let client = Client::new(
+            reqwest::Client::new(),
+            config.registry_url.clone(),
+            config.token.clone(),
+        );
 
         //retrieve device
         let op = match client.get_device(&self.app, self.device_id()?).await {
@@ -182,7 +210,7 @@ impl DeviceOperation {
 
         match op {
             Ok(true) => Ok(Outcome::SuccessWithMessage("Device updated.".to_string())),
-            Ok(false) => Err(DrogueError::NotFound.into()),
+            Ok(false) => Err(DrogueError::NotFound),
             Err(e) => Err(e.into()),
         }
     }

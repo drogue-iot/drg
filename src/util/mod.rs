@@ -1,16 +1,18 @@
 mod certs;
+mod display;
 mod endpoints;
 mod error;
 mod operations;
 mod outcome;
 
 pub use certs::*;
+pub use display::*;
 pub use endpoints::*;
 pub use error::*;
 pub use outcome::*;
 
 use crate::config::Config;
-use crate::{util, AccessToken, Context, Parameters};
+use crate::{AccessToken, Context, Parameters};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use chrono::{DateTime, Duration, Utc};
 use clap::crate_version;
@@ -260,9 +262,12 @@ pub async fn context_from_access_token(
     let (auth_url, token_url) = get_auth_and_tokens_endpoints(sso_url).await?;
 
     cfg.fill_urls(auth_url, registry_url, token_url);
+    // cfg doesn't need to be mut anymore
+    let cfg = cfg;
 
+    let cfg_ref = &cfg;
     // test if the token is valid
-    let _ = get_drogue_endpoints_authenticated(&cfg)
+    let _ = get_drogue_endpoints_authenticated(cfg_ref)
         .await
         .context("Access token or username not valid")?;
 
