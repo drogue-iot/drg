@@ -9,7 +9,7 @@ pub enum DrogueError {
     InvalidInput(String),
     #[error("The application or device was not found")]
     NotFound,
-    #[error("Error from drogue cloud: ")]
+    #[error("Error from drogue cloud: {0}")]
     Service(String, u16),
     #[error("Unexpected error from the client library: {0}")]
     UnexpectedClient(#[from] anyhow::Error),

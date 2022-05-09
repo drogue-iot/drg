@@ -15,9 +15,9 @@ pub struct JsonOutcome {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
 enum OutcomeStatus {
     Success,
-    //todo serialize without the capital letter
     Failure,
 }
 

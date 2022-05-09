@@ -208,7 +208,6 @@ pub fn app_arguments() -> clap::Command<'static> {
 
     let cert_out = Arg::new(Parameters::cert_output.as_ref())
         .long(Parameters::cert_output.as_ref())
-        .short('o')
         .takes_value(true)
         .required(false)
         .help("Output device certificate to file.");
