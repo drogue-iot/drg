@@ -1,14 +1,15 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 //FIXME: move more of drg util there ?
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JsonOutcome {
     pub status: OutcomeStatus,
-    pub message: String
+    pub message: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum OutcomeStatus {
     Success,
     Failure,
