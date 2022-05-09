@@ -1,4 +1,5 @@
-use drg_test_utils::setup;
+use assert_cmd::Command;
+use drg_test_utils::{setup, setup_no_login};
 use std::env;
 
 #[test]
@@ -10,6 +11,17 @@ fn test_login_with_api_token() {
 #[test]
 /// make sure login in into a drogue-cloud with invalid token fails
 fn test_login_with_invalid_api_token_fails() {
-    env::set_var("DROGUE_SANDBOX_ACCESS_KEY", "invalid");
-    setup().failure();
+    setup_no_login();
+    let mut cmd = Command::cargo_bin("drg").unwrap();
+    let url = env::var("DROGUE_SANDBOX_URL").unwrap();
+    let user = env::var("DROGUE_SANDBOX_USERNAME").unwrap();
+
+    cmd.arg("login")
+        .arg(url)
+        .arg("-c")
+        .arg("test")
+        .arg("--access-token")
+        .arg(format!("{}:invalid", user))
+        .assert()
+        .failure();
 }

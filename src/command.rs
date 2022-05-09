@@ -1,9 +1,9 @@
 use crate::config::Context;
-
-use anyhow::Result;
-use serde_json::Value;
+use crate::util::DrogueError;
+use crate::util::Outcome;
 
 use drogue_client::command::v1::Client;
+use serde_json::Value;
 
 pub async fn send_command(
     config: &Context,
@@ -11,21 +11,15 @@ pub async fn send_command(
     device: &str,
     command: &str,
     body: Value,
-) -> Result<()> {
+) -> Result<Outcome<String>, DrogueError> {
     let client = Client::new(
         reqwest::Client::new(),
         config.registry_url.clone(),
         config.token.clone(),
     );
 
-    match client
+    Ok(client
         .publish_command(app, device, command, Some(body))
         .await
-    {
-        Ok(_) => {
-            println!("Command accepted");
-            Ok(())
-        }
-        Err(e) => Err(e.into()),
-    }
+        .map(|_| Outcome::SuccessWithMessage("Command accepted".to_string()))?)
 }

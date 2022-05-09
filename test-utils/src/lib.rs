@@ -1,4 +1,8 @@
+mod macros;
 mod outcome;
+pub mod util;
+
+pub use macros::*;
 pub use outcome::*;
 
 use assert_cmd::Command;
@@ -9,6 +13,9 @@ use assert_cmd::assert::Assert;
 use uuid::Uuid;
 
 pub fn setup() -> Assert {
+    // load a dotenv file if it exists
+    dotenv::dotenv().ok();
+
     let mut cmd = Command::cargo_bin("drg").unwrap();
     let cred = load_credentials();
     let url = env::var("DROGUE_SANDBOX_URL").unwrap();
@@ -16,10 +23,19 @@ pub fn setup() -> Assert {
     cmd
         .arg("login")
         .arg(url)
-        .arg("-c test")
+        .arg("-c")
+        .arg("test")
         .arg("--access-token")
         .arg(cred)
         .assert()
+}
+
+pub fn setup_no_login() {
+    // load a dotenv file if it exists
+    dotenv::dotenv().ok();
+
+    let mut cmd = Command::cargo_bin("drg").unwrap();
+    cmd.arg("version").assert().success();
 }
 
 /// delete all the tokens we may have created except the one we need to log the CI
@@ -51,10 +67,6 @@ pub fn cleanup_tokens() {
 }
 
 fn load_credentials() -> String {
-
-    // load a dotenv file if it exists
-    dotenv::dotenv().ok();
-
     let username = env::var("DROGUE_SANDBOX_USERNAME").unwrap();
     let key = env::var("DROGUE_SANDBOX_ACCESS_KEY").unwrap();
 

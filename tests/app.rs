@@ -1,5 +1,6 @@
 use assert_cmd::Command;
-use drg_test_utils::{app_create, app_delete, setup};
+use drg_test_utils::util::remove_resource_version;
+use drg_test_utils::{app_create, app_delete, retry_409, setup};
 use drogue_client::registry::v1::Application;
 use json_value_merge::Merge;
 use serde_json::{json, Value};
@@ -26,10 +27,10 @@ fn list_apps() {
         .arg("apps")
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: Vec<Application> = serde_json::from_slice(&list.get_output().stdout).unwrap();
-    list.success();
 
     assert!(!output.is_empty());
 
@@ -48,10 +49,10 @@ fn read_app() {
         .arg(id.clone())
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
-    get.success();
 
     assert_eq!(output.metadata.name, id);
 
@@ -83,10 +84,10 @@ fn update_app_spec() {
         .arg(id.clone())
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
-    get.success();
 
     assert_eq!(output.spec.get("mykey").unwrap(), "myvalue");
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
@@ -108,12 +109,14 @@ fn update_spec_from_file() {
         .arg(id.clone())
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let mut output: Value = serde_json::from_slice(&get.get_output().stdout).unwrap();
-
     // add our spec to the app
     output.merge_in("/spec", spec);
+    // slice the resource version
+    let output = remove_resource_version(output);
 
     let file = Builder::new().tempfile().unwrap();
     // Write the serialized data to the file
@@ -139,10 +142,10 @@ fn update_spec_from_file() {
         .arg(id.clone())
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
-    get.success();
 
     assert_eq!(output.spec.get("mykey").unwrap(), "myvalue");
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
@@ -177,10 +180,10 @@ fn create_with_spec() {
         .arg(id.clone())
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
-    get.success();
 
     assert_eq!(output.spec.get("mykey").unwrap(), "myvalue");
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
@@ -251,10 +254,10 @@ fn add_labels() {
         .arg(id.clone())
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: Application = serde_json::from_slice(&app.get_output().stdout).unwrap();
-    app.success();
 
     let label = output.metadata.labels.get("test-label");
     assert!(label.is_some());
@@ -271,17 +274,18 @@ fn list_apps_with_labels() {
     let id = app_create();
     let id2 = app_create();
 
-    Command::cargo_bin("drg")
-        .unwrap()
-        .arg("set")
-        .arg("label")
-        .arg("test-label=list")
-        .arg("--application")
-        .arg(id.clone())
-        .arg("-o")
-        .arg("json")
-        .assert()
-        .success();
+    retry_409!(
+        3,
+        Command::cargo_bin("drg")
+            .unwrap()
+            .arg("set")
+            .arg("label")
+            .arg("test-label=list")
+            .arg("--application")
+            .arg(id.clone())
+            .arg("-o")
+            .arg("json")
+    );
 
     let apps = Command::cargo_bin("drg")
         .unwrap()
@@ -291,13 +295,17 @@ fn list_apps_with_labels() {
         .arg("test-label=list")
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: Vec<Application> = serde_json::from_slice(&apps.get_output().stdout).unwrap();
-    apps.success();
 
-    assert_eq!(output.len(), 1);
-    assert_eq!(output[0].metadata.name, id);
+    assert!(!output.is_empty());
+    for app in output {
+        assert!(app.metadata.labels.get("test-label").is_some());
+        assert_eq!(app.metadata.labels.get("test-label").unwrap(), "list");
+        assert_ne!(app.metadata.name, id2);
+    }
 
     app_delete(id);
     app_delete(id2);
@@ -309,29 +317,31 @@ fn set_labels_dont_overwrite_existing_labels() {
 
     let id = app_create();
 
-    Command::cargo_bin("drg")
-        .unwrap()
-        .arg("set")
-        .arg("label")
-        .arg("test-label=bar")
-        .arg("--application")
-        .arg(id.clone())
-        .arg("-o")
-        .arg("json")
-        .assert()
-        .success();
+    retry_409!(
+        3,
+        Command::cargo_bin("drg")
+            .unwrap()
+            .arg("set")
+            .arg("label")
+            .arg("test-label=bar")
+            .arg("--application")
+            .arg(id.clone())
+            .arg("-o")
+            .arg("json")
+    );
 
-    Command::cargo_bin("drg")
-        .unwrap()
-        .arg("set")
-        .arg("label")
-        .arg("another-label=foo")
-        .arg("--application")
-        .arg(id.clone())
-        .arg("-o")
-        .arg("json")
-        .assert()
-        .success();
+    retry_409!(
+        3,
+        Command::cargo_bin("drg")
+            .unwrap()
+            .arg("set")
+            .arg("label")
+            .arg("another-label=foo")
+            .arg("--application")
+            .arg(id.clone())
+            .arg("-o")
+            .arg("json")
+    );
 
     let app = Command::cargo_bin("drg")
         .unwrap()
@@ -340,10 +350,10 @@ fn set_labels_dont_overwrite_existing_labels() {
         .arg(id.clone())
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: Application = serde_json::from_slice(&app.get_output().stdout).unwrap();
-    app.success();
 
     assert_eq!(output.metadata.labels.len(), 2);
     assert!(output.metadata.labels.get("another-label").is_some());
