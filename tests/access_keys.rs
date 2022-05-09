@@ -12,10 +12,10 @@ fn create_access_token() {
         .arg("token")
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: CreatedAccessToken = serde_json::from_slice(&create.get_output().stdout).unwrap();
-    create.success();
 
     assert!(!output.prefix.is_empty());
     cleanup_tokens();
@@ -31,19 +31,17 @@ fn list_access_tokens() {
         .arg("token")
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
-    // fixme
-    // this deserialization is flaky
     let output: Vec<AccessToken> = serde_json::from_slice(&list.get_output().stdout).unwrap();
-    list.success();
 
     assert!(!output.is_empty());
     assert!(!output[0].prefix.is_empty());
 }
 
 #[test]
-fn delete_access_tokens() {
+fn delete_access_token() {
     setup().success();
 
     let create = Command::cargo_bin("drg")
@@ -52,10 +50,10 @@ fn delete_access_tokens() {
         .arg("token")
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: CreatedAccessToken = serde_json::from_slice(&create.get_output().stdout).unwrap();
-    create.success();
 
     let prefix = output.prefix;
     assert!(!prefix.is_empty());
@@ -67,10 +65,10 @@ fn delete_access_tokens() {
         .arg(prefix)
         .arg("-o")
         .arg("json")
-        .assert();
+        .assert()
+        .success();
 
     let output: JsonOutcome = serde_json::from_slice(&delete.get_output().stdout).unwrap();
 
     assert!(output.is_success());
-    delete.success();
 }

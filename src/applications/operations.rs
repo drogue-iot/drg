@@ -97,7 +97,6 @@ impl ApplicationOperation {
             config.registry_url.clone(),
             config.token.clone(),
         );
-
         let labels = util::clap_values_to_labels(labels);
 
         handle_operation!(client.list_apps(labels).await)

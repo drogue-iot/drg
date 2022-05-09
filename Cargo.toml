@@ -67,5 +67,5 @@ test-utils = { path = "test-utils" }
 uuid = {version= "1.0", features = ["v4"]}
 
 [patch.crates-io]
-drogue-client = { git = "https://github.com/drogue-iot/drogue-client", branch = "service_status" } # FIXME: awaiting release
+drogue-client = { git = "https://github.com/drogue-iot/drogue-client", rev = "94ece8681b6bca9c792d651690a03b219eb97e2d" } # FIXME: awaiting release
 #drogue-client = { path = "../drogue-client" }
