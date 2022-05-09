@@ -142,7 +142,7 @@ async fn main() -> Result<()> {
                 config.write(config_path)?;
             }
             _ => {
-                println!("forgot to route config subcommand : {}", v);
+                unreachable!("forgot to route config subcommand : {}", v);
             }
         }
         exit(0);
@@ -180,7 +180,7 @@ async fn main() -> Result<()> {
         .map(|s| s == "json")
         .unwrap_or(false);
 
-    match verb? {
+    let exit_code = match verb? {
         Action::create => {
             let (res, command) = cmd.subcommand().unwrap();
             let resource = ResourceType::from_str(res)?;
@@ -336,7 +336,7 @@ async fn main() -> Result<()> {
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
-            }?;
+            }?
         }
         Action::delete => {
             let (res, command) = cmd.subcommand().unwrap();
@@ -386,7 +386,7 @@ async fn main() -> Result<()> {
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
-            }?;
+            }?
         }
         Action::edit => {
             let (res, command) = cmd.subcommand().unwrap();
@@ -428,7 +428,7 @@ async fn main() -> Result<()> {
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
-            }?;
+            }?
         }
         Action::get => {
             let (res, command) = cmd.subcommand().unwrap();
@@ -451,7 +451,7 @@ async fn main() -> Result<()> {
                             json_output,
                             applications::pretty_list,
                         ),
-                    }?;
+                    }?
                 }
                 ResourceType::device => {
                     let wide = command
@@ -473,7 +473,7 @@ async fn main() -> Result<()> {
                         None => display(op.list(context, labels).await, json_output, |d| {
                             devices::pretty_list(d, wide)
                         }),
-                    }?;
+                    }?
                 }
                 ResourceType::member => {
                     let app_id = arguments::get_app_id(command, context)?;
@@ -481,15 +481,13 @@ async fn main() -> Result<()> {
                         admin::member_list(context, &app_id).await,
                         json_output,
                         admin::members_table,
-                    )?;
+                    )?
                 }
-                ResourceType::token => {
-                    display(
-                        tokens::get_api_keys(context).await,
-                        json_output,
-                        tokens::tokens_table,
-                    )?;
-                }
+                ResourceType::token => display(
+                    tokens::get_api_keys(context).await,
+                    json_output,
+                    tokens::tokens_table,
+                )?,
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
             }
@@ -569,7 +567,10 @@ async fn main() -> Result<()> {
                 }
             };
 
-            command::send_command(context, app_id.as_str(), device, command, body).await?;
+            display_simple(
+                command::send_command(context, app_id.as_str(), device, command, body).await,
+                json_output,
+            )?
         }
         Action::transfer => {
             let task = Transfer::from_str(command);
@@ -582,15 +583,15 @@ async fn main() -> Result<()> {
                         admin::transfer_app(context, id.as_str(), user).await,
                         json_output,
                         admin::app_transfer_guide,
-                    )?;
+                    )?
                 }
                 Transfer::accept => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
-                    display_simple(admin::accept_transfer(context, id).await, json_output)?;
+                    display_simple(admin::accept_transfer(context, id).await, json_output)?
                 }
                 Transfer::cancel => {
                     let id = cmd.value_of(ResourceId::applicationId.as_ref()).unwrap();
-                    display_simple(admin::cancel_transfer(context, id).await, json_output)?;
+                    display_simple(admin::cancel_transfer(context, id).await, json_output)?
                 }
             }
         }
@@ -604,11 +605,11 @@ async fn main() -> Result<()> {
             let device = matches.value_of(Parameters::device.as_ref());
 
             stream::stream_app(context, &app_id, device, count).await?;
-            exit(0)
+            0
         }
         // todo implement the other Actions variants?
         _ => unimplemented!(),
-    }
+    };
 
-    Ok(())
+    exit(exit_code)
 }

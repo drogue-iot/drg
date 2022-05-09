@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-//FIXME: move more of drg util there ?
+//FIXME: import drg util there
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JsonOutcome {
     pub status: OutcomeStatus,
     pub message: String,
+    // The HTTP status code
+    pub http_status: Option<u16>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

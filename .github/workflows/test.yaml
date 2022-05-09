@@ -13,6 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: cleanup apps
+        shell: bash
+        run: .github/scripts/tests/clean_apps.sh
+        env:
+          DROGUE_SANDBOX_URL: ${{secrets.DROGUE_SANDBOX_URL}}
+          DROGUE_SANDBOX_ACCESS_KEY: ${{secrets.DROGUE_SANDBOX_ACCESS_KEY}}
+          DROGUE_SANDBOX_USERNAME: ${{secrets.DROGUE_SANDBOX_USERNAME}}
+
       - name: Tests
         run: cargo test
         env:
