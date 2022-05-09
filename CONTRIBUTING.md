@@ -10,7 +10,7 @@ In order to do that you need to have the following `.env` at the root of the rep
 ```dotenv
 DROGUE_SANDBOX_ACCESS_KEY=<your_complete_access_key>
 DROGUE_SANDBOX_KEY_PREFIX=<your_access_key_prefix>
-DROGUE_SANDBOX_USERNAME=<your_username
+DROGUE_SANDBOX_USERNAME=<your_username>
 DROGUE_SANDBOX_URL=https://api.sandbox.drogue.cloud/
 ```
 

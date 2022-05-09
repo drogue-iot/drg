@@ -7,9 +7,6 @@ use std::io::Write;
 use tempfile::Builder;
 use uuid::Uuid;
 
-// fixme : maybe run tests with several threads but only some of them in serial ?
-// use serial_test::serial;
-
 #[test]
 fn create_and_delete_app() {
     setup().success();
@@ -31,13 +28,10 @@ fn list_apps() {
         .arg("json")
         .assert();
 
-    // fixme
-    // this deserialization is flaky
     let output: Vec<Application> = serde_json::from_slice(&list.get_output().stdout).unwrap();
     list.success();
 
     assert!(!output.is_empty());
-    assert_eq!(output[0].metadata.name, id);
 
     app_delete(id);
 }
@@ -281,7 +275,7 @@ fn list_apps_with_labels() {
         .unwrap()
         .arg("set")
         .arg("label")
-        .arg("test-label=true")
+        .arg("test-label=list")
         .arg("--application")
         .arg(id.clone())
         .arg("-o")
@@ -294,7 +288,7 @@ fn list_apps_with_labels() {
         .arg("get")
         .arg("apps")
         .arg("--labels")
-        .arg("test-label=true")
+        .arg("test-label=list")
         .arg("-o")
         .arg("json")
         .assert();
@@ -309,7 +303,54 @@ fn list_apps_with_labels() {
     app_delete(id2);
 }
 
-// - add labels don't owerwrite existing labels
+#[test]
+fn set_labels_dont_overwrite_existing_labels() {
+    setup().success();
+
+    let id = app_create();
+
+    Command::cargo_bin("drg")
+        .unwrap()
+        .arg("set")
+        .arg("label")
+        .arg("test-label=bar")
+        .arg("--application")
+        .arg(id.clone())
+        .arg("-o")
+        .arg("json")
+        .assert()
+        .success();
+
+    Command::cargo_bin("drg")
+        .unwrap()
+        .arg("set")
+        .arg("label")
+        .arg("another-label=foo")
+        .arg("--application")
+        .arg(id.clone())
+        .arg("-o")
+        .arg("json")
+        .assert()
+        .success();
+
+    let app = Command::cargo_bin("drg")
+        .unwrap()
+        .arg("get")
+        .arg("apps")
+        .arg(id.clone())
+        .arg("-o")
+        .arg("json")
+        .assert();
+
+    let output: Application = serde_json::from_slice(&app.get_output().stdout).unwrap();
+    app.success();
+
+    assert_eq!(output.metadata.labels.len(), 2);
+    assert!(output.metadata.labels.get("another-label").is_some());
+    assert!(output.metadata.labels.get("test-label").is_some());
+
+    app_delete(id);
+}
 
 // TODO add more tests
 // - update an app preserve existing spec
