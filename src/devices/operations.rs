@@ -26,7 +26,9 @@ impl DeviceOperation {
         );
 
         match (
-            client.delete_device(&self.app, self.device_id()?).await,
+            client
+                .delete_device(&self.app, &self.device.as_ref().unwrap())
+                .await,
             ignore_missing,
         ) {
             (Ok(true), _) => Ok(Outcome::SuccessWithMessage("Device deleted".to_string())),
@@ -45,7 +47,10 @@ impl DeviceOperation {
             config.token.clone(),
         );
 
-        match client.get_device(&self.app, self.device_id()?).await {
+        match client
+            .get_device(&self.app, self.device.as_ref().unwrap())
+            .await
+        {
             Ok(Some(dev)) => Ok(Outcome::SuccessWithJsonData(dev)),
             Ok(None) => Err(DrogueError::NotFound),
             Err(e) => Err(e.into()),
@@ -198,7 +203,10 @@ impl DeviceOperation {
         );
 
         //retrieve device
-        let op = match client.get_device(&self.app, self.device_id()?).await {
+        let op = match client
+            .get_device(&self.app, self.device.as_ref().unwrap())
+            .await
+        {
             Ok(Some(device)) => {
                 let mut new = serde_json::to_value(&device)?;
                 new.merge(data);
