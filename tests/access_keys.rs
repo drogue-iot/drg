@@ -1,38 +1,27 @@
 use assert_cmd::Command;
-use drg_test_utils::{cleanup_tokens, setup, JsonOutcome};
+use drg_test_utils::{cleanup_tokens, drg, setup_ctx, JsonOutcome};
 use drogue_client::tokens::v1::{AccessToken, CreatedAccessToken};
+use rstest::*;
 
-#[test]
-fn create_access_token() {
-    setup().success();
-    let mut cmd = Command::cargo_bin("drg").unwrap();
+#[fixture]
+#[once]
+fn context() -> String {
+    setup_ctx()
+}
 
-    let create = cmd
-        .arg("create")
-        .arg("token")
-        .arg("-o")
-        .arg("json")
-        .assert()
-        .success();
+#[rstest]
+fn create_access_token(context: &String) {
+    let create = drg!(context).arg("create").arg("token").assert().success();
 
     let output: CreatedAccessToken = serde_json::from_slice(&create.get_output().stdout).unwrap();
 
     assert!(!output.prefix.is_empty());
-    cleanup_tokens();
+    cleanup_tokens(context);
 }
 
-#[test]
-fn list_access_tokens() {
-    setup().success();
-
-    let list = Command::cargo_bin("drg")
-        .unwrap()
-        .arg("get")
-        .arg("token")
-        .arg("-o")
-        .arg("json")
-        .assert()
-        .success();
+#[rstest]
+fn list_access_tokens(context: &String) {
+    let list = drg!(context).arg("get").arg("token").assert().success();
 
     let output: Vec<AccessToken> = serde_json::from_slice(&list.get_output().stdout).unwrap();
 
@@ -40,31 +29,19 @@ fn list_access_tokens() {
     assert!(!output[0].prefix.is_empty());
 }
 
-#[test]
-fn delete_access_token() {
-    setup().success();
-
-    let create = Command::cargo_bin("drg")
-        .unwrap()
-        .arg("create")
-        .arg("token")
-        .arg("-o")
-        .arg("json")
-        .assert()
-        .success();
+#[rstest]
+fn delete_access_token(context: &String) {
+    let create = drg!(context).arg("create").arg("token").assert().success();
 
     let output: CreatedAccessToken = serde_json::from_slice(&create.get_output().stdout).unwrap();
 
     let prefix = output.prefix;
     assert!(!prefix.is_empty());
 
-    let delete = Command::cargo_bin("drg")
-        .unwrap()
+    let delete = drg!(context)
         .arg("delete")
         .arg("token")
         .arg(prefix)
-        .arg("-o")
-        .arg("json")
         .assert()
         .success();
 

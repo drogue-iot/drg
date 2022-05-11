@@ -210,12 +210,14 @@ async fn main() -> Result<()> {
                         .value_of(ResourceId::deviceId.as_ref())
                         .map(|s| s.to_string());
 
-                    let dev_id = util::name_from_json_or_file(dev_id, file)?;
-
                     // TODO : move into deviceOperation creation ?
                     // add an alias with the correct subject dn.
                     if command.is_present(Parameters::cert.as_ref()) {
-                        let alias = format!("CN={}, O=Drogue IoT, OU={}", &dev_id, app_id);
+                        let alias = format!(
+                            "CN={}, O=Drogue IoT, OU={}",
+                            &util::name_from_json_or_file(dev_id.clone(), file)?,
+                            app_id
+                        );
                         let alias_spec = json!([alias]);
 
                         data = match data {
@@ -227,7 +229,7 @@ async fn main() -> Result<()> {
                         };
                     }
 
-                    let op = DeviceOperation::new(app_id, Some(dev_id.clone()), file, data)?;
+                    let op = DeviceOperation::new(app_id, dev_id.clone(), file, data)?;
                     display_simple(op.create(context).await, json_output)
                 }
                 ResourceType::member => {

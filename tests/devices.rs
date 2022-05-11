@@ -1,7 +1,7 @@
 use assert_cmd::Command;
 use drg_test_utils::util::remove_resource_version;
-use drg_test_utils::{app_create, app_delete, drg, retry_409, setup_ctx, JsonOutcome};
-use drogue_client::registry::v1::Application;
+use drg_test_utils::*;
+use drogue_client::registry::v1::Device;
 use json_value_merge::Merge;
 use rstest::*;
 use serde_json::{json, Value};
@@ -11,22 +11,33 @@ use uuid::Uuid;
 
 #[fixture]
 #[once]
-fn context() -> String {
-    setup_ctx()
+fn context() -> Ctx {
+    let ctx_id = setup_ctx();
+    let app = app_create(&ctx_id);
+    set_default_app(&ctx_id, &app);
+    Ctx {
+        context_name: ctx_id,
+        app,
+    }
 }
 
 #[fixture]
-pub fn app(context: &String) -> String {
-    app_create(context)
+fn device(context: &Ctx) -> String {
+    device_create(&context.context_name, &context.app)
+}
+
+struct Ctx {
+    context_name: String,
+    app: String,
 }
 
 #[rstest]
-fn create_app(context: &String) {
+fn create_device(context: &Ctx) {
     let id = Uuid::new_v4().to_string();
 
-    let create = drg!(context)
+    let create = drg!(context.context_name)
         .arg("create")
-        .arg("app")
+        .arg("device")
         .arg(id.clone())
         .assert()
         .success();
@@ -34,32 +45,30 @@ fn create_app(context: &String) {
     let output: JsonOutcome = serde_json::from_slice(&create.get_output().stdout).unwrap();
     assert!(output.is_success());
 
-    let read = drg!(context)
+    let read = drg!(context.context_name)
         .arg("get")
-        .arg("app")
+        .arg("device")
         .arg(id.clone())
         .assert()
         .success();
 
-    let output: Application = serde_json::from_slice(&read.get_output().stdout).unwrap();
+    let output: Device = serde_json::from_slice(&read.get_output().stdout).unwrap();
     assert_eq!(output.metadata.name, id);
-
-    app_delete(context, id);
 }
 
 #[rstest]
-fn delete_app(context: &String, app: String) {
-    drg!(context)
+fn delete_device(context: &Ctx, device: String) {
+    drg!(context.context_name)
         .arg("delete")
-        .arg("app")
-        .arg(app.clone())
+        .arg("device")
+        .arg(device.clone())
         .assert()
         .success();
 
-    let read = drg!(context)
+    let read = drg!(context.context_name)
         .arg("get")
-        .arg("app")
-        .arg(app)
+        .arg("device")
+        .arg(device)
         .assert()
         .failure();
 
@@ -69,69 +78,70 @@ fn delete_app(context: &String, app: String) {
 }
 
 #[rstest]
-fn list_apps(context: &String, app: String) {
-    let list = drg!(context).arg("get").arg("apps").assert().success();
-
-    let output: Vec<Application> = serde_json::from_slice(&list.get_output().stdout).unwrap();
-
-    assert!(!output.is_empty());
-
-    app_delete(context, app);
-}
-
-#[rstest]
-fn read_app(context: &String, app: String) {
-    let get = drg!(context)
+fn list_devices(context: &Ctx, device: String) {
+    let list = drg!(context.context_name)
         .arg("get")
-        .arg("app")
-        .arg(app.clone())
+        .arg("devices")
         .assert()
         .success();
 
-    let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
+    let output: Vec<Device> = serde_json::from_slice(&list.get_output().stdout).unwrap();
 
-    assert_eq!(output.metadata.name, app);
+    assert!(!output.is_empty());
 
-    app_delete(context, app);
+    let names: Vec<String> = output.iter().map(|d| d.metadata.name.clone()).collect();
+    assert!(names.contains(&device));
 }
 
 #[rstest]
-fn update_app_spec(context: &String, app: String) {
+fn read_device(context: &Ctx, device: String) {
+    let get = drg!(context.context_name)
+        .arg("get")
+        .arg("device")
+        .arg(device.clone())
+        .assert()
+        .success();
+
+    let output: Device = serde_json::from_slice(&get.get_output().stdout).unwrap();
+
+    assert_eq!(output.metadata.name, device);
+}
+
+#[rstest]
+fn update_device_spec(context: &Ctx, device: String) {
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    drg!(context)
+    drg!(context.context_name)
         .arg("edit")
-        .arg("app")
-        .arg(app.clone())
+        .arg("device")
+        .arg(device.clone())
         .arg("-s")
         .arg(spec.to_string())
         .assert()
         .success();
 
-    let get = drg!(context)
+    let get = drg!(context.context_name)
         .arg("get")
-        .arg("app")
-        .arg(app.clone())
+        .arg("device")
+        .arg(device.clone())
         .assert()
         .success();
 
-    let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
+    let output: Device = serde_json::from_slice(&get.get_output().stdout).unwrap();
 
     assert_eq!(output.spec.get("mykey").unwrap(), "myvalue");
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
     assert_eq!(output.spec.get("boolkey").unwrap(), true);
-
-    app_delete(context, app);
 }
 
 #[rstest]
-fn update_spec_from_file(context: &String, app: String) {
+fn update_spec_from_file(context: &Ctx, device: String) {
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    let get = drg!(context)
+    let get = drg!(context.context_name)
         .arg("get")
-        .arg("app")
-        .arg(app.clone())
+        .arg("device")
+        .arg(device.clone())
         .assert()
         .success();
 
@@ -147,133 +157,127 @@ fn update_spec_from_file(context: &String, app: String) {
         .write_all(output.to_string().as_bytes())
         .unwrap();
 
-    drg!(context)
+    drg!(context.context_name)
         .arg("edit")
-        .arg("app")
+        .arg("device")
         .arg("--filename")
         .arg(file.path())
         .assert()
         .success();
 
-    let get = drg!(context)
+    let get = drg!(context.context_name)
         .arg("get")
-        .arg("app")
-        .arg(app.clone())
+        .arg("device")
+        .arg(device.clone())
         .assert()
         .success();
 
-    let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
+    let output: Device = serde_json::from_slice(&get.get_output().stdout).unwrap();
 
     assert_eq!(output.spec.get("mykey").unwrap(), "myvalue");
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
     assert_eq!(output.spec.get("boolkey").unwrap(), true);
-
-    app_delete(context, app);
 }
 
 #[rstest]
-fn create_with_spec(context: &String) {
+fn create_with_spec(context: &Ctx) {
     let id = Uuid::new_v4().to_string();
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    drg!(context)
+    drg!(context.context_name)
         .arg("create")
-        .arg("app")
+        .arg("device")
         .arg(id.clone())
         .arg("--spec")
         .arg(spec.to_string())
         .assert()
         .success();
 
-    let get = drg!(context)
+    let get = drg!(context.context_name)
         .arg("get")
-        .arg("app")
+        .arg("device")
         .arg(id.clone())
         .assert()
         .success();
 
-    let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
+    let output: Device = serde_json::from_slice(&get.get_output().stdout).unwrap();
 
     assert_eq!(output.spec.get("mykey").unwrap(), "myvalue");
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
     assert_eq!(output.spec.get("boolkey").unwrap(), true);
-
-    app_delete(context, id);
 }
 
 #[rstest]
-fn create_from_file(context: &String) {
+fn create_from_file(context: &Ctx) {
     let id = Uuid::new_v4().to_string();
-    let app = Application::new(id.clone());
+    let device = Device::new(&context.app, id.clone());
 
     let file = Builder::new().tempfile().unwrap();
     // Write the serialized data to the file
     file.as_file()
-        .write_all(serde_json::to_string(&app).unwrap().as_bytes())
+        .write_all(serde_json::to_string(&device).unwrap().as_bytes())
         .unwrap();
 
-    drg!(context)
+    drg!(context.context_name)
         .arg("create")
-        .arg("app")
+        .arg("device")
         .arg("--filename")
         .arg(file.path())
         .assert()
         .success();
 
-    drg!(context)
+    drg!(context.context_name)
         .arg("get")
-        .arg("apps")
+        .arg("device")
         .arg(id.clone())
         .assert()
         .success();
 
-    app_delete(context, id);
+    device_delete(&context.context_name, &context.app, id);
 }
 
 #[rstest]
-fn add_labels(context: &String, app: String) {
-    drg!(context)
+fn add_labels(context: &Ctx, device: String) {
+    drg!(context.context_name)
         .arg("set")
         .arg("label")
         .arg("test-label=someValue")
         .arg("owner=tests")
-        .arg("--application")
-        .arg(app.clone())
+        .arg("--device")
+        .arg(device.clone())
         .assert()
         .success();
 
-    let read = drg!(context)
+    let read = drg!(context.context_name)
         .arg("get")
-        .arg("apps")
-        .arg(app.clone())
+        .arg("device")
+        .arg(device.clone())
         .assert()
         .success();
 
-    let output: Application = serde_json::from_slice(&read.get_output().stdout).unwrap();
+    let output: Device = serde_json::from_slice(&read.get_output().stdout).unwrap();
 
     let label = output.metadata.labels.get("test-label");
     assert!(label.is_some());
     let label = label.unwrap();
     assert_eq!(label, "someValue");
-
-    app_delete(context, app);
 }
 
 #[rstest]
-fn list_apps_with_labels(context: &String, app: String) {
-    let id2 = app_create(context);
+fn list_devices_with_labels(context: &Ctx, device: String) {
+    let dev2 = device_create(&context.context_name, &context.app);
 
     retry_409!(
         3,
-        drg!(context)
+        drg!(context.context_name)
             .arg("set")
             .arg("label")
             .arg("test-label=list")
-            .arg("--application")
-            .arg(app.clone())
+            .arg("--device")
+            .arg(device.clone())
     );
 
-    let read = drg!(context)
+    let read = drg!(context.context_name)
         .arg("get")
         .arg("apps")
         .arg("--labels")
@@ -281,59 +285,50 @@ fn list_apps_with_labels(context: &String, app: String) {
         .assert()
         .success();
 
-    let output: Vec<Application> = serde_json::from_slice(&read.get_output().stdout).unwrap();
+    let output: Vec<Device> = serde_json::from_slice(&read.get_output().stdout).unwrap();
 
     assert!(!output.is_empty());
     for app in output {
         assert!(app.metadata.labels.get("test-label").is_some());
         assert_eq!(app.metadata.labels.get("test-label").unwrap(), "list");
-        assert_ne!(app.metadata.name, id2);
+        assert_ne!(app.metadata.name, dev2);
     }
-
-    app_delete(context, app);
-    app_delete(context, id2);
 }
 
 #[rstest]
-fn set_labels_dont_overwrite_existing_labels(context: &String, app: String) {
+fn set_labels_dont_overwrite_existing_labels(context: &Ctx, device: String) {
     retry_409!(
         3,
-        drg!(context)
+        drg!(context.context_name)
             .arg("set")
             .arg("label")
             .arg("test-label=bar")
-            .arg("--application")
-            .arg(app.clone())
+            .arg("--device")
+            .arg(device.clone())
     );
 
     retry_409!(
         3,
-        drg!(context)
+        drg!(context.context_name)
             .arg("set")
             .arg("label")
             .arg("another-label=foo")
-            .arg("--application")
-            .arg(app.clone())
+            .arg("--device")
+            .arg(device.clone())
     );
 
-    let get = drg!(context)
+    let get = drg!(context.context_name)
         .arg("get")
-        .arg("apps")
-        .arg(app.clone())
+        .arg("device")
+        .arg(device.clone())
         .assert()
         .success();
 
-    let output: Application = serde_json::from_slice(&get.get_output().stdout).unwrap();
+    let output: Device = serde_json::from_slice(&get.get_output().stdout).unwrap();
 
     assert_eq!(output.metadata.labels.len(), 2);
     assert!(output.metadata.labels.get("another-label").is_some());
     assert!(output.metadata.labels.get("test-label").is_some());
-
-    app_delete(context, app);
 }
 
 // TODO add more tests
-// - update an app preserve existing spec
-// - update an app spec with invalid data should fail
-// - update an app with invalid data fails
-// - add and read trust anchor
