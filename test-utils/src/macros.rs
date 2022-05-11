@@ -27,3 +27,18 @@ macro_rules! retry_409 {
 
     }};
 }
+
+/// Reduce the boiler plate. This will expand to a `drg` Command with the context set up
+/// and JSON output enabled
+#[macro_export]
+macro_rules! drg {
+    ($context:expr) => {{
+
+        Command::cargo_bin("drg")
+        .unwrap()
+        .arg("-c")
+        .arg($context.clone())
+        .arg("-o")
+        .arg("json")
+    }};
+}

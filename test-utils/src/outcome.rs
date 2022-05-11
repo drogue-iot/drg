@@ -7,6 +7,7 @@ pub struct JsonOutcome {
     pub status: OutcomeStatus,
     pub message: String,
     // The HTTP status code
+    // todo skip ser and deser if none
     pub http_status: Option<u16>,
 }
 
