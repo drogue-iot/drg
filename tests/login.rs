@@ -5,7 +5,7 @@ use std::env;
 #[test]
 /// make sure we can log in into a drogue-cloud instance using an api token
 fn test_login_with_api_token() {
-    setup_ctx().success();
+    setup_ctx();
 }
 
 #[test]
