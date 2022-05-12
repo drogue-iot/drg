@@ -99,14 +99,15 @@ fn read_app(context: &String, app: String) {
 fn update_app_spec(context: &String, app: String) {
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    drg!(context)
-        .arg("edit")
-        .arg("app")
-        .arg(app.clone())
-        .arg("-s")
-        .arg(spec.to_string())
-        .assert()
-        .success();
+    retry_409!(
+        3,
+        drg!(context)
+            .arg("edit")
+            .arg("app")
+            .arg(app.clone())
+            .arg("-s")
+            .arg(spec.to_string())
+    );
 
     let get = drg!(context)
         .arg("get")
@@ -232,15 +233,16 @@ fn create_from_file(context: &String) {
 
 #[rstest]
 fn add_labels(context: &String, app: String) {
-    drg!(context)
-        .arg("set")
-        .arg("label")
-        .arg("test-label=someValue")
-        .arg("owner=tests")
-        .arg("--application")
-        .arg(app.clone())
-        .assert()
-        .success();
+    retry_409!(
+        3,
+        drg!(context)
+            .arg("set")
+            .arg("label")
+            .arg("test-label=someValue")
+            .arg("owner=tests")
+            .arg("--application")
+            .arg(app.clone())
+    );
 
     let read = drg!(context)
         .arg("get")
