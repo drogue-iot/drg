@@ -11,44 +11,39 @@ use uuid::Uuid;
 
 #[fixture]
 #[once]
-fn context() -> Ctx {
-    let ctx_id = setup_ctx();
-    let app = app_create(&ctx_id);
-    set_default_app(&ctx_id, &app);
-    Ctx {
-        context_name: ctx_id,
-        app,
-    }
+fn app() -> String {
+    setup().success();
+    let app = app_create();
+    app
 }
 
 #[fixture]
-fn device(context: &Ctx) -> String {
-    device_create(&context.context_name, &context.app)
-}
-
-struct Ctx {
-    context_name: String,
-    app: String,
+fn device(app: &String) -> String {
+    device_create(app)
 }
 
 #[rstest]
-fn create_device(context: &Ctx) {
+fn create_device(app: &String) {
     let id = Uuid::new_v4().to_string();
 
-    let create = drg!(context.context_name)
+    let create = drg!()
         .arg("create")
         .arg("device")
         .arg(id.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
     let output: JsonOutcome = serde_json::from_slice(&create.get_output().stdout).unwrap();
     assert!(output.is_success());
 
-    let read = drg!(context.context_name)
+    let read = drg!()
         .arg("get")
         .arg("device")
         .arg(id.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -57,18 +52,22 @@ fn create_device(context: &Ctx) {
 }
 
 #[rstest]
-fn delete_device(context: &Ctx, device: String) {
-    drg!(context.context_name)
+fn delete_device(app: &String, device: String) {
+    drg!()
         .arg("delete")
         .arg("device")
         .arg(device.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
-    let read = drg!(context.context_name)
+    let read = drg!()
         .arg("get")
         .arg("device")
         .arg(device)
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .failure();
 
@@ -78,10 +77,12 @@ fn delete_device(context: &Ctx, device: String) {
 }
 
 #[rstest]
-fn list_devices(context: &Ctx, device: String) {
-    let list = drg!(context.context_name)
+fn list_devices(app: &String, device: String) {
+    let list = drg!()
         .arg("get")
         .arg("devices")
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -94,11 +95,13 @@ fn list_devices(context: &Ctx, device: String) {
 }
 
 #[rstest]
-fn read_device(context: &Ctx, device: String) {
-    let get = drg!(context.context_name)
+fn read_device(app: &String, device: String) {
+    let get = drg!()
         .arg("get")
         .arg("device")
         .arg(device.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -110,22 +113,26 @@ fn read_device(context: &Ctx, device: String) {
 // So drg don't support updating device spec anymore ?
 #[ignore]
 #[rstest]
-fn update_device_spec(context: &Ctx, device: String) {
+fn update_device_spec(app: &String, device: String) {
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    drg!(context.context_name)
+    drg!()
         .arg("edit")
         .arg("device")
         .arg(device.clone())
         .arg("-s")
         .arg(spec.to_string())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
-    let get = drg!(context.context_name)
+    let get = drg!()
         .arg("get")
         .arg("device")
         .arg(device.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -137,13 +144,15 @@ fn update_device_spec(context: &Ctx, device: String) {
 }
 
 #[rstest]
-fn update_spec_from_file(context: &Ctx, device: String) {
+fn update_spec_from_file(app: &String, device: String) {
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    let get = drg!(context.context_name)
+    let get = drg!()
         .arg("get")
         .arg("device")
         .arg(device.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -159,18 +168,22 @@ fn update_spec_from_file(context: &Ctx, device: String) {
         .write_all(output.to_string().as_bytes())
         .unwrap();
 
-    drg!(context.context_name)
+    drg!()
         .arg("edit")
         .arg("device")
         .arg("--filename")
         .arg(file.path())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
-    let get = drg!(context.context_name)
+    let get = drg!()
         .arg("get")
         .arg("device")
         .arg(device.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -182,23 +195,27 @@ fn update_spec_from_file(context: &Ctx, device: String) {
 }
 
 #[rstest]
-fn create_with_spec(context: &Ctx) {
+fn create_with_spec(app: &String) {
     let id = Uuid::new_v4().to_string();
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    drg!(context.context_name)
+    drg!()
         .arg("create")
         .arg("device")
         .arg(id.clone())
         .arg("--spec")
         .arg(spec.to_string())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
-    let get = drg!(context.context_name)
+    let get = drg!()
         .arg("get")
         .arg("device")
         .arg(id.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -210,9 +227,9 @@ fn create_with_spec(context: &Ctx) {
 }
 
 #[rstest]
-fn create_from_file(context: &Ctx) {
+fn create_from_file(app: &String) {
     let id = Uuid::new_v4().to_string();
-    let device = Device::new(&context.app, id.clone());
+    let device = Device::new(app, id.clone());
 
     let file = Builder::new().tempfile().unwrap();
     // Write the serialized data to the file
@@ -220,40 +237,48 @@ fn create_from_file(context: &Ctx) {
         .write_all(serde_json::to_string(&device).unwrap().as_bytes())
         .unwrap();
 
-    drg!(context.context_name)
+    drg!()
         .arg("create")
         .arg("device")
         .arg("--filename")
         .arg(file.path())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
-    drg!(context.context_name)
+    drg!()
         .arg("get")
         .arg("device")
         .arg(id.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
-    device_delete(&context.context_name, &context.app, id);
+    device_delete(app, id);
 }
 
 #[rstest]
-fn add_labels(context: &Ctx, device: String) {
-    drg!(context.context_name)
+fn add_labels(app: &String, device: String) {
+    drg!()
         .arg("set")
         .arg("label")
         .arg("test-label=someValue")
         .arg("owner=tests")
         .arg("--device")
         .arg(device.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
-    let read = drg!(context.context_name)
+    let read = drg!()
         .arg("get")
         .arg("device")
         .arg(device.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -266,24 +291,28 @@ fn add_labels(context: &Ctx, device: String) {
 }
 
 #[rstest]
-fn list_devices_with_labels(context: &Ctx, device: String) {
-    let dev2 = device_create(&context.context_name, &context.app);
+fn list_devices_with_labels(app: &String, device: String) {
+    let dev2 = device_create(app);
 
     retry_409!(
         3,
-        drg!(context.context_name)
+        drg!()
             .arg("set")
             .arg("label")
             .arg("test-label=list")
             .arg("--device")
             .arg(device.clone())
+            .arg("--application")
+            .arg(app.clone())
     );
 
-    let read = drg!(context.context_name)
+    let read = drg!()
         .arg("get")
         .arg("devices")
         .arg("--labels")
         .arg("test-label=list")
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
@@ -298,31 +327,37 @@ fn list_devices_with_labels(context: &Ctx, device: String) {
 }
 
 #[rstest]
-fn set_labels_dont_overwrite_existing_labels(context: &Ctx, device: String) {
+fn set_labels_dont_overwrite_existing_labels(app: &String, device: String) {
     retry_409!(
         3,
-        drg!(context.context_name)
+        drg!()
             .arg("set")
             .arg("label")
             .arg("test-label=bar")
             .arg("--device")
             .arg(device.clone())
+            .arg("--application")
+            .arg(app.clone())
     );
 
     retry_409!(
         3,
-        drg!(context.context_name)
+        drg!()
             .arg("set")
             .arg("label")
             .arg("another-label=foo")
             .arg("--device")
             .arg(device.clone())
+            .arg("--application")
+            .arg(app.clone())
     );
 
-    let get = drg!(context.context_name)
+    let get = drg!()
         .arg("get")
         .arg("device")
         .arg(device.clone())
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
