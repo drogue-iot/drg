@@ -13,7 +13,7 @@ use assert_cmd::assert::Assert;
 use uuid::Uuid;
 
 // todo save the context in a file in /tmp
-pub fn setup(ctx: String) -> Assert {
+pub fn setup() -> Assert {
     // load a dotenv file if it exists
     dotenv::dotenv().ok();
 
@@ -24,18 +24,9 @@ pub fn setup(ctx: String) -> Assert {
     cmd
         .arg("login")
         .arg(url)
-        .arg("-c")
-        .arg(ctx)
         .arg("--access-token")
         .arg(cred)
         .assert()
-}
-
-pub fn setup_ctx() -> String {
-    let ctx_name = Uuid::new_v4().to_string();
-    setup(ctx_name.clone()).success();
-
-    ctx_name
 }
 
 pub fn setup_no_login() {
@@ -47,10 +38,10 @@ pub fn setup_no_login() {
 }
 
 /// delete all the tokens we may have created except the one we need to log the CI
-pub fn cleanup_tokens(ctx: &String) {
+pub fn cleanup_tokens() {
     let dont_delete = env::var("DROGUE_SANDBOX_KEY_PREFIX").unwrap();
 
-    let list = drg!(ctx)
+    let list = drg!()
         .arg("get")
         .arg("token")
         .assert();
@@ -60,7 +51,7 @@ pub fn cleanup_tokens(ctx: &String) {
 
     for access_token in output {
         if access_token.prefix != dont_delete {
-            drg!(ctx)
+            drg!()
                 .arg("delete")
                 .arg("token")
                 .arg(access_token.prefix)
@@ -77,18 +68,18 @@ fn load_credentials() -> String {
     format!("{username}:{key}")
 }
 
-pub fn app_delete(ctx: &String, id: String) -> Assert {
-    drg!(ctx)
+pub fn app_delete(id: String) -> Assert {
+    drg!()
         .arg("delete")
         .arg("app")
         .arg(id)
         .assert()
 }
 
-pub fn app_create(ctx: &String) -> String {
+pub fn app_create() -> String {
     let id = Uuid::new_v4().to_string();
 
-    drg!(ctx)
+    drg!()
         .arg("create")
         .arg("app")
         .arg(id.clone())
@@ -98,10 +89,10 @@ pub fn app_create(ctx: &String) -> String {
     id
 }
 
-pub fn device_create(ctx: &String, app: &String) -> String {
+pub fn device_create(app: &String) -> String {
     let id = Uuid::new_v4().to_string();
 
-    drg!(ctx)
+    drg!()
         .arg("create")
         .arg("device")
         .arg(id.clone())
@@ -112,21 +103,12 @@ pub fn device_create(ctx: &String, app: &String) -> String {
     id
 }
 
-pub fn device_delete(ctx: &String, app: &String, id: String) -> Assert {
-    drg!(ctx)
+pub fn device_delete(app: &String, id: String) -> Assert {
+    drg!()
         .arg("delete")
         .arg("device")
         .arg("--app")
         .arg(app)
         .arg(id)
         .assert()
-}
-
-pub fn set_default_app(ctx: &String, app: &String) {
-    drg!(ctx)
-        .arg("context")
-        .arg("default-app")
-        .arg(app.clone())
-        .assert()
-        .success();
 }

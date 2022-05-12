@@ -5,33 +5,39 @@ use rstest::*;
 
 #[fixture]
 #[once]
-fn context() -> String {
-    setup_ctx()
+fn context() -> () {
+    setup().success();
 }
 
 #[fixture]
-pub fn app(context: &String) -> String {
-    app_create(context)
+pub fn app(_context: &()) -> String {
+    app_create()
 }
 
 #[rstest]
-fn add_member_and_read(context: &String, app: String) {
-    set_default_app(context, &app);
+fn add_member_and_read(app: String) {
     // fixme : use a stable user somehow ?
     let user = "jbtrystram";
 
     retry_409!(
         3,
-        drg!(context)
+        drg!()
             .arg("add")
             .arg("member")
             .arg("--role")
             .arg("reader")
-            // fixme : use a stable user somehow ?
             .arg(user)
+            .arg("--application")
+            .arg(app.clone())
     );
 
-    let read = drg!(context).arg("get").arg("members").assert().success();
+    let read = drg!()
+        .arg("get")
+        .arg("members")
+        .arg("--application")
+        .arg(app.clone())
+        .assert()
+        .success();
 
     let output: Members = serde_json::from_slice(&read.get_output().stdout).unwrap();
     assert!(!output.members.is_empty());
@@ -40,41 +46,42 @@ fn add_member_and_read(context: &String, app: String) {
     let member = member.unwrap();
     assert_eq!(member.role, Role::Reader);
 
-    app_delete(context, app);
+    app_delete(app);
 }
 
 #[rstest]
-fn add_and_delete_member(context: &String, app: String) {
-    set_default_app(context, &app);
+fn add_and_delete_member(app: String) {
     // fixme : use a stable user somehow ?
     let user = "jbtrystram";
 
     retry_409!(
         3,
-        drg!(context)
+        drg!()
             .arg("add")
             .arg("member")
             .arg("--role")
             .arg("reader")
-            // fixme : use a stable user somehow ?
             .arg(user)
+            .arg("--application")
+            .arg(app.clone())
     );
 
-    let delete = drg!(context)
+    let delete = drg!()
         .arg("delete")
         .arg("member")
-        // fixme : use a stable user somehow ?
         .arg(user)
+        .arg("--application")
+        .arg(app.clone())
         .assert()
         .success();
 
     let output: JsonOutcome = serde_json::from_slice(&delete.get_output().stdout).unwrap();
     assert!(output.is_success());
 
-    let read = drg!(context).arg("get").arg("members").assert().success();
+    let read = drg!().arg("get").arg("members").assert().success();
 
     let output: Members = serde_json::from_slice(&read.get_output().stdout).unwrap();
     assert!(output.members.is_empty());
 
-    app_delete(context, app);
+    app_delete(app);
 }

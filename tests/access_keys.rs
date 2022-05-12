@@ -1,27 +1,27 @@
 use assert_cmd::Command;
-use drg_test_utils::{cleanup_tokens, drg, setup_ctx, JsonOutcome};
+use drg_test_utils::{cleanup_tokens, drg, setup, JsonOutcome};
 use drogue_client::tokens::v1::{AccessToken, CreatedAccessToken};
 use rstest::*;
 
 #[fixture]
 #[once]
-fn context() -> String {
-    setup_ctx()
+fn context() {
+    setup().success();
 }
 
 #[rstest]
-fn create_access_token(context: &String) {
-    let create = drg!(context).arg("create").arg("token").assert().success();
+fn create_access_token(_context: ()) {
+    let create = drg!().arg("create").arg("token").assert().success();
 
     let output: CreatedAccessToken = serde_json::from_slice(&create.get_output().stdout).unwrap();
 
     assert!(!output.prefix.is_empty());
-    cleanup_tokens(context);
+    cleanup_tokens();
 }
 
 #[rstest]
-fn list_access_tokens(context: &String) {
-    let list = drg!(context).arg("get").arg("token").assert().success();
+fn list_access_tokens(_context: ()) {
+    let list = drg!().arg("get").arg("token").assert().success();
 
     let output: Vec<AccessToken> = serde_json::from_slice(&list.get_output().stdout).unwrap();
 
@@ -30,15 +30,15 @@ fn list_access_tokens(context: &String) {
 }
 
 #[rstest]
-fn delete_access_token(context: &String) {
-    let create = drg!(context).arg("create").arg("token").assert().success();
+fn delete_access_token(_context: ()) {
+    let create = drg!().arg("create").arg("token").assert().success();
 
     let output: CreatedAccessToken = serde_json::from_slice(&create.get_output().stdout).unwrap();
 
     let prefix = output.prefix;
     assert!(!prefix.is_empty());
 
-    let delete = drg!(context)
+    let delete = drg!()
         .arg("delete")
         .arg("token")
         .arg(prefix)
