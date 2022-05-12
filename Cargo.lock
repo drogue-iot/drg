@@ -41,8 +41,7 @@ checksum = "97be891acc47ca214468e09425d02cef3af2c94d0d82081cd02061f996802f14"
 [[package]]
 name = "assert_cmd"
 version = "2.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93ae1ddd39efd67689deb1979d80bad3bf7f2b09c6e6117c8d1f2443b5e2f83e"
+source = "git+https://github.com/jbtrystram/assert_cmd?rev=7cee4bc51833617bfcc1b55d791cc57c4436b061#7cee4bc51833617bfcc1b55d791cc57c4436b061"
 dependencies = [
  "bstr",
  "doc-comment",
