@@ -20,18 +20,16 @@ fn add_member_and_read(context: &String, app: String) {
     // fixme : use a stable user somehow ?
     let user = "jbtrystram";
 
-    let create = drg!(context)
-        .arg("add")
-        .arg("member")
-        .arg("--role")
-        .arg("reader")
-        // fixme : use a stable user somehow ?
-        .arg(user)
-        .assert()
-        .success();
-
-    let output: JsonOutcome = serde_json::from_slice(&create.get_output().stdout).unwrap();
-    assert!(output.is_success());
+    retry_409!(
+        3,
+        drg!(context)
+            .arg("add")
+            .arg("member")
+            .arg("--role")
+            .arg("reader")
+            // fixme : use a stable user somehow ?
+            .arg(user)
+    );
 
     let read = drg!(context).arg("get").arg("members").assert().success();
 
@@ -51,18 +49,16 @@ fn add_and_delete_member(context: &String, app: String) {
     // fixme : use a stable user somehow ?
     let user = "jbtrystram";
 
-    let create = drg!(context)
-        .arg("add")
-        .arg("member")
-        .arg("--role")
-        .arg("reader")
-        // fixme : use a stable user somehow ?
-        .arg(user)
-        .assert()
-        .success();
-
-    let output: JsonOutcome = serde_json::from_slice(&create.get_output().stdout).unwrap();
-    assert!(output.is_success());
+    retry_409!(
+        3,
+        drg!(context)
+            .arg("add")
+            .arg("member")
+            .arg("--role")
+            .arg("reader")
+            // fixme : use a stable user somehow ?
+            .arg(user)
+    );
 
     let delete = drg!(context)
         .arg("delete")
