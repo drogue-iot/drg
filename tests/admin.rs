@@ -78,7 +78,13 @@ fn add_and_delete_member(app: String) {
     let output: JsonOutcome = serde_json::from_slice(&delete.get_output().stdout).unwrap();
     assert!(output.is_success());
 
-    let read = drg!().arg("get").arg("members").assert().success();
+    let read = drg!()
+        .arg("get")
+        .arg("members")
+        .arg("--application")
+        .arg(app.clone())
+        .assert()
+        .success();
 
     let output: Members = serde_json::from_slice(&read.get_output().stdout).unwrap();
     assert!(output.members.is_empty());
