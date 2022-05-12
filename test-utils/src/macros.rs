@@ -31,13 +31,13 @@ macro_rules! retry_409 {
 /// Reduce the boiler plate. This will expand to a `drg` Command with the context set up
 /// and JSON output enabled
 #[macro_export]
+// TODO : add an app parameter
+// https://github.com/drogue-iot/drg/issues/134
 macro_rules! drg {
-    ($context:expr) => {{
+    () => {{
 
         Command::cargo_bin("drg")
         .unwrap()
-        .arg("-c")
-        .arg($context.clone())
         .arg("-o")
         .arg("json")
     }};

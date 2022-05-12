@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use drg_test_utils::util::remove_resource_version;
-use drg_test_utils::{app_create, app_delete, drg, retry_409, setup_ctx, JsonOutcome};
+use drg_test_utils::{app_create, app_delete, drg, retry_409, setup, JsonOutcome};
 use drogue_client::registry::v1::Application;
 use json_value_merge::Merge;
 use rstest::*;
@@ -11,20 +11,20 @@ use uuid::Uuid;
 
 #[fixture]
 #[once]
-fn context() -> String {
-    setup_ctx()
+fn context() -> () {
+    setup().success();
 }
 
 #[fixture]
-pub fn app(context: &String) -> String {
-    app_create(context)
+pub fn app(_context: &()) -> String {
+    app_create()
 }
 
 #[rstest]
-fn create_app(context: &String) {
+fn create_app(_context: &()) {
     let id = Uuid::new_v4().to_string();
 
-    let create = drg!(context)
+    let create = drg!()
         .arg("create")
         .arg("app")
         .arg(id.clone())
@@ -34,7 +34,7 @@ fn create_app(context: &String) {
     let output: JsonOutcome = serde_json::from_slice(&create.get_output().stdout).unwrap();
     assert!(output.is_success());
 
-    let read = drg!(context)
+    let read = drg!()
         .arg("get")
         .arg("app")
         .arg(id.clone())
@@ -44,19 +44,19 @@ fn create_app(context: &String) {
     let output: Application = serde_json::from_slice(&read.get_output().stdout).unwrap();
     assert_eq!(output.metadata.name, id);
 
-    app_delete(context, id);
+    app_delete(id);
 }
 
 #[rstest]
-fn delete_app(context: &String, app: String) {
-    drg!(context)
+fn delete_app(app: String) {
+    drg!()
         .arg("delete")
         .arg("app")
         .arg(app.clone())
         .assert()
         .success();
 
-    let read = drg!(context).arg("get").arg("app").arg(app).assert();
+    let read = drg!().arg("get").arg("app").arg(app).assert();
 
     match read.try_failure() {
         Ok(assert) => {
@@ -75,19 +75,19 @@ fn delete_app(context: &String, app: String) {
 }
 
 #[rstest]
-fn list_apps(context: &String, app: String) {
-    let list = drg!(context).arg("get").arg("apps").assert().success();
+fn list_apps(app: String) {
+    let list = drg!().arg("get").arg("apps").assert().success();
 
     let output: Vec<Application> = serde_json::from_slice(&list.get_output().stdout).unwrap();
 
     assert!(!output.is_empty());
 
-    app_delete(context, app);
+    app_delete(app);
 }
 
 #[rstest]
-fn read_app(context: &String, app: String) {
-    let get = drg!(context)
+fn read_app(app: String) {
+    let get = drg!()
         .arg("get")
         .arg("app")
         .arg(app.clone())
@@ -98,16 +98,16 @@ fn read_app(context: &String, app: String) {
 
     assert_eq!(output.metadata.name, app);
 
-    app_delete(context, app);
+    app_delete(app);
 }
 
 #[rstest]
-fn update_app_spec(context: &String, app: String) {
+fn update_app_spec(app: String) {
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
     retry_409!(
         3,
-        drg!(context)
+        drg!()
             .arg("edit")
             .arg("app")
             .arg(app.clone())
@@ -115,7 +115,7 @@ fn update_app_spec(context: &String, app: String) {
             .arg(spec.to_string())
     );
 
-    let get = drg!(context)
+    let get = drg!()
         .arg("get")
         .arg("app")
         .arg(app.clone())
@@ -128,14 +128,14 @@ fn update_app_spec(context: &String, app: String) {
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
     assert_eq!(output.spec.get("boolkey").unwrap(), true);
 
-    app_delete(context, app);
+    app_delete(app);
 }
 
 #[rstest]
-fn update_spec_from_file(context: &String, app: String) {
+fn update_spec_from_file(app: String) {
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    let get = drg!(context)
+    let get = drg!()
         .arg("get")
         .arg("app")
         .arg(app.clone())
@@ -154,7 +154,7 @@ fn update_spec_from_file(context: &String, app: String) {
         .write_all(output.to_string().as_bytes())
         .unwrap();
 
-    drg!(context)
+    drg!()
         .arg("edit")
         .arg("app")
         .arg("--filename")
@@ -162,7 +162,7 @@ fn update_spec_from_file(context: &String, app: String) {
         .assert()
         .success();
 
-    let get = drg!(context)
+    let get = drg!()
         .arg("get")
         .arg("app")
         .arg(app.clone())
@@ -175,15 +175,15 @@ fn update_spec_from_file(context: &String, app: String) {
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
     assert_eq!(output.spec.get("boolkey").unwrap(), true);
 
-    app_delete(context, app);
+    app_delete(app);
 }
 
 #[rstest]
-fn create_with_spec(context: &String) {
+fn create_with_spec(_context: &()) {
     let id = Uuid::new_v4().to_string();
     let spec = json!({"mykey": "myvalue", "numkey": 0, "boolkey": true});
 
-    drg!(context)
+    drg!()
         .arg("create")
         .arg("app")
         .arg(id.clone())
@@ -192,7 +192,7 @@ fn create_with_spec(context: &String) {
         .assert()
         .success();
 
-    let get = drg!(context)
+    let get = drg!()
         .arg("get")
         .arg("app")
         .arg(id.clone())
@@ -205,11 +205,11 @@ fn create_with_spec(context: &String) {
     assert_eq!(output.spec.get("numkey").unwrap(), 0);
     assert_eq!(output.spec.get("boolkey").unwrap(), true);
 
-    app_delete(context, id);
+    app_delete(id);
 }
 
 #[rstest]
-fn create_from_file(context: &String) {
+fn create_from_file(_context: &()) {
     let id = Uuid::new_v4().to_string();
     let app = Application::new(id.clone());
 
@@ -219,7 +219,7 @@ fn create_from_file(context: &String) {
         .write_all(serde_json::to_string(&app).unwrap().as_bytes())
         .unwrap();
 
-    drg!(context)
+    drg!()
         .arg("create")
         .arg("app")
         .arg("--filename")
@@ -227,21 +227,21 @@ fn create_from_file(context: &String) {
         .assert()
         .success();
 
-    drg!(context)
+    drg!()
         .arg("get")
         .arg("apps")
         .arg(id.clone())
         .assert()
         .success();
 
-    app_delete(context, id);
+    app_delete(id);
 }
 
 #[rstest]
-fn add_labels(context: &String, app: String) {
+fn add_labels(app: String) {
     retry_409!(
         3,
-        drg!(context)
+        drg!()
             .arg("set")
             .arg("label")
             .arg("test-label=someValue")
@@ -250,7 +250,7 @@ fn add_labels(context: &String, app: String) {
             .arg(app.clone())
     );
 
-    let read = drg!(context)
+    let read = drg!()
         .arg("get")
         .arg("apps")
         .arg(app.clone())
@@ -264,16 +264,16 @@ fn add_labels(context: &String, app: String) {
     let label = label.unwrap();
     assert_eq!(label, "someValue");
 
-    app_delete(context, app);
+    app_delete(app);
 }
 
 #[rstest]
-fn list_apps_with_labels(context: &String, app: String) {
-    let id2 = app_create(context);
+fn list_apps_with_labels(app: String) {
+    let id2 = app_create();
 
     retry_409!(
         3,
-        drg!(context)
+        drg!()
             .arg("set")
             .arg("label")
             .arg("test-label=list")
@@ -281,7 +281,7 @@ fn list_apps_with_labels(context: &String, app: String) {
             .arg(app.clone())
     );
 
-    let read = drg!(context)
+    let read = drg!()
         .arg("get")
         .arg("apps")
         .arg("--labels")
@@ -298,15 +298,15 @@ fn list_apps_with_labels(context: &String, app: String) {
         assert_ne!(app.metadata.name, id2);
     }
 
-    app_delete(context, app);
-    app_delete(context, id2);
+    app_delete(app);
+    app_delete(id2);
 }
 
 #[rstest]
-fn set_labels_dont_overwrite_existing_labels(context: &String, app: String) {
+fn set_labels_dont_overwrite_existing_labels(app: String) {
     retry_409!(
         3,
-        drg!(context)
+        drg!()
             .arg("set")
             .arg("label")
             .arg("test-label=bar")
@@ -316,7 +316,7 @@ fn set_labels_dont_overwrite_existing_labels(context: &String, app: String) {
 
     retry_409!(
         3,
-        drg!(context)
+        drg!()
             .arg("set")
             .arg("label")
             .arg("another-label=foo")
@@ -324,7 +324,7 @@ fn set_labels_dont_overwrite_existing_labels(context: &String, app: String) {
             .arg(app.clone())
     );
 
-    let get = drg!(context)
+    let get = drg!()
         .arg("get")
         .arg("apps")
         .arg(app.clone())
@@ -337,7 +337,7 @@ fn set_labels_dont_overwrite_existing_labels(context: &String, app: String) {
     assert!(output.metadata.labels.get("another-label").is_some());
     assert!(output.metadata.labels.get("test-label").is_some());
 
-    app_delete(context, app);
+    app_delete(app);
 }
 
 // TODO add more tests

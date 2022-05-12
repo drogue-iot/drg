@@ -1,11 +1,11 @@
 use assert_cmd::Command;
-use drg_test_utils::{setup_ctx, setup_no_login};
+use drg_test_utils::{setup, setup_no_login};
 use std::env;
 
 #[test]
 /// make sure we can log in into a drogue-cloud instance using an api token
 fn test_login_with_api_token() {
-    setup_ctx();
+    setup();
 }
 
 #[test]
