@@ -56,16 +56,22 @@ fn delete_app(context: &String, app: String) {
         .assert()
         .success();
 
-    let read = drg!(context)
-        .arg("get")
-        .arg("app")
-        .arg(app)
-        .assert()
-        .failure();
+    let read = drg!(context).arg("get").arg("app").arg(app).assert();
 
-    let output: JsonOutcome = serde_json::from_slice(&read.get_output().stdout).unwrap();
-    assert!(output.is_failure());
-    assert_eq!(output.http_status, Some(404));
+    match read.try_failure() {
+        Ok(assert) => {
+            let output: JsonOutcome = serde_json::from_slice(&assert.get_output().stdout).unwrap();
+            assert!(output.is_failure());
+            assert_eq!(output.http_status, Some(404));
+        }
+        // in some cases, the application can be retrieved if it's not deleted yet.
+        Err(err) => {
+            let output: Application =
+                serde_json::from_slice(&err.get_assert().get_output().stdout).unwrap();
+            // we check if it was marked for deletion. If so, it's all good.
+            assert!(output.metadata.deletion_timestamp.is_some());
+        }
+    }
 }
 
 #[rstest]
