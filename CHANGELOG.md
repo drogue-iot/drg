@@ -1,35 +1,28 @@
 # Version 0.9.0
 
 ## New features
+- Reworked the CLI flow : general improvement in usability, better help messages.
+- drg can now set labels using `drg label` subcommand : `drg label device myDevice aLabel bar=baz` or `drg label app myApp key=val someOtherLabel`
+- drg stream can now filter the stream to only display messages coming from a given device.
 - Add a json output : `-o json`
 - Add a `-o wide` option when listing devices to show more information. Thanks to [lulf](https://github.com/lulf) !
 - Drg now uses `drogue-client` under the hood.
 - Add a "--active" flag to `drg config show` to only show the current active context.
 
 ## Misc. changes
-- Rework the label syntax for something more explicit : `drg label device myDevice aLabel bar=baz` or `drg label app myApp key=val someOtherLabel` 
 - Swap the position of passwords arguments for `drg set password` to make it more aligned with how the data hierarchy. 
+- When creating or updating an application or a device with a full spec file, the application name or device Id will be red from the file, without needing to input it.
+- When creating a token, a description can be optionally provided.
 - Big internal refactoring improving code maintainability.
 - Add integration tests
 
 ## Bug fixes
 - Prevents renaming a context with a name that already exist in the config file.
 
-# Version 0.8.1
-
-## New features
-- Reworked the CLI flow : general improvement in usability, better help messages.
-- drg can now set labels using `drg set labels` subcommand.
-- drg stream can now filter the stream to only display messages coming from a given device.
-
-
-## Misc. changes
-- When creating or updating an application or a device with a full spec file, the application name or device Id will be red from the file, without needing to input it.
-- When creating a token, a description can be optionally provided.
-
 ## Dependencies
-- Updated to clap v3
-- updated to oauth v4
+- Updated to clap 3.0
+- updated to oauth 4.1.0
+- updated to tabular 0.2.0
 
 # Version 0.8.0
 
