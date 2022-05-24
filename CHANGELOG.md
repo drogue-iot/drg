@@ -8,6 +8,7 @@
 
 ## Misc. changes
 - Rework the label syntax for something more explicit : `drg label device myDevice aLabel bar=baz` or `drg label app myApp key=val someOtherLabel` 
+- Swap the position of passwords arguments for `drg set password` to make it more aligned with how the data hierarchy. 
 - Big internal refactoring improving code maintainability.
 - Add integration tests
 

@@ -510,8 +510,8 @@ pub fn app_arguments() -> clap::Command<'static> {
         .subcommand(
             Command::new(ResourceType::password.as_ref())
                 .about("Set a password credentials for a device")
-                .arg(&password)
                 .arg(device_id.clone().required(true))
+                .arg(&password)
                 .arg(&set_password_username),
         )
         .subcommand(
