@@ -66,17 +66,15 @@ fn add_and_delete_member(app: String) {
             .arg(app.clone())
     );
 
-    let delete = drg!()
-        .arg("delete")
-        .arg("member")
-        .arg(user)
-        .arg("--application")
-        .arg(app.clone())
-        .assert()
-        .success();
-
-    let output: JsonOutcome = serde_json::from_slice(&delete.get_output().stdout).unwrap();
-    assert!(output.is_success());
+    retry_409!(
+        3,
+        drg!()
+            .arg("delete")
+            .arg("member")
+            .arg(user)
+            .arg("--application")
+            .arg(app.clone())
+    );
 
     let read = drg!()
         .arg("get")

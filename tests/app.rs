@@ -242,12 +242,11 @@ fn add_labels(app: String) {
     retry_409!(
         3,
         drg!()
-            .arg("set")
             .arg("label")
+            .arg("application")
+            .arg(app.clone())
             .arg("test-label=someValue")
             .arg("owner=tests")
-            .arg("--application")
-            .arg(app.clone())
     );
 
     let read = drg!()
@@ -274,11 +273,10 @@ fn list_apps_with_labels(app: String) {
     retry_409!(
         3,
         drg!()
-            .arg("set")
             .arg("label")
-            .arg("test-label=list")
-            .arg("--application")
+            .arg("application")
             .arg(app.clone())
+            .arg("test-label=list")
     );
 
     let read = drg!()
@@ -307,21 +305,19 @@ fn set_labels_dont_overwrite_existing_labels(app: String) {
     retry_409!(
         3,
         drg!()
-            .arg("set")
             .arg("label")
-            .arg("test-label=bar")
-            .arg("--application")
+            .arg("application")
             .arg(app.clone())
+            .arg("test-label=bar")
     );
 
     retry_409!(
         3,
         drg!()
-            .arg("set")
             .arg("label")
-            .arg("another-label=foo")
-            .arg("--application")
+            .arg("application")
             .arg(app.clone())
+            .arg("another-label=foo")
     );
 
     let get = drg!()

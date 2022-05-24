@@ -262,12 +262,11 @@ fn create_from_file(app: &String) {
 #[rstest]
 fn add_labels(app: &String, device: String) {
     drg!()
-        .arg("set")
         .arg("label")
+        .arg("device")
+        .arg(device.clone())
         .arg("test-label=someValue")
         .arg("owner=tests")
-        .arg("--device")
-        .arg(device.clone())
         .arg("--application")
         .arg(app.clone())
         .assert()
@@ -297,11 +296,10 @@ fn list_devices_with_labels(app: &String, device: String) {
     retry_409!(
         3,
         drg!()
-            .arg("set")
             .arg("label")
-            .arg("test-label=list")
-            .arg("--device")
+            .arg("device")
             .arg(device.clone())
+            .arg("test-label=list")
             .arg("--application")
             .arg(app.clone())
     );
@@ -331,11 +329,10 @@ fn set_labels_dont_overwrite_existing_labels(app: &String, device: String) {
     retry_409!(
         3,
         drg!()
-            .arg("set")
             .arg("label")
-            .arg("test-label=bar")
-            .arg("--device")
+            .arg("device")
             .arg(device.clone())
+            .arg("test-label=bar")
             .arg("--application")
             .arg(app.clone())
     );
@@ -343,11 +340,10 @@ fn set_labels_dont_overwrite_existing_labels(app: &String, device: String) {
     retry_409!(
         3,
         drg!()
-            .arg("set")
             .arg("label")
-            .arg("another-label=foo")
-            .arg("--device")
+            .arg("device")
             .arg(device.clone())
+            .arg("another-label=foo")
             .arg("--application")
             .arg(app.clone())
     );
