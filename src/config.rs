@@ -113,7 +113,7 @@ impl Config {
             self.contexts.push(context);
             Ok(())
         } else {
-            context.default_app = self.get_context(&Some(name.clone()))?.default_app.clone();
+            //context.default_app = self.get_context(&Some(name.clone()))?.default_app.clone();
             self.replace_context(context)?;
             Ok(())
         }
@@ -252,7 +252,12 @@ impl Config {
     // https://github.com/ctron/operator-framework/blob/e827775e023dfbe22a9defbf31e6a87f46d38ef5/src/install/container/env.rs#L259-L277
 
     pub fn rename_context(&mut self, name: String, new_name: String) -> Result<()> {
-        if self.contains_context(&name) {
+        if self.contains_context(&new_name) {
+            Err(anyhow!(
+                "Context {} already exists in config file.",
+                new_name
+            ))
+        } else if self.contains_context(&name) {
             let ctx = self.get_context_as_mut(&name)?;
             ctx.rename(new_name.clone());
 

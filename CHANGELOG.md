@@ -12,6 +12,9 @@
 - Big internal refactoring improving code maintainability.
 - Add integration tests
 
+## Bug fixes
+- Prevents renaming a context with a name that already exist in the config file.
+
 # Version 0.8.1
 
 ## New features
