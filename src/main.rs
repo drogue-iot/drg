@@ -104,7 +104,13 @@ async fn main() -> Result<()> {
                 config.list_contexts();
             }
             "show" => {
-                println!("{}", config);
+                if c.is_present("active") {
+                    config
+                        .get_context(&context_arg)
+                        .map(|c| println!("{}", c))?;
+                } else {
+                    println!("{}", config);
+                }
             }
             "default-context" => {
                 config.set_active_context(ctx_id.unwrap())?;

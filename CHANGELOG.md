@@ -4,6 +4,7 @@
 - Add a json output : `-o json`
 - Add a `-o wide` option when listing devices to show more information. Thanks to [lulf](https://github.com/lulf) !
 - Drg now uses `drogue-client` under the hood.
+- Add a "--active" flag to `drg config show` to only show the current active context.
 
 ## Misc. changes
 - Big internal refactoring improving code maintainability.

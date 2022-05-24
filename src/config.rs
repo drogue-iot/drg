@@ -278,6 +278,17 @@ impl fmt::Display for Config {
     }
 }
 
+impl fmt::Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_yaml::to_string(&self)
+                .unwrap_or_else(|_| { "Cannot deserialize the context.".to_string() })
+        )
+    }
+}
+
 impl Context {
     pub fn init_with_access_token(name: String, api: Url, auth: AccessToken) -> Self {
         let dummy_url = Url::parse("https://example.net").unwrap();

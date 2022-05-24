@@ -549,7 +549,16 @@ pub fn app_arguments() -> clap::Command<'static> {
         .subcommand(
             Command::new("list").about("List existing contexts names in configuration file"),
         )
-        .subcommand(Command::new("show").about("Show full configuration file"))
+        .subcommand(
+            Command::new("show")
+                .about("Show full configuration file")
+                .arg(
+                    Arg::new("active")
+                        .long("active")
+                        .takes_value(false)
+                        .help("Show only the current active context"),
+                ),
+        )
         .subcommand(
             Command::new("default-context")
                 .about("Set a context as the active context")

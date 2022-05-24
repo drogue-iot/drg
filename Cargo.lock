@@ -2342,9 +2342,9 @@ dependencies = [
 
 [[package]]
 name = "tabular"
-version = "0.1.4"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7e35bee02dcefe64a74065b6b869d241eab1a02fea0d65e6074ce4e51894c3b"
+checksum = "d9a2882c514780a1973df90de9d68adcd8871bacc9a6331c3f28e6d2ff91a3d1"
 dependencies = [
  "unicode-width",
 ]
