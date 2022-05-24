@@ -16,6 +16,7 @@ pub enum Action {
     edit,
     get,
     set,
+    label,
     command,
     stream,
     login,
@@ -51,7 +52,6 @@ pub enum ResourceType {
     gateway,
     password,
     alias,
-    label,
     #[strum(serialize = "default-app")]
     default_app,
     #[strum(serialize = "default-context")]
@@ -346,7 +346,35 @@ pub fn app_arguments() -> clap::Command<'static> {
                 .arg(&app_flag),
         );
 
-    let labels = Arg::new(Parameters::labels.as_ref())
+    let labels_values = Arg::new(Parameters::label.as_ref())
+        .required(true)
+        .takes_value(true)
+        .multiple_values(true)
+        //.use_value_delimiter(true)
+        .help("The labels and values must be separated by an equal sign:'='")
+        .long_help("The labels and values must be separated by an equal sign:'='. Multiples labels are accepted.")
+        .value_name("key=value");
+
+    //label subcommand
+    let label = Command::new(Action::label.as_ref())
+        .about("Label resources in Drogue Cloud")
+        .arg_required_else_help(true)
+        .subcommand(
+            Command::new(ResourceType::application.as_ref())
+                .alias("app")
+                .about("Add labels to an application")
+                .arg(&app_id.clone().required(true))
+                .arg(&labels_values.clone()),
+        )
+        .subcommand(
+            Command::new(ResourceType::device.as_ref())
+                .about("Add labels to a device")
+                .arg(app_flag.clone())
+                .arg(&device_id.clone().required(true))
+                .arg(&labels_values),
+        );
+
+    let label_flag = Arg::new(Parameters::labels.as_ref())
         .required(false)
         .short('l')
         .long(Parameters::labels.as_ref())
@@ -364,14 +392,14 @@ pub fn app_arguments() -> clap::Command<'static> {
                 .about("Retrieve a device spec. If no device ID is passed, list all devices for the app.")
                 .arg(&device_id)
                 .arg(&app_flag)
-                .arg(&labels)
+                .arg(&label_flag)
         )
         .subcommand(
             Command::new(ResourceType::application.as_ref())
                 .aliases(&["applications", "app", "apps"])
                 .about("Retrieve application details. If no application ID is passed, list all apps the user have access to.")
                 .arg(&app_id)
-                .arg(&labels)
+                .arg(&label_flag)
         )
         .subcommand(
             Command::new(ResourceType::member.as_ref())
@@ -468,19 +496,6 @@ pub fn app_arguments() -> clap::Command<'static> {
         .required(true)
         .help("The alias id for the device");
 
-    let label = Arg::new(Parameters::label.as_ref())
-        .required(true)
-        .multiple_values(true)
-        .help("The labels and values must be separated by an equal sign:'='")
-        .long_help("The labels and values must be separated by an equal sign:'='. Multiples labels are accepted.")
-        .value_name("key=value");
-
-    let dev_flag = Arg::new("dev-flag")
-        .long("device")
-        .takes_value(true)
-        .value_name("DeviceId")
-        .help("Device to attach the label(s). If omitted, the label will be applied to the app.");
-
     // set subcommand
     let set = Command::new(Action::set.as_ref())
         .about("Shortcuts to configure properties for apps or devices")
@@ -504,13 +519,6 @@ pub fn app_arguments() -> clap::Command<'static> {
                 .about("Add an alias for a device")
                 .arg(device_id.clone().required(true))
                 .arg(alias_id),
-        )
-        .subcommand(
-            Command::new(ResourceType::label.as_ref())
-                .about("Set a label to a device or application")
-                .arg(&label)
-                .arg(dev_flag)
-                .arg(&app_flag),
         );
 
     let count = Arg::new(Parameters::count.as_ref())
@@ -664,6 +672,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         .subcommand(stream)
         .subcommand(config)
         .subcommand(transfer)
+        .subcommand(label)
         .subcommand(
             Command::new(Action::command.as_ref())
                 .alias("cmd")

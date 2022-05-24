@@ -7,6 +7,7 @@
 - Add a "--active" flag to `drg config show` to only show the current active context.
 
 ## Misc. changes
+- Rework the label syntax for something more explicit : `drg label device myDevice aLabel bar=baz` or `drg label app myApp key=val someOtherLabel` 
 - Big internal refactoring improving code maintainability.
 - Add integration tests
 

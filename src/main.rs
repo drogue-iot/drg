@@ -504,12 +504,10 @@ async fn main() -> Result<()> {
             let (target, command) = cmd.subcommand().unwrap();
             let app_id = arguments::get_app_id(command, context)?;
 
-            let id = match ResourceType::from_str(target)? {
-                ResourceType::label => None,
-                _ => command
-                    .value_of(ResourceId::deviceId.as_ref())
-                    .map(|s| s.to_string()),
-            };
+            let id = command
+                .value_of(ResourceId::deviceId.as_ref())
+                .map(|s| s.to_string());
+
             let op = DeviceOperation::new(app_id.clone(), id, None, None)?;
 
             match ResourceType::from_str(target)? {
@@ -538,24 +536,6 @@ async fn main() -> Result<()> {
                         .to_string();
 
                     display_simple(op.add_alias(context, alias).await, json_output)
-                }
-                ResourceType::label => {
-                    let labels = command.values_of(ResourceType::label.as_ref()).unwrap();
-
-                    match command.value_of("dev-flag") {
-                        Some(dev_id) => display_simple(
-                            DeviceOperation::new(app_id, Some(dev_id.to_string()), None, None)?
-                                .add_labels(context, &labels)
-                                .await,
-                            json_output,
-                        ),
-                        None => display_simple(
-                            ApplicationOperation::new(Some(app_id), None, None)?
-                                .add_labels(context, &labels)
-                                .await,
-                            json_output,
-                        ),
-                    }
                 }
                 // The other enum variants are not exposed by clap
                 _ => unreachable!(),
@@ -615,7 +595,43 @@ async fn main() -> Result<()> {
             stream::stream_app(context, &app_id, device, count).await?;
             0
         }
-        // todo implement the other Actions variants?
+
+        Action::label => {
+            let (target, command) = cmd.subcommand().unwrap();
+            let labels = command.values_of(Parameters::label.as_ref()).unwrap();
+
+            match ResourceType::from_str(target)? {
+                ResourceType::application => {
+                    let app = command
+                        .value_of(ResourceId::applicationId.as_ref())
+                        .unwrap()
+                        .to_string();
+
+                    display_simple(
+                        ApplicationOperation::new(Some(app), None, None)?
+                            .add_labels(context, &labels)
+                            .await,
+                        json_output,
+                    )
+                }
+                ResourceType::device => {
+                    let app_id = arguments::get_app_id(command, context)?;
+
+                    let device = command
+                        .value_of(ResourceId::deviceId.as_ref())
+                        .unwrap()
+                        .to_string();
+
+                    display_simple(
+                        DeviceOperation::new(app_id, Some(device), None, None)?
+                            .add_labels(context, &labels)
+                            .await,
+                        json_output,
+                    )
+                }
+                _ => unreachable!(),
+            }?
+        }
         _ => unimplemented!(),
     };
 
