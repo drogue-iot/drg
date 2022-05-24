@@ -104,7 +104,7 @@ impl Config {
         Ok(config)
     }
 
-    pub fn add_context(&mut self, mut context: Context) -> Result<()> {
+    pub fn add_context(&mut self, context: Context) -> Result<()> {
         let name = &context.name;
         if !self.contains_context(name) {
             if self.contexts.is_empty() {
