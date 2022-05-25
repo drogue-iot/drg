@@ -41,11 +41,19 @@ fn delete_access_token(_context: ()) {
     let delete = drg!()
         .arg("delete")
         .arg("token")
-        .arg(prefix)
+        .arg(prefix.clone())
         .assert()
         .success();
 
     let output: JsonOutcome = serde_json::from_slice(&delete.get_output().stdout).unwrap();
 
     assert!(output.is_success());
+
+    let list = drg!().arg("get").arg("token").assert().success();
+
+    let output: Vec<AccessToken> = serde_json::from_slice(&list.get_output().stdout).unwrap();
+
+    for token in output {
+        assert_ne!(token.prefix, prefix)
+    }
 }
