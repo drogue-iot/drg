@@ -68,6 +68,6 @@ test-utils = { path = "test-utils" }
 uuid = {version= "1.0", features = ["v4"]}
 
 [patch.crates-io]
-drogue-client = { git = "https://github.com/drogue-iot/drogue-client", rev = "94ece8681b6bca9c792d651690a03b219eb97e2d" } # FIXME: awaiting release
+drogue-client = { git = "https://github.com/drogue-iot/drogue-client", rev = "4cb3417dba977dfb55a1a208d4cbdbab5e1ff737" } # FIXME: awaiting release
 #drogue-client = { path = "../drogue-client" }
 assert_cmd = { git = "https://github.com/jbtrystram/assert_cmd", rev = "7cee4bc51833617bfcc1b55d791cc57c4436b061"} #fixme https://github.com/assert-rs/assert_cmd/pull/144

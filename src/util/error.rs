@@ -22,7 +22,13 @@ impl From<ClientError> for DrogueError {
         match error {
             ClientError::Client(e) => DrogueError::UnexpectedClient(anyhow!(e)),
             ClientError::Request(msg) => DrogueError::UnexpectedClient(anyhow!("{}", msg)),
-            ClientError::Service(e) => DrogueError::Service(e.message, e.status.as_u16()),
+            ClientError::Service {
+                code: c,
+                error: msg,
+            } => DrogueError::Service(msg.message, c.as_u16()),
+            ClientError::Response(c) => {
+                DrogueError::Service("Unknown error".to_string(), c.as_u16())
+            }
             ClientError::Token(e) => DrogueError::UnexpectedClient(anyhow!(e)),
             ClientError::Url(e) => DrogueError::ConfigIssue(format!("Invalid url: {}", e)),
             ClientError::Syntax(e) => {
