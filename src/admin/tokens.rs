@@ -10,7 +10,7 @@ use drogue_client::tokens::v1::{AccessToken, Client, CreatedAccessToken};
 pub async fn get_api_keys(config: &Context) -> Result<Outcome<Vec<AccessToken>>, DrogueError> {
     let client = Client::new(
         reqwest::Client::new(),
-        config.registry_url.clone(),
+        config.drogue_cloud_url.clone(),
         config.token.clone(),
     );
     handle_operation!(client.get_tokens().await)
@@ -22,7 +22,7 @@ pub async fn create(
 ) -> Result<Outcome<CreatedAccessToken>, DrogueError> {
     let client = Client::new(
         reqwest::Client::new(),
-        config.registry_url.clone(),
+        config.drogue_cloud_url.clone(),
         config.token.clone(),
     );
 
@@ -32,7 +32,7 @@ pub async fn create(
 pub async fn delete(config: &Context, prefix: &str) -> Result<Outcome<String>, DrogueError> {
     let client = Client::new(
         reqwest::Client::new(),
-        config.registry_url.clone(),
+        config.drogue_cloud_url.clone(),
         config.token.clone(),
     );
 
