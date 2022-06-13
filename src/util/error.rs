@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use drogue_client::error::ClientError;
-use serde_json::Error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -38,7 +37,19 @@ impl From<ClientError> for DrogueError {
 }
 
 impl From<serde_json::Error> for DrogueError {
-    fn from(e: Error) -> Self {
-        DrogueError::InvalidInput(format!("Deserialization error: {}", e))
+    fn from(e: serde_json::Error) -> Self {
+        DrogueError::InvalidInput(format!("JSON Deserialization error: {}", e))
+    }
+}
+
+impl From<serde_yaml::Error> for DrogueError {
+    fn from(e: serde_yaml::Error) -> Self {
+        DrogueError::InvalidInput(format!("YAML Deserialization error: {}", e))
+    }
+}
+
+impl From<std::io::Error> for DrogueError {
+    fn from(e: std::io::Error) -> Self {
+        DrogueError::InvalidInput(format!("Filesystem error: {}", e))
     }
 }

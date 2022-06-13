@@ -8,39 +8,81 @@ mod openid;
 mod stream;
 mod util;
 
-use arguments::{Action, Parameters, ResourceId, ResourceType};
+use arguments::cli::{Action, Parameters, ResourceId, ResourceType, Transfer};
+use std::io::Write;
 
 use crate::admin::tokens;
 use crate::applications::ApplicationOperation;
-use crate::arguments::Transfer;
 use crate::config::{AccessToken, Config, Context};
 use crate::devices::DeviceOperation;
-use crate::util::{display, display_simple};
+use crate::util::{display, display_simple, DrogueError};
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
-use drogue_client::admin::v1::Role;
-use json_value_merge::Merge;
-use serde_json::json;
+use clap::ArgMatches;
 use std::process::exit;
 use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let matches = arguments::app_arguments().get_matches();
-    let config_path = matches.value_of(Parameters::config.as_ref());
-    let (command, submatches) = matches.subcommand().unwrap();
-    let context_arg = matches
-        .value_of(ResourceId::contextId.as_ref())
-        .map(|s| s.to_string());
+    let matches = arguments::cli::app_arguments().get_matches();
 
     simple_logger::SimpleLogger::new()
         .with_level(util::log_level(&matches))
         .init()
         .unwrap();
 
-    // load the config file
-    let config_result: Result<Config> =
-        Config::from(config_path).context("Error loading config file");
+    let code = if matches.is_present(Parameters::interactive.as_ref()) {
+        loop {
+            let matches = match arguments::cli::app_arguments().try_get_matches_from(prompt()) {
+                Ok(matches) => matches,
+                Err(e) => {
+                    let _ = e.print();
+                    continue;
+                }
+            };
+
+            if matches.subcommand_name() == Some("exit") {
+                break;
+            }
+
+            process_arguments(matches).await?;
+        }
+        0
+    } else {
+        process_arguments(matches).await?
+    };
+
+    exit(code)
+}
+
+fn prompt() -> Vec<String> {
+    let mut line = String::new();
+    print!("drg 🚀 ");
+    std::io::stdout().flush().unwrap();
+    std::io::stdin()
+        .read_line(&mut line)
+        .expect("Error: Could not read a line");
+
+    line = line.trim().to_string();
+    line.insert_str(0, "drg ");
+
+    return line
+        .split(' ')
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+}
+
+//todo avoid config reloads
+
+async fn process_arguments(matches: ArgMatches) -> Result<i32> {
+    // load the config
+    let config_path = matches.value_of(Parameters::config.as_ref());
+    let config_result = Config::from(config_path);
+
+    let (command, submatches) = matches.subcommand().unwrap();
+    let context_arg = matches
+        .value_of(ResourceId::contextId.as_ref())
+        .map(|s| s.to_string());
 
     if command == Action::login.as_ref() {
         let url = util::url_validation(submatches.value_of(Parameters::url.as_ref()).unwrap())?;
@@ -79,85 +121,27 @@ async fn main() -> Result<()> {
             config.set_active_context(name)?;
         }
 
+        // fixme refactor
         config.write(config_path)?;
-        exit(0);
+        return Ok(0);
     } else if command == Action::version.as_ref() {
-        util::print_version(&config_result).await;
-        exit(0);
+        util::print_version(config_result.ok().as_ref()).await;
+        return Ok(0);
     }
 
-    let mut config: Config = config_result?;
+    let mut config = config_result?;
 
     if command == Action::config.as_ref() {
-        let cmd = submatches;
-        let (v, c) = cmd.subcommand().unwrap();
-
-        let ctx_id = c
-            .value_of(ResourceId::contextId.as_ref())
-            .map(|s| s.to_string());
-
-        match v {
-            "create" => {
-                println!("To create a new context use drg login");
-            }
-            "list" => {
-                config.list_contexts();
-            }
-            "show" => {
-                if c.is_present("active") {
-                    config
-                        .get_context(&context_arg)
-                        .map(|c| println!("{}", c))?;
-                } else {
-                    println!("{}", config);
-                }
-            }
-            "default-context" => {
-                config.set_active_context(ctx_id.unwrap())?;
-                config.write(config_path)?;
-            }
-            "delete" => {
-                let id = ctx_id.unwrap();
-                config.delete_context(&id)?;
-                config.write(config_path)?;
-            }
-            "default-app" => {
-                let id = c
-                    .value_of(ResourceId::applicationId.as_ref())
-                    .unwrap()
-                    .to_string();
-                let context = config.get_context_mut(&ctx_id)?;
-
-                context.set_default_app(id);
-                config.write(config_path)?;
-            }
-            "rename" => {
-                let new_ctx = c.value_of("new_context_id").unwrap().to_string();
-
-                config.rename_context(ctx_id.unwrap(), new_ctx)?;
-                config.write(config_path)?;
-            }
-            "default-algo" => {
-                let algo = c
-                    .value_of(&Parameters::algo.as_ref())
-                    .map(|a| util::SignAlgo::from_str(a).unwrap())
-                    .unwrap();
-                let context = config.get_context_mut(&ctx_id)?;
-
-                context.set_default_algo(algo);
-                config.write(config_path)?;
-            }
-            _ => {
-                unreachable!("forgot to route config subcommand : {}", v);
-            }
-        }
-        exit(0);
+        //fixme handle the pretty print: issue #107
+        let code = arguments::config::subcommand(submatches, &mut config, &context_arg)?;
+        // fixme refactor
+        config.write(config_path)?;
+        return Ok(code);
     }
 
     // The following commands needs a context and a valid token
-    if openid::verify_token_validity(config.get_context_mut(&context_arg)?).await? {
-        config.write(config_path)?;
-    }
+    openid::verify_token_validity(config.get_context_mut(&context_arg)?).await?;
+
     let context = config.get_context(&context_arg)?;
 
     if command == Action::whoami.as_ref() {
@@ -172,9 +156,11 @@ async fn main() -> Result<()> {
             util::print_endpoints(context, service).await?;
         } else {
             openid::print_whoami(context);
-            util::print_version(&Ok(config)).await;
+            util::print_version(Some(&config)).await;
         }
-        exit(0)
+        // fixme refactor
+        config.write(config_path)?;
+        return Ok(0);
     }
 
     log::warn!("Using context: {}", context.name);
@@ -187,319 +173,10 @@ async fn main() -> Result<()> {
         .unwrap_or(false);
 
     let exit_code = match verb? {
-        Action::create => {
-            let (res, command) = cmd.subcommand().unwrap();
-            let resource = ResourceType::from_str(res)?;
-
-            match resource {
-                ResourceType::application => {
-                    let data =
-                        util::json_parse_option(command.value_of(Parameters::spec.as_ref()))?;
-                    let file = command.value_of(Parameters::filename.as_ref());
-                    let app_id = command
-                        .value_of(ResourceId::applicationId.as_ref())
-                        .map(|s| s.to_string());
-
-                    display_simple(
-                        ApplicationOperation::new(app_id, file, data)?
-                            .create(context)
-                            .await,
-                        json_output,
-                    )
-                }
-                ResourceType::device => {
-                    let app_id = arguments::get_app_id(command, context)?;
-                    let mut data =
-                        util::json_parse_option(command.value_of(Parameters::spec.as_ref()))?;
-                    let file = command.value_of(Parameters::filename.as_ref());
-                    let dev_id = command
-                        .value_of(ResourceId::deviceId.as_ref())
-                        .map(|s| s.to_string());
-
-                    // TODO : move into deviceOperation creation ?
-                    // add an alias with the correct subject dn.
-                    if command.is_present(Parameters::cert.as_ref()) {
-                        let alias = format!(
-                            "CN={}, O=Drogue IoT, OU={}",
-                            &util::name_from_json_or_file(dev_id.clone(), file)?,
-                            app_id
-                        );
-                        let alias_spec = json!([alias]);
-
-                        data = match data {
-                            Some(mut d) => {
-                                d.merge_in("/alias", alias_spec);
-                                Some(d)
-                            }
-                            None => Some(alias_spec),
-                        };
-                    }
-
-                    let op = DeviceOperation::new(app_id, dev_id.clone(), file, data)?;
-                    display_simple(op.create(context).await, json_output)
-                }
-                ResourceType::member => {
-                    let app_id = arguments::get_app_id(command, context)?;
-                    let role = command
-                        .value_of(Parameters::role.as_ref())
-                        .map(|r| Role::from_str(r).unwrap())
-                        .unwrap();
-
-                    let user = command.value_of(ResourceType::member.as_ref()).unwrap();
-
-                    display_simple(
-                        admin::member_add(context, &app_id, user, role).await,
-                        json_output,
-                    )
-                }
-                ResourceType::token => {
-                    let description = command.value_of(Parameters::description.as_ref());
-                    display(
-                        tokens::create(context, description).await,
-                        json_output,
-                        tokens::created_token_print,
-                    )
-                }
-                //TODO verify appcert
-                ResourceType::app_cert | ResourceType::device_cert => {
-                    let app_id = arguments::get_app_id(command, context)?;
-                    let days = command.value_of(&Parameters::days.as_ref());
-                    let key_pair_algorithm = command
-                        .value_of(&Parameters::algo.as_ref())
-                        .or_else(|| {
-                            context.default_algo.as_deref().map(|a| {
-                                println!("Using default signature algorithm: {}", a);
-                                a
-                            })
-                        })
-                        .map(|algo| util::SignAlgo::from_str(algo).unwrap());
-
-                    let (key_input, key_pair_algorithm) =
-                        match command.value_of(&Parameters::key_input.as_ref()) {
-                            Some(f) => util::verify_input_key(f).map(|s| (Some(s.0), Some(s.1)))?,
-                            _ => (None, key_pair_algorithm),
-                        };
-
-                    let keyout = command.value_of(&Parameters::key_output.as_ref());
-
-                    let ca_key = &command
-                        .value_of(&Parameters::ca_key.as_ref())
-                        .unwrap()
-                        .to_string();
-
-                    let device_cert = command.value_of(&Parameters::cert_output.as_ref());
-
-                    let device_key = command.value_of(&Parameters::key_output.as_ref());
-
-                    if resource == ResourceType::app_cert {
-                        display_simple(
-                            ApplicationOperation::new(Some(app_id), None, None)?
-                                .add_trust_anchor(
-                                    context,
-                                    keyout,
-                                    key_pair_algorithm,
-                                    days,
-                                    key_input,
-                                )
-                                .await,
-                            json_output,
-                        )
-                    } else {
-                        // Safe unwrap because clap makes sure the argument is provided
-                        let dev_id = command.value_of(ResourceId::deviceId.as_ref()).unwrap();
-
-                        let cert = ApplicationOperation::new(Some(app_id.clone()), None, None)?
-                            .get_trust_anchor(context)
-                            .await?;
-
-                        match util::create_device_certificate(
-                            &app_id,
-                            dev_id,
-                            ca_key,
-                            cert.anchors[0].certificate.as_slice(),
-                            device_key,
-                            device_cert,
-                            key_pair_algorithm,
-                            days,
-                            key_input,
-                        ) {
-                            Ok(_) => {
-                                let alias = format!("CN={}, O=Drogue IoT, OU={}", dev_id, app_id);
-
-                                display_simple(
-                                    DeviceOperation::new(
-                                        app_id,
-                                        Some(dev_id.to_string()),
-                                        None,
-                                        None,
-                                    )?
-                                    .add_alias(context, alias)
-                                    .await,
-                                    json_output,
-                                )
-                            }
-                            _ => Err(anyhow!("Cannot create trust anchor")),
-                        }
-                    }
-                }
-                // The other enum variants are not exposed by clap
-                _ => unreachable!(),
-            }?
-        }
-        Action::delete => {
-            let (res, command) = cmd.subcommand().unwrap();
-            let resource = ResourceType::from_str(res);
-
-            let ignore_missing = command.is_present(Parameters::ignore_missing.as_ref());
-
-            match resource? {
-                ResourceType::application => {
-                    let id = command
-                        .value_of(ResourceId::applicationId.as_ref())
-                        .unwrap()
-                        .to_string();
-                    display_simple(
-                        ApplicationOperation::new(Some(id), None, None)?
-                            .delete(context, ignore_missing)
-                            .await,
-                        json_output,
-                    )
-                }
-                ResourceType::device => {
-                    let app_id = arguments::get_app_id(command, context)?;
-                    let id = command
-                        .value_of(ResourceId::deviceId.as_ref())
-                        .unwrap()
-                        .to_string();
-
-                    display_simple(
-                        DeviceOperation::new(app_id, Some(id), None, None)?
-                            .delete(context, ignore_missing)
-                            .await,
-                        json_output,
-                    )
-                }
-                ResourceType::member => {
-                    let app_id = arguments::get_app_id(command, context)?;
-                    let user = command.value_of(ResourceType::member.as_ref()).unwrap();
-
-                    display_simple(
-                        admin::member_delete(context, app_id.as_str(), user).await,
-                        json_output,
-                    )
-                }
-                ResourceType::token => {
-                    let prefix = command.value_of(ResourceId::tokenPrefix.as_ref()).unwrap();
-                    display_simple(tokens::delete(context, prefix).await, json_output)
-                }
-                // The other enum variants are not exposed by clap
-                _ => unreachable!(),
-            }?
-        }
-        Action::edit => {
-            let (res, command) = cmd.subcommand().unwrap();
-            let resource = ResourceType::from_str(res);
-
-            match resource? {
-                ResourceType::application => {
-                    let file = command.value_of(Parameters::filename.as_ref());
-                    let id = command
-                        .value_of(ResourceId::applicationId.as_ref())
-                        .map(|s| s.to_string());
-                    let spec =
-                        util::json_parse_option(command.value_of(Parameters::spec.as_ref()))?;
-
-                    display_simple(
-                        ApplicationOperation::new(id, file, spec)?
-                            .edit(context)
-                            .await,
-                        json_output,
-                    )
-                }
-                ResourceType::device => {
-                    let dev_id = command
-                        .value_of(ResourceId::deviceId.as_ref())
-                        .map(|s| s.to_string());
-                    let file = command.value_of(Parameters::filename.as_ref());
-                    let app_id = arguments::get_app_id(command, context)?;
-
-                    display_simple(
-                        DeviceOperation::new(app_id, dev_id.clone(), file, None)?
-                            .edit(context)
-                            .await,
-                        json_output,
-                    )
-                }
-                ResourceType::member => {
-                    let app_id = arguments::get_app_id(command, context)?;
-                    display_simple(admin::member_edit(context, &app_id).await, json_output)
-                }
-                // The other enum variants are not exposed by clap
-                _ => unreachable!(),
-            }?
-        }
-        Action::get => {
-            let (res, command) = cmd.subcommand().unwrap();
-            let resource = ResourceType::from_str(res)?;
-
-            match resource {
-                ResourceType::application => {
-                    let app_id = command
-                        .value_of(ResourceId::applicationId.as_ref())
-                        .map(|s| s.to_string());
-                    let labels = command.values_of(Parameters::labels.as_ref());
-
-                    let op = ApplicationOperation::new(app_id.clone(), None, None)?;
-                    match app_id {
-                        Some(_) => display(op.read(context).await, json_output, |app| {
-                            applications::pretty_list(&vec![app.clone()])
-                        }),
-                        None => display(
-                            op.list(context, labels).await,
-                            json_output,
-                            applications::pretty_list,
-                        ),
-                    }?
-                }
-                ResourceType::device => {
-                    let wide = command
-                        .value_of(Parameters::output.as_ref())
-                        .map(|v| v == "wide")
-                        .unwrap_or(false);
-                    let app_id = arguments::get_app_id(command, context)?;
-                    let labels = command.values_of(Parameters::labels.as_ref());
-                    let dev_id = command
-                        .value_of(ResourceId::deviceId.as_ref())
-                        .map(|s| s.to_string());
-
-                    let op = DeviceOperation::new(app_id, dev_id.clone(), None, None)?;
-                    match dev_id {
-                        //fixme : add a pretty print for a single device ?
-                        Some(_) => display(op.read(context).await, json_output, |d| {
-                            devices::pretty_list(&vec![d.clone()], wide)
-                        }),
-                        None => display(op.list(context, labels).await, json_output, |d| {
-                            devices::pretty_list(d, wide)
-                        }),
-                    }?
-                }
-                ResourceType::member => {
-                    let app_id = arguments::get_app_id(command, context)?;
-                    display(
-                        admin::member_list(context, &app_id).await,
-                        json_output,
-                        admin::members_table,
-                    )?
-                }
-                ResourceType::token => display(
-                    tokens::get_api_keys(context).await,
-                    json_output,
-                    tokens::tokens_table,
-                )?,
-                // The other enum variants are not exposed by clap
-                _ => unreachable!(),
-            }
-        }
+        Action::create => arguments::create::subcommand(&cmd, context, json_output).await?,
+        Action::delete => arguments::delete::subcommand(&cmd, context, json_output).await?,
+        Action::edit => arguments::edit::subcommand(&cmd, context, json_output).await?,
+        Action::get => arguments::get::subcommand(&cmd, context, json_output).await?,
         Action::set => {
             let (target, command) = cmd.subcommand().unwrap();
             let app_id = arguments::get_app_id(command, context)?;
@@ -635,5 +312,7 @@ async fn main() -> Result<()> {
         _ => unimplemented!(),
     };
 
-    exit(exit_code)
+    // if the config was changed, save it
+    config.write(config_path)?;
+    Ok(exit_code)
 }

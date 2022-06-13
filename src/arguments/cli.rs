@@ -1,7 +1,5 @@
-use crate::config::Context;
 use crate::util;
-use anyhow::{anyhow, Result};
-use clap::{Arg, ArgGroup, ArgMatches, Command};
+use clap::{Arg, ArgGroup, Command};
 use std::convert::AsRef;
 use strum_macros::{AsRefStr, EnumString};
 
@@ -127,6 +125,8 @@ pub enum Parameters {
     description,
     #[strum(serialize = "access-token")]
     access_token,
+
+    interactive,
 }
 
 pub fn app_arguments() -> clap::Command<'static> {
@@ -655,6 +655,12 @@ pub fn app_arguments() -> clap::Command<'static> {
         .short('k')
         .help("Do not activate the new context.");
 
+    let interactive = Arg::new(Parameters::interactive.as_ref())
+        .long(Parameters::interactive.as_ref())
+        .takes_value(false)
+        .exclusive(true)
+        .help("Start drg in interactive mode.");
+
     Command::new("Drogue Command Line Tool")
         .version(util::VERSION)
         .author("Jb Trystram <jbtrystram@redhat.com>")
@@ -663,6 +669,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         .arg(verbose)
         .arg(&context_arg)
         .arg(&output_format)
+        .arg(&interactive)
         .arg_required_else_help(true)
         .subcommand(create)
         .subcommand(delete)
@@ -721,22 +728,7 @@ pub fn app_arguments() -> clap::Command<'static> {
                         ),
                 ),
         )
-}
-
-pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Context) -> Result<String> {
-    match matches.value_of("app-flag") {
-        Some(a) => Ok(a.to_string()),
-        None => config
-            .default_app
-            .as_ref()
-            .map(|v| {
-                log::debug!("Using default app \"{}\".", &v);
-                v.to_string()
-            })
-            .ok_or_else(|| {
-                anyhow!("Missing app argument and no default app specified in config file.")
-            }),
-    }
+        .subcommand(Command::new("exit").hide(true))
 }
 
 #[test]
