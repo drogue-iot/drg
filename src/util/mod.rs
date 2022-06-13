@@ -29,7 +29,6 @@ use std::convert::TryFrom;
 use std::fs;
 use std::io::stdout;
 use std::io::{Read, Write};
-use std::process::exit;
 use tempfile::Builder;
 use url::Url;
 
@@ -67,7 +66,7 @@ pub fn json_parse_option(data: Option<&str>) -> Result<Option<Value>> {
     }
 }
 
-pub fn editor<S, T>(original: S) -> Result<T>
+pub fn editor<S, T>(original: S) -> Result<T, DrogueError>
 where
     S: Serialize,
     T: DeserializeOwned,
@@ -84,15 +83,11 @@ where
     edit::edit_file(file.path())
         .map_err(|err| {
             log::debug!("{}", err);
-            log::error!(
-                "Error opening a text editor, you can try with the --filename option. \
-                Here is the original resource:"
-            );
             show_json(
                 serde_json::to_string(&original)
                     .unwrap_or_else(|_| String::from("Error serializing the resource")),
             );
-            exit(1);
+            DrogueError::InvalidInput("cannot open a text editor. You can manually edit the file then retry using --filename".to_string())
         })
         .unwrap();
 
@@ -101,18 +96,17 @@ where
     file2.read_to_string(&mut buf)?;
 
     if original_string == buf {
-        println!("Edit cancelled, no changes made.");
-        exit(2);
+        Err(DrogueError::InvalidInput("No changes made".to_string()))
     } else {
         Ok(serde_yaml::from_str(buf.as_str()).context("Invalid YAML data.")?)
     }
 }
 
-pub async fn print_version(config: &Result<Config>) {
+pub async fn print_version(config: Option<&Config>) {
     println!("Drg Version: {}", VERSION);
 
     match config {
-        Ok(cfg) => {
+        Some(cfg) => {
             let context = cfg.get_context(&None);
             match context {
                 Ok(ctx) => match get_drogue_services_version(&ctx.drogue_cloud_url).await {
@@ -128,16 +122,13 @@ pub async fn print_version(config: &Result<Config>) {
                 }
             }
         }
-        Err(e) => {
+        None => {
             println!(
-                "Invalid configuration file. Compatible with v{}",
+                "No configuration file. Compatible with v{}",
                 COMPATIBLE_DROGUE_VERSION
             );
-            log::info!("{}", e)
         }
     }
-
-    exit(0);
 }
 
 pub fn log_level(matches: &ArgMatches) -> LevelFilter {

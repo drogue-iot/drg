@@ -7,6 +7,7 @@ use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exi
 use async_trait::async_trait;
 use drogue_client::openid::{Credentials, TokenProvider};
 
+use crate::DrogueError;
 use chrono::{DateTime, Utc};
 use core::fmt;
 use dirs::config_dir;
@@ -20,6 +21,8 @@ use url::Url;
 pub struct Config {
     pub active_context: String,
     pub contexts: Vec<Context>,
+    #[serde(skip, default)]
+    changed: bool,
     //todo : when loading, put a ref to the active context for faster access
     // to avoid looping through the contexts each time.
     //#[serde(skip)]
@@ -86,18 +89,22 @@ impl Config {
         Config {
             active_context: String::new(),
             contexts: Vec::new(),
+            changed: true,
             //active_ctx_ref: None,
         }
     }
-    pub fn from(path: Option<&str>) -> Result<Config> {
+    pub fn from(path: Option<&str>) -> Result<Config, DrogueError> {
         let path = eval_config_path(path);
         log::info!("Loading configuration file: {}", &path);
 
-        let file = File::open(path).context(
-            "Unable to open configuration file. Did you log into a drogue cloud cluster ?",
-        )?;
-        let config: Config =
-            serde_yaml::from_reader(file).context("Invalid configuration file.")?;
+        let file = File::open(path).map_err(|e| {
+            DrogueError::ConfigIssue(format!(
+                "Cannot open config file. Did you log in into a drogue-cloud instance? {}",
+                e
+            ))
+        })?;
+        let config: Config = serde_yaml::from_reader(file)
+            .map_err(|_| DrogueError::ConfigIssue(format!("Cannot deserialize config file.",)))?;
 
         // let active_ref = config.get_active_context()?;
         // config.active_ctx_ref = Some(active_ref);
@@ -106,17 +113,16 @@ impl Config {
 
     pub fn add_context(&mut self, context: Context) -> Result<()> {
         let name = &context.name;
-        if !self.contains_context(name) {
+        if self.contains_context(name) {
+            self.replace_context(context)?;
+        } else {
             if self.contexts.is_empty() {
                 self.active_context = name.clone();
             }
             self.contexts.push(context);
-            Ok(())
-        } else {
-            //context.default_app = self.get_context(&Some(name.clone()))?.default_app.clone();
-            self.replace_context(context)?;
-            Ok(())
         }
+        self.changed = true;
+        Ok(())
     }
 
     fn replace_context(&mut self, context: Context) -> Result<()> {
@@ -124,6 +130,7 @@ impl Config {
         self.delete_context(name)?;
         println!("Updated existing context {}", &name);
         self.contexts.push(context);
+        self.changed = true;
         Ok(())
     }
 
@@ -214,6 +221,7 @@ impl Config {
         if self.contains_context(&name) {
             println!("Switched active context to: {}", &name);
             self.active_context = name;
+            self.changed = true;
             Ok(())
         } else {
             Err(anyhow!("Context {} does not exist in config file.", name))
@@ -221,14 +229,18 @@ impl Config {
     }
 
     pub fn write(&self, path: Option<&str>) -> Result<()> {
-        let path = eval_config_path(path);
-        if let Some(parent) = Path::new(&path).parent() {
-            create_dir_all(parent).context("Failed to create parent directory of configuration")?;
-        }
+        if self.changed {
+            let path = eval_config_path(path);
+            if let Some(parent) = Path::new(&path).parent() {
+                create_dir_all(parent)
+                    .context("Failed to create parent directory of configuration")?;
+            }
 
-        log::info!("Saving config file: {}", &path);
-        write(&path, serde_yaml::to_string(&self)?)
-            .context(format!("Unable to write config file :{}", path))
+            log::info!("Saving config file: {}", &path);
+            write(&path, serde_yaml::to_string(&self)?)
+                .context(format!("Unable to write config file :{}", path))?;
+        }
+        Ok(())
     }
 
     pub fn delete_context(&mut self, name: &str) -> Result<()> {
@@ -242,6 +254,7 @@ impl Config {
                     self.active_context = String::new();
                 }
             }
+            self.changed = true;
             Ok(())
         } else {
             Err(anyhow!("Context {} does not exist in config file.", name))
@@ -264,6 +277,7 @@ impl Config {
             if self.active_context == name {
                 self.active_context = new_name;
             }
+            self.changed = true;
             Ok(())
         } else {
             Err(anyhow!("Context {} does not exist in config file.", name))
