@@ -36,7 +36,6 @@ pub async fn subcommand(matches: &ArgMatches, context: &Context, json_output: bo
                 .value_of(ResourceId::deviceId.as_ref())
                 .map(|s| s.to_string());
 
-            // TODO : move into deviceOperation creation ?
             // add an alias with the correct subject dn.
             if command.is_present(Parameters::cert.as_ref()) {
                 let alias = format!(

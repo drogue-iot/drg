@@ -99,12 +99,11 @@ impl Config {
 
         let file = File::open(path).map_err(|e| {
             DrogueError::ConfigIssue(format!(
-                "Cannot open config file. Did you log in into a drogue-cloud instance? {}",
-                e
+                "Cannot open config file. Did you log in into a drogue-cloud instance? {e}"
             ))
         })?;
         let config: Config = serde_yaml::from_reader(file)
-            .map_err(|_| DrogueError::ConfigIssue(format!("Cannot deserialize config file.",)))?;
+            .map_err(|_| DrogueError::ConfigIssue("Cannot deserialize config file.".to_string()))?;
 
         // let active_ref = config.get_active_context()?;
         // config.active_ctx_ref = Some(active_ref);
