@@ -7,27 +7,24 @@ use rstest::*;
 
 #[fixture]
 #[once]
-fn app() -> String {
+fn context() -> () {
     setup().success();
-    let app = app_create();
-    app
 }
 
 #[fixture]
-fn device(app: &String) -> String {
-    device_create(app)
+pub fn app(_context: &()) -> String {
+    app_create()
 }
 
 #[rstest]
-fn generate_and_add_trust_anchor(app: &String) {
-    retry_409!(
-        3,
-        drg!()
-            .arg("create")
-            .arg("app-cert")
-            .arg("--application")
-            .arg(app.clone())
-    );
+fn generate_and_add_trust_anchor(app: String) {
+    drg!()
+        .arg("create")
+        .arg("app-cert")
+        .arg("--application")
+        .arg(app.clone())
+        .assert()
+        .success();
 
     let read = drg!()
         .arg("get")
@@ -48,7 +45,9 @@ fn generate_and_add_trust_anchor(app: &String) {
 }
 
 #[rstest]
-fn create_device_certificate(app: &String, device: String) {
+fn create_device_certificate(app: String) {
+    let device = device_create(&app);
+
     retry_409!(
         3,
         drg!()
