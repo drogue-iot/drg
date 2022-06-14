@@ -26,6 +26,8 @@ pub fn setup() -> Assert {
         .arg(url)
         .arg("--access-token")
         .arg(cred)
+        .arg("-c")
+        .arg("integration-tests")
         .assert()
 }
 

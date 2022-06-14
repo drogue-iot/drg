@@ -21,7 +21,7 @@ pub fn get_app_id<'a>(matches: &'a ArgMatches, config: &'a Context) -> Result<St
                 v.to_string()
             })
             .ok_or_else(|| {
-                anyhow!("Missing app argument and no default app specified in config file.")
+                anyhow!("Missing --application argument (no default app set in the config).")
             }),
     }
 }

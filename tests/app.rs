@@ -340,4 +340,3 @@ fn set_labels_dont_overwrite_existing_labels(app: String) {
 // - update an app preserve existing spec
 // - update an app spec with invalid data should fail
 // - update an app with invalid data fails
-// - add and read trust anchor

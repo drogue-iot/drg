@@ -180,6 +180,7 @@ pub fn app_arguments() -> clap::Command<'static> {
 
     let ca_key = Arg::new(Parameters::ca_key.as_ref())
         .long(Parameters::ca_key.as_ref())
+        .value_name("path/to/key")
         .takes_value(true)
         .required(true)
         .help("Private key of the CA i.e application.");
@@ -192,6 +193,7 @@ pub fn app_arguments() -> clap::Command<'static> {
 
     let key_input = Arg::new(Parameters::key_input.as_ref())
         .long(Parameters::key_input.as_ref())
+        .value_name("path/to/key")
         .takes_value(true)
         .required(false)
         .help("Input private key to be used to sign CA/device certificates.");
@@ -296,7 +298,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         .subcommand(
             Command::new(ResourceType::device_cert.as_ref())
                 .about("Generate and sign a device certificate using application's private key.")
-                .arg(&device_id)
+                .arg(&device_id.clone().required(true))
                 .arg(&app_flag)
                 .arg(&ca_key)
                 .arg(&cert_out)

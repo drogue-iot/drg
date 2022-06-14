@@ -155,17 +155,17 @@ x.509 certificates can be used to authenticate devices in Drogue Cloud. To do th
 to contain a root CA certificate, and the intended user must have its private key. This cert+key pair is used to sign
 device cert+key pair.
 
-    drg trust create --app <appId> --key-output <filename>
+    drg create app-cert --application <appId> --key-output <path/to/app-private.key>
 
 Here, `--key-output` is the output file for root CA private key, and it needs to be saved and stored securely.
 
 Once Trust-anchor is set, we can use it to sign device certificates, for example:
 
-    drg trust add --app <appId> --device <deviceId> --ca-key <app-private-key> --out <filename> --key-output <filename>
+    drg create device-cert <deviceId> --app <appId> --ca-key <app-private-key> --cert_output <filename> --key-output <filename>
 
 Here, `--ca-key` is the input file for root CA private key file.
-        `--out` is the output file for device certificate.
-        `--key-output` is the output file for device private key.
+      `--cert_output` is the output file for device certificate.
+      `--key-output` is the output file for device private key.
 
 When a device certificate is signed, the common name of the certificate will be added for the device. so the certificate can be used for authentication. 
 
