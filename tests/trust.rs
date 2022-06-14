@@ -20,13 +20,14 @@ fn device(app: &String) -> String {
 
 #[rstest]
 fn generate_and_add_trust_anchor(app: &String) {
-    drg!()
-        .arg("create")
-        .arg("app-cert")
-        .arg("--application")
-        .arg(app.clone())
-        .assert()
-        .success();
+    retry_409!(
+        3,
+        drg!()
+            .arg("create")
+            .arg("app-cert")
+            .arg("--application")
+            .arg(app.clone())
+    );
 
     let read = drg!()
         .arg("get")
@@ -54,7 +55,7 @@ fn create_device_certificate(app: &String, device: String) {
             .arg("create")
             .arg("app-cert")
             .arg("--key-output")
-            .arg("app_key")
+            .arg("app_key.pem")
             .arg("--application")
             .arg(app.clone())
     );
@@ -63,7 +64,7 @@ fn create_device_certificate(app: &String, device: String) {
         .arg("create")
         .arg("device-cert")
         .arg("--ca-key")
-        .arg("app_key")
+        .arg("app_key.pem")
         .arg("--cert_output")
         .arg("dev-cert.pem")
         .arg("--key-output")
