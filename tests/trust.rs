@@ -68,7 +68,7 @@ fn create_device_certificate(app: &String, device: String) {
         .arg("--cert_output")
         .arg("dev-cert.pem")
         .arg("--key-output")
-        .arg("dev-private.key")
+        .arg("dev-private.pem")
         .arg("--application")
         .arg(app.clone())
         .arg(device)
