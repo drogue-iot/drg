@@ -11,10 +11,6 @@ pub fn subcommand(
 ) -> Result<i32, DrogueError> {
     let (v, c) = matches.subcommand().unwrap();
 
-    let ctx_id = c
-        .value_of(ResourceId::contextId.as_ref())
-        .map(|s| s.to_string());
-
     match v {
         "create" => {
             println!("To create a new context use drg login");
@@ -30,10 +26,10 @@ pub fn subcommand(
             }
         }
         "default-context" => {
-            config.set_active_context(ctx_id.unwrap())?;
+            config.set_active_context(ctx_name.clone().unwrap())?;
         }
         "delete" => {
-            let id = ctx_id.unwrap();
+            let id = ctx_name.clone().unwrap();
             config.delete_context(&id)?;
         }
         "default-app" => {
@@ -41,21 +37,21 @@ pub fn subcommand(
                 .value_of(ResourceId::applicationId.as_ref())
                 .unwrap()
                 .to_string();
-            let context = config.get_context_mut(&ctx_id)?;
+            let context = config.get_context_mut(ctx_name)?;
 
             context.set_default_app(id);
         }
         "rename" => {
             let new_ctx = c.value_of("new_context_id").unwrap().to_string();
 
-            config.rename_context(ctx_id.unwrap(), new_ctx)?;
+            config.rename_context(ctx_name.clone().unwrap(), new_ctx)?;
         }
         "default-algo" => {
             let algo = c
                 .value_of(&Parameters::algo.as_ref())
                 .map(|a| util::SignAlgo::from_str(a).unwrap())
                 .unwrap();
-            let context = config.get_context_mut(&ctx_id)?;
+            let context = config.get_context_mut(ctx_name)?;
 
             context.set_default_algo(algo);
         }
@@ -63,5 +59,5 @@ pub fn subcommand(
             unreachable!("forgot to route config subcommand : {}", v);
         }
     }
-    return Ok(0);
+    Ok(0)
 }

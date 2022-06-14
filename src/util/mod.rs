@@ -258,9 +258,7 @@ pub async fn context_from_access_token(
 
     let cfg_ref = &cfg;
     // test if the token is valid
-    let _ = get_drogue_endpoints_authenticated(cfg_ref)
-        .await
-        .context("Access token or username not valid")?;
+    let _ = get_drogue_endpoints_authenticated(cfg_ref).await?;
 
     Ok(cfg)
 }
