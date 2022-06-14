@@ -79,7 +79,6 @@ pub async fn subcommand(matches: &ArgMatches, context: &Context, json_output: bo
                 tokens::created_token_print,
             )
         }
-        //TODO verify this subcommand (integration tests ?)
         ResourceType::app_cert | ResourceType::device_cert => {
             let app_id = arguments::get_app_id(command, context)?;
             let days = command.value_of(&Parameters::days.as_ref());
@@ -87,8 +86,7 @@ pub async fn subcommand(matches: &ArgMatches, context: &Context, json_output: bo
                 .value_of(&Parameters::algo.as_ref())
                 .or_else(|| {
                     context.default_algo.as_deref().map(|a| {
-                        // Fixme this will break JSON output
-                        println!("Using default signature algorithm: {}", a);
+                        log::debug!("Using default signature algorithm: {}", a);
                         a
                     })
                 })
@@ -102,13 +100,6 @@ pub async fn subcommand(matches: &ArgMatches, context: &Context, json_output: bo
 
             let keyout = command.value_of(&Parameters::key_output.as_ref());
 
-            let ca_key = &command
-                .value_of(&Parameters::ca_key.as_ref())
-                .unwrap()
-                .to_string();
-
-            let device_cert = command.value_of(&Parameters::cert_output.as_ref());
-
             let device_key = command.value_of(&Parameters::key_output.as_ref());
 
             if resource == ResourceType::app_cert {
@@ -119,8 +110,10 @@ pub async fn subcommand(matches: &ArgMatches, context: &Context, json_output: bo
                     json_output,
                 )
             } else {
-                // Safe unwrap because clap makes sure the argument is provided
+                // Safe unwraps because clap makes sure the argument is provided
                 let dev_id = command.value_of(ResourceId::deviceId.as_ref()).unwrap();
+                let ca_key = command.value_of(&Parameters::ca_key.as_ref()).unwrap();
+                let device_cert = command.value_of(&Parameters::cert_output.as_ref());
 
                 let cert = ApplicationOperation::new(Some(app_id.clone()), None, None)?
                     .get_trust_anchor(context)
@@ -148,7 +141,7 @@ pub async fn subcommand(matches: &ArgMatches, context: &Context, json_output: bo
                         )
                     }
                     //fixme use drogueError
-                    _ => Err(anyhow!("Cannot create trust anchor")),
+                    Err(e) => Err(anyhow!("Cannot create trust anchor : {e:?}")),
                 }
             }
         }

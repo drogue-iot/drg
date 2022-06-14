@@ -47,8 +47,7 @@ pub fn create_device_certificate(
         .or_else(|_| KeyPair::from_der(&read_from_file(ca_key)))
         .map_err(|e| anyhow!("Error reading CA key file. {}", e))?;
 
-    let ca_base64 = base64::decode(&ca_cert)?;
-    let ca_cert_pem = from_utf8(&ca_base64)?;
+    let ca_cert_pem = from_utf8(&ca_cert)?;
 
     let ca_certificate = CertificateParams::from_ca_cert_pem(ca_cert_pem, ca_key_content)
         .map_err(|e| anyhow!("Error: {}", e))?;
@@ -150,9 +149,10 @@ fn write_to_file(file_name: &str, content: &str, resource_type: &str) {
     match file.as_mut() {
         Ok(file) => match file.write_all(content.as_bytes()) {
             Ok(_) => {
-                println!(
+                log::debug!(
                     "{} was successfully written to file {}.",
-                    resource_type, file_name
+                    resource_type,
+                    file_name
                 );
             }
             Err(e) => log::error!("Error writing to file: {}", e),
@@ -251,16 +251,16 @@ pub fn create_trust_anchor(
         key_input,
     )?;
 
-    let pem_cert = &app_certificate.serialize_pem()?;
+    let pem_cert = app_certificate.serialize_pem()?;
     log::debug!("Self-signed certificate generated.");
 
-    let private_key = &app_certificate.serialize_private_key_pem();
+    let private_key = app_certificate.serialize_private_key_pem();
     log::debug!("Private key extracted.");
 
     // Private key printed to terminal, when keyout argument not specified.
     if !is_input_key {
         match keyout {
-            Some(file_name) => write_to_file(file_name, private_key, "App private key"),
+            Some(file_name) => write_to_file(file_name, &private_key, "App private key"),
             _ => {
                 println!("Private key for an application is used to sign device certificates, see `drg trust add --help`\n");
                 println!("{}", &private_key)
@@ -269,7 +269,7 @@ pub fn create_trust_anchor(
     };
 
     Ok(ApplicationSpecTrustAnchorEntry {
-        certificate: base64::encode(pem_cert).into_bytes(),
+        certificate: pem_cert.into_bytes(),
     })
 }
 
@@ -288,7 +288,18 @@ mod trust_test {
     use super::*;
     use std::path::Path;
 
-    const CERT: &str = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tDQpNSUlCb2pDQ0FVaWdBd0lCQWdJQktqQUtCZ2dxaGtqT1BRUURBakExTVE0d0RBWURWUVFEREFWaGNIQTBNVEVUDQpNQkVHQTFVRUNnd0tSSEp2WjNWbElFbHZWREVPTUF3R0ExVUVDd3dGUTJ4dmRXUXdIaGNOTWpFd09EQTVNRGN4DQpNelF3V2hjTk1qSXdPREE1TURjeE16UXdXakExTVE0d0RBWURWUVFEREFWaGNIQTBNVEVUTUJFR0ExVUVDZ3dLDQpSSEp2WjNWbElFbHZWREVPTUF3R0ExVUVDd3dGUTJ4dmRXUXdXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CDQpCd05DQUFRRkNmcXh1bWZGU1pzTFFrelVrYVMzZUtyQ3RFcjhqbUtjWnJ1NGZWR2lXV1ZXSHdDbzZPQTdxbURwDQpPNlJscURWSERUUHpKYU9paEg2d0NmL21qc0habzBrd1J6QVZCZ05WSFJFRURqQU1nZ3BFY205bmRXVWdTVzkwDQpNQjBHQTFVZERnUVdCQlFzV3A3cnlNZ2lUdFVnYWk5WkNEOXBxTlAraWpBUEJnTlZIUk1CQWY4RUJUQURBUUgvDQpNQW9HQ0NxR1NNNDlCQU1DQTBnQU1FVUNJRmFpZFltZWdpRWhUV1pRTXQxYXhoKzd5SElXdTRIRVdtdjlPbmVKDQp6ZXRxQWlFQWhBS3EyWjhZZWVGa0pqTC95UnJ0ZlVxd0w1N3lDL2dQVHUwemZRNEJwczA9DQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tDQo=";
+    const CERT: &str = r#"-----BEGIN CERTIFICATE-----
+MIIBqTCCAVCgAwIBAgIJAN/YsvAK/NolMAoGCCqGSM49BAMCMDUxDjAMBgNVBAMM
+BXRydXN0MRMwEQYDVQQKDApEcm9ndWUgSW9UMQ4wDAYDVQQLDAVDbG91ZDAeFw0y
+MjA2MTQxMTM4NThaFw0yMzA2MTQxMTM4NThaMDUxDjAMBgNVBAMMBXRydXN0MRMw
+EQYDVQQKDApEcm9ndWUgSW9UMQ4wDAYDVQQLDAVDbG91ZDBZMBMGByqGSM49AgEG
+CCqGSM49AwEHA0IABECpIV4AHlvIv4UK/F/DrPKCfa8q26wRMdGpRux3spkCGJQ/
+Xlfj6/AXrBHiO+x3ISunm34gtDnTB5V38W6Cb8CjSTBHMBUGA1UdEQQOMAyCCkRy
+b2d1ZSBJb3QwHQYDVR0OBBYEFCXa/ArwstjfMbGSywYJNVlLk+mJMA8GA1UdEwEB
+/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIga+hWi21c8VBTTHM1jQdYVH9LPiz4
+PYI8dV0jurxjGr8CIHrq3O4gtrixHDs6GDyzKf4CMOg37phempNDnp0/twP7
+-----END CERTIFICATE-----
+"#;
 
     #[test]
     fn test_create_trust_anchor() {
@@ -299,8 +310,7 @@ mod trust_test {
             "Error exporting private key to file."
         );
 
-        let resp_cert_base64 = base64::decode(&resp.certificate).unwrap();
-        let resp_cert_pem = from_utf8(&resp_cert_base64).unwrap();
+        let resp_cert_pem = from_utf8(&resp.certificate).unwrap();
 
         assert!(
             x509_parser::pem::parse_x509_pem(resp_cert_pem.as_bytes()).is_ok(),
