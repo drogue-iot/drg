@@ -11,7 +11,7 @@ pub use endpoints::*;
 pub use error::*;
 pub use outcome::*;
 
-use crate::config::Config;
+use crate::config::{Config, Token};
 use crate::{AccessToken, Context, Parameters};
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use chrono::{DateTime, Duration, Utc};
@@ -21,6 +21,7 @@ use colored_json::write_colored_json;
 use drogue_client::discovery::v1::Client;
 use drogue_client::registry::v1::labels::LabelSelector;
 use log::LevelFilter;
+use oauth2::TokenResponse;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -261,4 +262,26 @@ pub async fn context_from_access_token(
     let _ = get_drogue_endpoints_authenticated(cfg_ref).await?;
 
     Ok(cfg)
+}
+
+pub fn print_token(context: &Context) {
+    match &context.token {
+        Token::TokenResponse(token) => {
+            println!("{}", token.access_token().secret());
+        }
+        Token::AccessToken(auth) => {
+            println!("{}:{}", auth.id, auth.token);
+        }
+    }
+}
+
+pub fn print_whoami(context: &Context) {
+    println!("Cluster adress : {}", context.drogue_cloud_url);
+    println!(
+        "Default App : {}",
+        context
+            .default_app
+            .as_ref()
+            .unwrap_or(&"No default app".to_string())
+    );
 }

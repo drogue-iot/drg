@@ -505,6 +505,8 @@ dependencies = [
  "url",
  "urlencoding",
  "uuid",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
  "webbrowser",
  "x509-parser 0.9.2",
 ]

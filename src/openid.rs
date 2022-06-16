@@ -1,24 +1,98 @@
-use oauth2::basic::{BasicClient, BasicTokenResponse};
+use chrono::{DateTime, Duration, Utc};
 use oauth2::reqwest::async_http_client;
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope,
     TokenResponse, TokenUrl,
 };
 
-use anyhow::Error;
-use anyhow::Result;
-
-use tiny_http::{Response, Server};
-
-use qstring::QString;
+use anyhow::{Error, Result};
 use reqwest::Url;
 
 use crate::config::{Context, Token};
 use crate::util;
-use chrono::{DateTime, Duration, Utc};
+use oauth2::basic::{BasicClient, BasicTokenResponse};
 use std::net::{Ipv4Addr, SocketAddr};
 
+#[cfg(feature = "oauth_login_flow")]
+use qstring::QString;
+#[cfg(feature = "oauth_login_flow")]
+use tiny_http::{Response, Server};
+
 const CLIENT_ID: &str = "drogue";
+
+async fn refresh_token(context: &mut Context) -> Result<bool> {
+    match &context.token {
+        Token::TokenResponse(token) => {
+            let refresh_token_var = token
+                .refresh_token()
+                .ok_or_else(|| Error::msg("Error loading refresh token from config"))?;
+            let new_token = exchange_token(
+                context.auth_url.clone(),
+                context.token_url.clone(),
+                refresh_token_var,
+            )
+            .await?;
+
+            context.token_exp_date = calculate_token_expiration_date(&new_token)?;
+            context.token = Token::TokenResponse(new_token);
+
+            log::info!("New token will expire at {}", context.token_exp_date);
+            log::info!("Token successfully refreshed.");
+
+            Ok(true)
+        }
+        _ => Ok(true),
+    }
+}
+
+async fn exchange_token(
+    auth_url: Url,
+    token_url: Url,
+    refresh_token_val: &oauth2::RefreshToken,
+) -> Result<BasicTokenResponse> {
+    log::debug!("Refreshing token using url : {}", &token_url);
+
+    let auth_url = AuthUrl::new(auth_url.to_string())?;
+    let token_url = TokenUrl::new(token_url.to_string())?;
+
+    let client = BasicClient::new(
+        ClientId::new(CLIENT_ID.to_string()),
+        None,
+        auth_url,
+        Some(token_url),
+    );
+
+    // Exchange the refresh token for access token
+    client
+        .exchange_refresh_token(refresh_token_val)
+        .request_async(async_http_client)
+        .await
+        .map_err(|e| {
+            log::warn!("{:?}", e);
+            Error::msg(format!("Refreshing token : {}", e))
+        })
+}
+
+pub async fn verify_token_validity(context: &mut Context) -> Result<bool> {
+    log::debug!("Token expires at : {}", context.token_exp_date);
+    // 30 seconds should be enough
+    if context.token_exp_date - Utc::now() > Duration::seconds(30) {
+        Ok(false)
+    } else {
+        log::info!("Token is expired or will be soon, refreshing...");
+        refresh_token(context).await
+    }
+}
+
+fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTime<Utc>> {
+    let now = Utc::now();
+    let expiration = token
+        .expires_in()
+        .ok_or_else(|| anyhow::Error::msg("Missing expiration time on token"))?;
+
+    now.checked_add_signed(Duration::from_std(expiration)?)
+        .ok_or_else(|| anyhow::Error::msg("Error calculating token expiration date"))
+}
 
 pub async fn login(
     api_endpoint: Url,
@@ -38,7 +112,13 @@ pub async fn login(
             )
             .await?
         }
-        None => get_token(auth_url.clone(), token_url.clone()).await?,
+        None => {
+            if cfg!(feature = "oauth_login_flow") {
+                get_token(auth_url.clone(), token_url.clone()).await?
+            } else {
+                unimplemented!("Oauth login flow not built for WASM")
+            }
+        }
     };
 
     let token_exp_date = calculate_token_expiration_date(&token)?;
@@ -61,6 +141,7 @@ pub async fn login(
     Ok(config)
 }
 
+#[cfg(feature = "oauth_login_flow")]
 async fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> {
     log::debug!("Using auth url : {}", auth_url);
 
@@ -70,7 +151,7 @@ async fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> 
     let port = server.server_addr().port();
 
     let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string()),
+        ClientId::new(crate::openid::CLIENT_ID.to_string()),
         None,
         AuthUrl::new(auth_url.to_string())?,
         Some(TokenUrl::new(token_url.to_string())?),
@@ -128,99 +209,4 @@ async fn get_token(auth_url: Url, token_url: Url) -> Result<BasicTokenResponse> 
 
     // Unwrapping token_result will either produce a Token or a RequestTokenError.
     token_result.map_err(|e| Error::msg(format!("error while requesting a token: \n{}", e)))
-}
-
-pub async fn verify_token_validity(context: &mut Context) -> Result<bool> {
-    log::debug!("Token expires at : {}", context.token_exp_date);
-    // 30 seconds should be enough
-    if context.token_exp_date - Utc::now() > Duration::seconds(30) {
-        Ok(false)
-    } else {
-        log::info!("Token is expired or will be soon, refreshing...");
-        refresh_token(context).await
-    }
-}
-
-async fn refresh_token(context: &mut Context) -> Result<bool> {
-    match &context.token {
-        Token::TokenResponse(token) => {
-            let refresh_token_var = token
-                .refresh_token()
-                .ok_or_else(|| Error::msg("Error loading refresh token from config"))?;
-            let new_token = exchange_token(
-                context.auth_url.clone(),
-                context.token_url.clone(),
-                refresh_token_var,
-            )
-            .await?;
-
-            context.token_exp_date = calculate_token_expiration_date(&new_token)?;
-            context.token = Token::TokenResponse(new_token);
-
-            log::info!("New token will expire at {}", context.token_exp_date);
-            log::info!("Token successfully refreshed.");
-
-            Ok(true)
-        }
-        _ => Ok(true),
-    }
-}
-
-async fn exchange_token(
-    auth_url: Url,
-    token_url: Url,
-    refresh_token_val: &oauth2::RefreshToken,
-) -> Result<BasicTokenResponse> {
-    log::debug!("Refreshing token using url : {}", &token_url);
-
-    let auth_url = AuthUrl::new(auth_url.to_string())?;
-    let token_url = TokenUrl::new(token_url.to_string())?;
-
-    let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string()),
-        None,
-        auth_url,
-        Some(token_url),
-    );
-
-    // Exchange the refresh token for access token
-    client
-        .exchange_refresh_token(refresh_token_val)
-        .request_async(async_http_client)
-        .await
-        .map_err(|e| {
-            log::warn!("{:?}", e);
-            Error::msg(format!("Refreshing token : {}", e))
-        })
-}
-
-fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTime<Utc>> {
-    let now = Utc::now();
-    let expiration = token
-        .expires_in()
-        .ok_or_else(|| anyhow::Error::msg("Missing expiration time on token"))?;
-
-    now.checked_add_signed(Duration::from_std(expiration)?)
-        .ok_or_else(|| anyhow::Error::msg("Error calculating token expiration date"))
-}
-
-pub fn print_token(context: &Context) {
-    match &context.token {
-        Token::TokenResponse(token) => {
-            println!("{}", token.access_token().secret());
-        }
-        Token::AccessToken(auth) => {
-            println!("{}:{}", auth.id, auth.token);
-        }
-    }
-}
-pub fn print_whoami(context: &Context) {
-    println!("Cluster adress : {}", context.drogue_cloud_url);
-    println!(
-        "Default App : {}",
-        context
-            .default_app
-            .as_ref()
-            .unwrap_or(&"No default app".to_string())
-    );
 }
