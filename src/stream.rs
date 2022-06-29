@@ -2,8 +2,8 @@ use anyhow::{anyhow, Context as AnyhowContext, Result};
 use colored_json::write_colored_json;
 use serde_json::Value;
 use std::io::stdout;
-use tungstenite::connect;
 use tungstenite::http::Request;
+use tungstenite::{connect, Message};
 
 use crate::config::{Context, RequestBuilderExt};
 use crate::util;
@@ -26,17 +26,26 @@ pub async fn stream_app(
 
     while count > 0 {
         let msg = socket.read_message();
+        log::debug!("Message: {:?}", msg);
         match msg {
-            Ok(m) => {
-                log::debug!("Message: {:?}", m);
-                if m.is_binary() || m.is_text() {
-                    count -= 1;
-                    // ignore protocol messages, only show text
-                    if m.is_text() {
-                        let message = m.into_text().expect("Invalid message");
-                        filter_device(message, device);
-                    }
-                }
+            Ok(Message::Text(message)) => {
+                count -= 1;
+                filter_device(message, device);
+            }
+            Ok(Message::Binary(_)) => {
+                count -= 1;
+            }
+            Ok(Message::Close(Some(cause))) => {
+                // just log the message
+                log::warn!(
+                    "Connection closed by server (code: {}, reason: {})",
+                    cause.code,
+                    cause.reason
+                );
+                break;
+            }
+            Ok(_) => {
+                // ignore other protocol messages, only show text and handle close
             }
             Err(e) => return Err(anyhow!(e)),
         }
