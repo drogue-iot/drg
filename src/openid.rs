@@ -162,7 +162,8 @@ async fn refresh_token(context: &mut Context) -> Result<bool> {
 
             Ok(true)
         }
-        _ => Ok(true),
+        // Access Tokens are valid indefinitely
+        Token::AccessToken(_) => Ok(false),
     }
 }
 

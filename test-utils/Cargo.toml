@@ -18,5 +18,5 @@ name = "drg_test_utils"
 path = "src/lib.rs"
 
 [patch.crates-io]
-#drogue-client = { git = "https://github.com/drogue-iot/drogue-client", branch = "main" } # FIXME: awaiting release
-drogue-client = { path = "../../drogue-client" }
+drogue-client = { git = "https://github.com/drogue-iot/drogue-client", branch = "main" } # FIXME: awaiting release
+#drogue-client = { path = "../../drogue-client" }
