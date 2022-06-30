@@ -47,7 +47,7 @@ pub async fn stream_app(
             log::debug!("sending a refreshed token");
             socket.write_message(Message::Text(serde_json::to_string(
                 &Drogue_ws_message::RefreshAccessToken(token),
-            )?));
+            )?))?
         }
     }
     Ok(())

@@ -47,7 +47,7 @@ pub fn create_device_certificate(
         .or_else(|_| KeyPair::from_der(&read_from_file(ca_key)))
         .map_err(|e| anyhow!("Error reading CA key file. {}", e))?;
 
-    let ca_cert_pem = from_utf8(&ca_cert)?;
+    let ca_cert_pem = from_utf8(ca_cert)?;
 
     let ca_certificate = CertificateParams::from_ca_cert_pem(ca_cert_pem, ca_key_content)
         .map_err(|e| anyhow!("Error: {}", e))?;
