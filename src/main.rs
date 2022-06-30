@@ -107,7 +107,7 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
     // The following commands needs a context and a valid token
     openid::verify_token_validity(config.get_context_mut(&context_arg)?).await?;
 
-    let context = config.get_context(&context_arg)?;
+    let mut context = config.get_context_mut(&context_arg)?;
 
     if command == Action::whoami.as_ref() {
         let (_, submatches) = matches.subcommand().unwrap();
@@ -233,7 +233,7 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
                 .unwrap_or(usize::MAX);
             let device = matches.value_of(Parameters::device.as_ref());
 
-            stream::stream_app(context, &app_id, device, count).await?;
+            stream::stream_app(&mut context, &app_id, device, count).await?;
             0
         }
 

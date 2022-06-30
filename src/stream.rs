@@ -1,15 +1,17 @@
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use colored_json::write_colored_json;
+use oauth2::TokenResponse;
 use serde_json::Value;
 use std::io::stdout;
-use tungstenite::connect;
 use tungstenite::http::Request;
+use tungstenite::{connect, Message};
 
-use crate::config::{Context, RequestBuilderExt};
-use crate::util;
+use crate::config::{Context, RequestBuilderExt, Token};
+use crate::{openid, util};
+use drogue_client::integration::ws::v1::client::Message as Drogue_ws_message;
 
 pub async fn stream_app(
-    config: &Context,
+    config: &mut Context,
     app: &str,
     device: Option<&str>,
     mut count: usize,
@@ -40,7 +42,13 @@ pub async fn stream_app(
             }
             Err(e) => return Err(anyhow!(e)),
         }
-        //bail!("Websocket Error")
+
+        if let Some(token) = refresh_token(config).await {
+            log::debug!("sending a refreshed token");
+            socket.write_message(Message::Text(serde_json::to_string(
+                &Drogue_ws_message::RefreshAccessToken(token),
+            )?));
+        }
     }
     Ok(())
 }
@@ -64,5 +72,19 @@ fn filter_device<S: Into<String>>(payload: S, device: Option<&str>) {
         }
         // fall back to plain text output
         Err(_) => println!("{}", payload),
+    }
+}
+
+async fn refresh_token(config: &mut Context) -> Option<String> {
+    match openid::verify_token_validity(config).await {
+        Ok(false) => None,
+        Ok(true) => match &config.token {
+            Token::TokenResponse(token) => Some(token.access_token().secret().clone()),
+            Token::AccessToken(_) => None,
+        },
+        Err(e) => {
+            log::error!("Error refreshing token - {e}");
+            None
+        }
     }
 }
