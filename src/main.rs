@@ -91,10 +91,13 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
 
     if command == Action::login.as_ref() {
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
-        arguments::login::subcommand(submatches, &mut config, &context_arg).await?;
+        let code = display_simple(
+            arguments::login::subcommand(submatches, &mut config, &context_arg).await,
+            json_output,
+        );
 
         config.write(config_path)?;
-        return Ok(0);
+        return code;
     } else if command == Action::version.as_ref() {
         util::print_version(config_result.ok().as_ref()).await;
         return Ok(0);

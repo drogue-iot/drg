@@ -7,7 +7,7 @@ use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exi
 use async_trait::async_trait;
 use drogue_client::openid::{Credentials, TokenProvider};
 
-use crate::DrogueError;
+use crate::{DrogueError, Outcome};
 use chrono::{DateTime, Utc};
 use core::fmt;
 use dirs::config_dir;
@@ -127,7 +127,6 @@ impl Config {
     fn replace_context(&mut self, context: Context) -> Result<()> {
         let name = &context.name;
         self.delete_context(name)?;
-        println!("Updated existing context {}", &name);
         self.contexts.push(context);
         self.changed = true;
         Ok(())
@@ -216,12 +215,14 @@ impl Config {
         print!("{}", table);
     }
 
-    pub fn set_active_context(&mut self, name: String) -> Result<()> {
+    pub fn set_active_context(&mut self, name: String) -> Result<Outcome<String>> {
         if self.contains_context(&name) {
-            println!("Switched active context to: {}", &name);
-            self.active_context = name;
+            self.active_context = name.clone();
             self.changed = true;
-            Ok(())
+            Ok(Outcome::SuccessWithMessage(format!(
+                "Switched active context to: {}",
+                &name
+            )))
         } else {
             Err(anyhow!("Context {} does not exist in config file.", name))
         }

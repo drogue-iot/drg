@@ -11,6 +11,7 @@ pub struct JsonOutcome {
     status: OutcomeStatus,
     message: String,
     // The HTTP status code
+    #[serde(skip_serializing_if = "Option::is_none")]
     http_status: Option<u16>,
 }
 

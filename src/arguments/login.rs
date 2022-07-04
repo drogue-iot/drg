@@ -1,11 +1,11 @@
-use crate::{openid, util, Config, DrogueError, Parameters};
+use crate::{openid, util, Config, DrogueError, Outcome, Parameters};
 use clap::ArgMatches;
 
 pub async fn subcommand(
     matches: &ArgMatches,
     config: &mut Config,
     ctx_name: &Option<String>,
-) -> Result<(), DrogueError> {
+) -> Result<Outcome<String>, DrogueError> {
     let url = util::url_validation(matches.value_of(Parameters::url.as_ref()).unwrap())?;
     let access_token_val = matches.value_of(Parameters::access_token.as_ref());
     let ctx_name = ctx_name.clone().unwrap_or_else(|| "default".to_string());
@@ -27,13 +27,18 @@ pub async fn subcommand(
             .map_err(|e| DrogueError::InvalidInput(format!("{e}")))
     }?;
 
-    println!("\nSuccessfully authenticated to drogue cloud : {}", url);
+    let mut message = format!(
+        "Successfully authenticated to drogue cloud : {}\nSaved context: {}",
+        url, context.name
+    );
+
     let name = context.name.clone();
     config.add_context(context)?;
 
     if !matches.is_present(Parameters::keep_current.as_ref()) {
-        config.set_active_context(name)?;
+        let _ = config.set_active_context(name.clone())?;
+        message = format!("{}\nSwitched active context to: {}", message, name);
     }
 
-    Ok(())
+    Ok(Outcome::SuccessWithMessage(message))
 }
