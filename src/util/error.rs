@@ -4,7 +4,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DrogueError {
-    #[error("The operation was not completed because `{0}`")]
+    #[error("Invalid input: `{0}`")]
     InvalidInput(String),
     #[error("The application or device was not found")]
     NotFound,

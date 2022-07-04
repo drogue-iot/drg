@@ -7,6 +7,7 @@ use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exi
 use async_trait::async_trait;
 use drogue_client::openid::{Credentials, TokenProvider};
 
+use crate::Outcome::{SuccessWithJsonData, SuccessWithMessage};
 use crate::{DrogueError, Outcome};
 use chrono::{DateTime, Utc};
 use core::fmt;
@@ -184,38 +185,11 @@ impl Config {
         }
         false
     }
-    pub fn list_contexts(&self) {
-        let mut table = Table::new("{:<}  {:<}  {:<}");
-        table.add_row(
-            Row::new()
-                .with_cell("NAME")
-                .with_cell("ADDRESS")
-                .with_cell("DEFAULT APP"),
-        );
-
-        for config in &self.contexts {
-            let name = if self.active_context == config.name {
-                format!("{} *", config.name)
-            } else {
-                config.name.clone()
-            };
-            table.add_row(
-                Row::new()
-                    .with_cell(&name)
-                    .with_cell(&config.drogue_cloud_url)
-                    .with_cell(
-                        &config
-                            .default_app
-                            .as_ref()
-                            .unwrap_or(&"<Not Set>".to_string()),
-                    ),
-            );
-        }
-
-        print!("{}", table);
+    pub fn list_contexts(&self) -> Result<Outcome<Vec<Context>>, DrogueError> {
+        Ok(SuccessWithJsonData(self.contexts.clone()))
     }
 
-    pub fn set_active_context(&mut self, name: String) -> Result<Outcome<String>> {
+    pub fn set_active_context(&mut self, name: String) -> Result<Outcome<String>, DrogueError> {
         if self.contains_context(&name) {
             self.active_context = name.clone();
             self.changed = true;
@@ -224,7 +198,10 @@ impl Config {
                 &name
             )))
         } else {
-            Err(anyhow!("Context {} does not exist in config file.", name))
+            Err(DrogueError::InvalidInput(format!(
+                "Context {} does not exist in config file.",
+                name
+            )))
         }
     }
 
@@ -243,7 +220,7 @@ impl Config {
         Ok(())
     }
 
-    pub fn delete_context(&mut self, name: &str) -> Result<()> {
+    pub fn delete_context(&mut self, name: &str) -> Result<Outcome<String>, DrogueError> {
         if self.contains_context(name) {
             self.contexts.retain(|c| c.name != name);
 
@@ -255,32 +232,43 @@ impl Config {
                 }
             }
             self.changed = true;
-            Ok(())
+            Ok(Outcome::SuccessWithMessage(format!(
+                "Context {name} deleted"
+            )))
         } else {
-            Err(anyhow!("Context {} does not exist in config file.", name))
+            Err(DrogueError::InvalidInput(format!(
+                "Context {} does not exist in config file.",
+                name
+            )))
         }
     }
 
-    // see fnOnce ?
-    // https://github.com/ctron/operator-framework/blob/e827775e023dfbe22a9defbf31e6a87f46d38ef5/src/install/container/env.rs#L259-L277
-
-    pub fn rename_context(&mut self, name: String, new_name: String) -> Result<()> {
+    pub fn rename_context(
+        &mut self,
+        name: String,
+        new_name: String,
+    ) -> Result<Outcome<String>, DrogueError> {
         if self.contains_context(&new_name) {
-            Err(anyhow!(
+            Err(DrogueError::InvalidInput(format!(
                 "Context {} already exists in config file.",
                 new_name
-            ))
+            )))
         } else if self.contains_context(&name) {
             let ctx = self.get_context_as_mut(&name)?;
             ctx.rename(new_name.clone());
 
             if self.active_context == name {
-                self.active_context = new_name;
+                self.active_context = new_name.clone();
             }
             self.changed = true;
-            Ok(())
+            Ok(SuccessWithMessage(format!(
+                "Context {name} renamed to {new_name}"
+            )))
         } else {
-            Err(anyhow!("Context {} does not exist in config file.", name))
+            Err(DrogueError::InvalidInput(format!(
+                "Context {} does not exist in config file.",
+                name
+            )))
         }
     }
 }
@@ -329,12 +317,21 @@ impl Context {
         self.name = new_name;
     }
 
-    pub fn set_default_app(&mut self, app: String) {
-        self.default_app = Some(app);
+    pub fn set_default_app(&mut self, app: String) -> Outcome<String> {
+        self.default_app = Some(app.clone());
+        SuccessWithMessage(format!(
+            "{} set as default application for context {}",
+            &app, self.name
+        ))
     }
 
-    pub fn set_default_algo(&mut self, algo: SignAlgo) {
-        self.default_algo = Some(algo.as_ref().to_string())
+    pub fn set_default_algo(&mut self, algo: SignAlgo) -> Outcome<String> {
+        self.default_algo = Some(algo.as_ref().to_string());
+        SuccessWithMessage(format!(
+            "{} set as default certificate algorithm for context {}",
+            algo.as_ref(),
+            self.name
+        ))
     }
 
     pub fn fill_urls(&mut self, auth: Url, registry: Url, token: Url) {
@@ -376,4 +373,35 @@ fn eval_config_path(path: Option<&str>) -> String {
             format!("{}/drg_config.yaml", xdg)
         }),
     }
+}
+
+pub fn pretty_list(contexts: &Vec<Context>, active: &String) {
+    let mut table = Table::new("{:<}  {:<}  {:<}");
+    table.add_row(
+        Row::new()
+            .with_cell("NAME")
+            .with_cell("ADDRESS")
+            .with_cell("DEFAULT APP"),
+    );
+
+    for config in contexts {
+        let name = if active == &config.name {
+            format!("{} *", config.name)
+        } else {
+            config.name.clone()
+        };
+        table.add_row(
+            Row::new()
+                .with_cell(&name)
+                .with_cell(&config.drogue_cloud_url)
+                .with_cell(
+                    &config
+                        .default_app
+                        .as_ref()
+                        .unwrap_or(&"<Not Set>".to_string()),
+                ),
+        );
+    }
+
+    print!("{}", table);
 }

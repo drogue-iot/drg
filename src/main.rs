@@ -107,7 +107,8 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
 
     if command == Action::config.as_ref() {
         //fixme handle the pretty print: issue #107
-        let code = arguments::config::subcommand(submatches, &mut config, &context_arg)?;
+        let code =
+            arguments::config::subcommand(submatches, &mut config, &context_arg, json_output)?;
         config.write(config_path)?;
         return Ok(code);
     }
