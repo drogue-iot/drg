@@ -15,7 +15,7 @@ use crate::admin::tokens;
 use crate::applications::ApplicationOperation;
 use crate::config::{AccessToken, Config, Context};
 use crate::devices::DeviceOperation;
-use crate::util::{display, display_simple, DrogueError};
+use crate::util::{display, display_simple, DrogueError, Outcome};
 
 use anyhow::{Context as AnyhowContext, Result};
 use clap::ArgMatches;
@@ -84,6 +84,11 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
         .value_of(ResourceId::contextId.as_ref())
         .map(|s| s.to_string());
 
+    let json_output = submatches
+        .value_of(Parameters::output.as_ref())
+        .map(|s| s == "json")
+        .unwrap_or(false);
+
     if command == Action::login.as_ref() {
         let mut config = config_result.unwrap_or_else(|_| Config::empty());
         arguments::login::subcommand(submatches, &mut config, &context_arg).await?;
@@ -111,30 +116,29 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
 
     if command == Action::whoami.as_ref() {
         let (_, submatches) = matches.subcommand().unwrap();
-        if submatches.is_present(Parameters::token.as_ref()) {
-            openid::print_token(context);
+        let code = if submatches.is_present(Parameters::token.as_ref()) {
+            display_simple(Ok(openid::print_token(context)), json_output)?
         } else if let Some((_, endpoints_matches)) = submatches.subcommand() {
             let service = match endpoints_matches.value_of(Parameters::endpoints.as_ref()) {
                 Some("*") => None,
                 s => s,
             };
-            util::print_endpoints(context, service).await?;
+            let endpoints = util::get_drogue_endpoints_authenticated(context)
+                .await
+                .map(Outcome::SuccessWithJsonData);
+            display(endpoints, json_output, |data| {
+                util::endpoints_pretty_print(data, service)
+            })?
         } else {
-            openid::print_whoami(context);
-            util::print_version(Some(&config)).await;
-        }
+            openid::print_whoami(context, json_output)?
+        };
         config.write(config_path)?;
-        return Ok(0);
+        return Ok(code);
     }
 
     log::warn!("Using context: {}", context.name);
     let verb = Action::from_str(command);
     let cmd = submatches;
-
-    let json_output = cmd
-        .value_of(Parameters::output.as_ref())
-        .map(|s| s == "json")
-        .unwrap_or(false);
 
     let exit_code = match verb? {
         Action::create => arguments::create::subcommand(cmd, context, json_output).await?,

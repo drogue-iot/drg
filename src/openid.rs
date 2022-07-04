@@ -15,7 +15,9 @@ use reqwest::Url;
 
 use crate::config::{Context, Token};
 use crate::util;
+use crate::util::{show_json, Outcome};
 use chrono::{DateTime, Duration, Utc};
+use serde::Serialize;
 use std::net::{Ipv4Addr, SocketAddr};
 
 const CLIENT_ID: &str = "drogue";
@@ -205,23 +207,51 @@ fn calculate_token_expiration_date(token: &BasicTokenResponse) -> Result<DateTim
         .ok_or_else(|| anyhow::Error::msg("Error calculating token expiration date"))
 }
 
-pub fn print_token(context: &Context) {
+pub fn print_token(context: &Context) -> Outcome<String> {
     match &context.token {
         Token::TokenResponse(token) => {
-            println!("{}", token.access_token().secret());
+            Outcome::SuccessWithMessage(token.access_token().secret().clone())
         }
         Token::AccessToken(auth) => {
-            println!("{}:{}", auth.id, auth.token);
+            Outcome::SuccessWithMessage(format!("{}:{}", auth.id, auth.token))
         }
     }
 }
-pub fn print_whoami(context: &Context) {
-    println!("Cluster adress : {}", context.drogue_cloud_url);
-    println!(
-        "Default App : {}",
-        context
-            .default_app
-            .as_ref()
-            .unwrap_or(&"No default app".to_string())
-    );
+
+#[derive(Serialize, Clone)]
+struct Whoami {
+    context_name: String,
+    cluster: Url,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_app: Option<String>,
+}
+
+impl From<&Context> for Whoami {
+    fn from(context: &Context) -> Self {
+        Whoami {
+            context_name: context.name.clone(),
+            cluster: context.drogue_cloud_url.clone(),
+            default_app: context.default_app.clone(),
+        }
+    }
+}
+
+pub fn print_whoami(context: &Context, json: bool) -> Result<i32> {
+    let whoami: Whoami = context.into();
+
+    if json {
+        show_json(&serde_json::to_value(whoami).unwrap());
+    } else {
+        println!("Context name: {}", whoami.context_name);
+        println!("Cluster adress: {}", whoami.cluster);
+        println!(
+            "Default App : {}",
+            context
+                .default_app
+                .clone()
+                .unwrap_or_else(|| "No default app".to_string())
+        );
+    }
+
+    Ok(0)
 }

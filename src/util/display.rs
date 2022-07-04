@@ -1,4 +1,4 @@
-use crate::util::{show_json, DrogueError, JsonOutcome, Outcome};
+use crate::util::{show_json, show_json_string, DrogueError, JsonOutcome, Outcome};
 use serde::Serialize;
 
 pub fn display<T, F>(
@@ -13,12 +13,12 @@ where
     match (outcome, json) {
         (Ok(outcome), true) => match outcome {
             Outcome::SuccessWithMessage(msg) => {
-                show_json(serde_json::to_string(&JsonOutcome::success(msg))?)
+                show_json(&serde_json::to_value(&JsonOutcome::success(msg))?)
             }
-            Outcome::SuccessWithJsonData(data) => show_json(serde_json::to_string(&data)?),
+            Outcome::SuccessWithJsonData(data) => show_json(&serde_json::to_value(&data)?),
         },
         (Err(e), true) => {
-            show_json(serde_json::to_string(&JsonOutcome::from(&e))?);
+            show_json_string(serde_json::to_string(&JsonOutcome::from(&e))?);
             return Ok(1);
         }
         (Ok(outcome), false) => match outcome {
@@ -39,6 +39,6 @@ pub fn display_simple<T: Serialize>(
     json: bool,
 ) -> anyhow::Result<i32> {
     display(outcome, json, |data: &T| {
-        show_json(serde_json::to_string(data).unwrap())
+        show_json_string(serde_json::to_string(data).unwrap())
     })
 }

@@ -1,7 +1,8 @@
 use crate::config::Context;
 use crate::util::url_validation;
 
-use anyhow::{anyhow, Context as AnyhowContext, Result};
+use crate::DrogueError;
+use anyhow::{anyhow, Context as AnyhowContext};
 use drogue_client::discovery::v1::{Client, Endpoints};
 use serde_json::Value;
 use serde_json::Value::String as serde_string;
@@ -9,7 +10,7 @@ use tabular::{Row, Table};
 use url::Url;
 
 // use drogue's well known endpoint to retrieve endpoints.
-pub async fn get_drogue_endpoints(url: Url) -> Result<(Url, Url)> {
+pub async fn get_drogue_endpoints(url: Url) -> anyhow::Result<(Url, Url)> {
     let client: Client = Client::new_anonymous(reqwest::Client::new(), url);
 
     let endpoints = client
@@ -29,20 +30,25 @@ pub async fn get_drogue_endpoints(url: Url) -> Result<(Url, Url)> {
     Ok((Url::parse(sso.as_str())?, Url::parse(registry.as_str())?))
 }
 
-pub async fn get_drogue_endpoints_authenticated(context: &Context) -> Result<Endpoints> {
+pub async fn get_drogue_endpoints_authenticated(
+    context: &Context,
+) -> Result<Endpoints, DrogueError> {
     let client = Client::new_authenticated(
         reqwest::Client::new(),
         context.drogue_cloud_url.clone(),
         context.token.clone(),
     );
 
-    client
-        .get_authenticated_endpoints()
-        .await?
-        .ok_or_else(|| anyhow!("Error fetching drogue-cloud endpoints."))
+    match client.get_authenticated_endpoints().await {
+        Ok(Some(endpoints)) => Ok(endpoints),
+        Ok(None) => Err(DrogueError::UnexpectedClient(anyhow!(
+            "Cannot retreive Drogue cloud endpoints list"
+        ))),
+        Err(e) => Err(DrogueError::from(e)),
+    }
 }
 
-pub async fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
+pub async fn get_drogue_console_endpoint(context: &Context) -> anyhow::Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let console = endpoints
         .console
@@ -52,7 +58,7 @@ pub async fn get_drogue_console_endpoint(context: &Context) -> Result<Url> {
     //url_validation(ws)
 }
 
-pub async fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
+pub async fn get_drogue_websocket_endpoint(context: &Context) -> anyhow::Result<Url> {
     let endpoints = get_drogue_endpoints_authenticated(context).await?;
     let ws = endpoints
         .websocket_integration
@@ -63,7 +69,7 @@ pub async fn get_drogue_websocket_endpoint(context: &Context) -> Result<Url> {
 
 // use keycloak's well known endpoint to retrieve endpoints.
 // http://keycloakhost:keycloakport/auth/realms/{realm}/.well-known/openid-configuration
-pub async fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)> {
+pub async fn get_auth_and_tokens_endpoints(issuer_url: Url) -> anyhow::Result<(Url, Url)> {
     let client = reqwest::Client::new();
 
     let url = issuer_url.join(".well-known/openid-configuration")?;
@@ -87,37 +93,11 @@ pub async fn get_auth_and_tokens_endpoints(issuer_url: Url) -> Result<(Url, Url)
     Ok((auth?, token?))
 }
 
-pub async fn print_endpoints(context: &Context, service: Option<&str>) -> Result<()> {
-    let endpoints = get_drogue_endpoints_authenticated(context).await?;
-    let endpoints = serde_json::to_value(endpoints)?;
-    let endpoints = endpoints.as_object().unwrap();
-
-    if let Some(service) = service {
-        let details = endpoints
-            .get(service)
-            .ok_or_else(|| anyhow!("Service not found in endpoints list."))?;
-        let (host, port) = deserialize_endpoint(details);
-
-        println!("{}{}", host.unwrap(), port);
-    } else {
-        let mut table = Table::new("{:<} {:<}");
-        table.add_row(Row::new().with_cell("NAME").with_cell("URL"));
-
-        for (name, details) in endpoints {
-            let (host, port) = deserialize_endpoint(details);
-            host.map(|h| {
-                table.add_row(
-                    Row::new()
-                        .with_cell(name)
-                        .with_cell(format!("{}{}", h, port)),
-                )
-            });
-        }
-        print!("{}", table);
-    }
-
-    Ok(())
-}
+// pub async fn print_endpoints(context: &Context) -> Result<Outcome<Endpoints>, DrogueError> {
+//     get_drogue_endpoints_authenticated(context).await
+//         .map(|e| Outcome::SuccessWithJsonData(e))
+//
+// }
 
 fn deserialize_endpoint(details: &Value) -> (Option<String>, String) {
     let (host, port) = match details {
@@ -133,4 +113,37 @@ fn deserialize_endpoint(details: &Value) -> (Option<String>, String) {
 
     let port = port.map_or("".to_string(), |p| format!(":{}", p));
     (host, port)
+}
+
+pub fn endpoints_pretty_print(endpoints: &Endpoints, service: Option<&str>) {
+    let endpoints = serde_json::to_value(endpoints).unwrap();
+    let endpoints_map = endpoints.as_object().unwrap();
+
+    if let Some(service) = service {
+        let details = endpoints_map.get(service);
+        if let Some(details) = details {
+            let (host, port) = deserialize_endpoint(details);
+            println!("{}{}", host.unwrap(), port);
+        } else {
+            println!(
+                "Service {} not found in drogue cloud available endpoints",
+                service
+            );
+        }
+    } else {
+        let mut table = Table::new("{:<} {:<}");
+        table.add_row(Row::new().with_cell("NAME").with_cell("URL"));
+
+        for (name, details) in endpoints_map {
+            let (host, port) = deserialize_endpoint(details);
+            host.map(|h| {
+                table.add_row(
+                    Row::new()
+                        .with_cell(name)
+                        .with_cell(format!("{}{}", h, port)),
+                )
+            });
+        }
+        print!("{}", table);
+    }
 }

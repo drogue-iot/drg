@@ -35,13 +35,17 @@ use url::Url;
 pub const VERSION: &str = crate_version!();
 pub const COMPATIBLE_DROGUE_VERSION: &str = "0.9.0";
 
-pub fn show_json<S: Into<String>>(payload: S) {
+pub fn show_json(payload: &Value) {
+    write_colored_json(payload, &mut stdout().lock()).ok();
+    println!();
+}
+
+pub fn show_json_string<S: Into<String>>(payload: S) {
     let payload = payload.into();
     match serde_json::from_str(&payload) {
         // show as JSON
         Ok(json) => {
-            write_colored_json(&json, &mut stdout().lock()).ok();
-            println!();
+            show_json(&json);
         }
         // fall back to plain text output
         Err(_) => println!("{}", payload),
@@ -83,7 +87,7 @@ where
     edit::edit_file(file.path())
         .map_err(|err| {
             log::debug!("{}", err);
-            show_json(
+            show_json_string(
                 serde_json::to_string(&original)
                     .unwrap_or_else(|_| String::from("Error serializing the resource")),
             );
