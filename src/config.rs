@@ -69,17 +69,27 @@ impl RequestBuilderExt for reqwest::RequestBuilder {
     }
 }
 
-impl RequestBuilderExt for tungstenite::http::request::Builder {
-    fn auth(self, token: &Token) -> Self {
+impl RequestBuilderExt for tungstenite::http::Request<()> {
+    fn auth(mut self, token: &Token) -> Self {
         match token {
             Token::TokenResponse(token) => {
                 let bearer_header = format!("Bearer {}", &token.access_token().secret());
-                self.header(tungstenite::http::header::AUTHORIZATION, bearer_header)
+                let mut bearer_header =
+                    tungstenite::http::HeaderValue::from_str(&bearer_header).unwrap();
+                bearer_header.set_sensitive(true);
+                self.headers_mut()
+                    .insert(tungstenite::http::header::AUTHORIZATION, bearer_header);
+                self
             }
             Token::AccessToken(auth) => {
                 let encoded = base64::encode(&format!("{}:{}", auth.id, auth.token).as_bytes());
                 let basic_header = format!("Basic {}", encoded);
-                self.header(tungstenite::http::header::AUTHORIZATION, basic_header)
+                let mut basic_header =
+                    tungstenite::http::HeaderValue::from_str(&basic_header).unwrap();
+                basic_header.set_sensitive(true);
+                self.headers_mut()
+                    .insert(tungstenite::http::header::AUTHORIZATION, basic_header);
+                self
             }
         }
     }

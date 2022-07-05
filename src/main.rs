@@ -240,8 +240,9 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
                 .map(|s| s.parse::<usize>().unwrap())
                 .unwrap_or(usize::MAX);
             let device = matches.value_of(Parameters::device.as_ref());
+            let insecure = matches.is_present(Parameters::insecure.as_ref());
 
-            stream::stream_app(context, &app_id, device, count).await?;
+            stream::stream_app(context, &app_id, device, count, insecure).await?;
             0
         }
 

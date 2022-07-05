@@ -118,6 +118,7 @@ pub enum Parameters {
     // stream command
     count,
     device,
+    insecure,
 
     // login & whoami command
     token,
@@ -530,10 +531,17 @@ pub fn app_arguments() -> clap::Command<'static> {
         .global(true)
         .help("The number of messages to stream before exiting.");
 
+    let insecure = Arg::new(Parameters::insecure.as_ref())
+        .required(false)
+        .long("insecure")
+        .takes_value(false)
+        .help("Skip the TLS certificate verification");
+
     let stream = Command::new(Action::stream.as_ref())
         .about("Stream all events going through drogue cloud")
         .arg(&app_flag)
         .arg(&count)
+        .arg(&insecure)
         .arg(
             Arg::new(Parameters::device.as_ref())
                 .long("device")
