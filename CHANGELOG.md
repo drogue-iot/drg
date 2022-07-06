@@ -11,6 +11,7 @@
 ## Dependencies
 - Updated to tungstenite 0.17.2
 - updated to tiny_http 0.8.0
+- updated to drogue-client 0.10.1
 
 # Version 0.9.0
 

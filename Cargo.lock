@@ -503,8 +503,9 @@ dependencies = [
 
 [[package]]
 name = "drogue-client"
-version = "0.10.0"
-source = "git+https://github.com/drogue-iot/drogue-client?rev=be7f2a715ffc03e1f3df8c49b29dc276552fd6c5#be7f2a715ffc03e1f3df8c49b29dc276552fd6c5"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e29f9cdb7ab09682979dde4c1f296d47cfa3facd1ab4fee4731d8b09e511e3f3"
 dependencies = [
  "async-trait",
  "base64",
@@ -520,7 +521,6 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-http",
  "reqwest",
- "reqwest-wasm-ext",
  "serde",
  "serde_json",
  "thiserror",
@@ -1643,9 +1643,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.10"
+version = "0.11.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46a1f7aa4f35e5e8b4160449f51afc758f0ce6454315a9fa7d0d113e958c41eb"
+checksum = "b75aa69a3f06bbcc66ede33af2af253c6f7a86b1ca0033f60c580a27074fbf92"
 dependencies = [
  "base64",
  "bytes",
@@ -1674,22 +1674,13 @@ dependencies = [
  "tokio",
  "tokio-native-tls",
  "tokio-rustls",
+ "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "webpki-roots",
  "winreg",
-]
-
-[[package]]
-name = "reqwest-wasm-ext"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19e2dea89d75a433873c47f51a534dbd5a85c110e6e8a5fd57bbf34701cf7858"
-dependencies = [
- "base64",
- "reqwest",
 ]
 
 [[package]]
@@ -1781,9 +1772,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-pemfile"
-version = "0.3.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ee86d63972a7c661d1536fefe8c3c8407321c3df668891286de28abcd087360"
+checksum = "e7522c9de787ff061458fe9a829dc790a3f5b22dc571694fc5883f448b94d9a9"
 dependencies = [
  "base64",
 ]
