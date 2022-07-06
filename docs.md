@@ -78,5 +78,3 @@ Set default properties:
 - Version information: `drg version`
 - Print cluster address, version and default app(if any): `drg whoami`
 
-
-![img.png](img.png)

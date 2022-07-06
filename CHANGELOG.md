@@ -1,3 +1,17 @@
+# Version 0.10.0
+
+## New features
+- Added an interactive / terminal mode : start it with `drg --interactive`
+- Added an `--insecure` flag for `drg stream` allowing to connect to servers using self-signed certificates (e.g. drogue-server)
+
+## Misc. changes
+- Added missing JSON output for `login`, `config` and `whoami`
+- Added support for refreshing the auth token in `drg stream` to keep alive the connection
+
+## Dependencies
+- Updated to tungstenite 0.17.2
+- updated to tiny_http 0.8.0
+
 # Version 0.9.0
 
 ## New features

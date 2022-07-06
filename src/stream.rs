@@ -115,8 +115,7 @@ fn insecure_stream(
 ) -> Result<(tungstenite::Connector, TcpStream)> {
     let connector = TlsConnector::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .build()?;
 
     let stream = TcpStream::connect(address.as_slice())?;
     let connector: tungstenite::Connector = tungstenite::Connector::NativeTls(connector);

@@ -179,7 +179,7 @@ This will create an alias : "CN=<deviceId>, O=Drogue IoT, OU=<appId>" for the de
 
 You can see the stream of events for a drogue-cloud application using :
 ```
-drg stream <appId>
+drg stream --app <appId>
 # or if you have a default application set in your context :
 drg stream
 ```
@@ -188,24 +188,21 @@ drg stream
 
 You can create and manage access tokens with the admin subcommand : 
 ```
-drg admin token create
-drg admin token list
-drg admin token delete <prefix>
+drg create token 
+drg create token --description "some text"
+drg get token 
+drg delete token <prefix>
 ```
 
 Drg can also transfer apps ownership and manage apps members :
 ```
-drg admin member add <app> <user> --role reader
-drg admin member list <app>
-drg admin member edit <app>
+drg create member <user> --role reader --application <app>
+drg get member
+drg edit member
 
 #Transfer operations
-drg admin transfer init <app> <newOwnerUSername>
-drg admin transfer cancel <app>
+drg transfer init <newOwnerUSername> --application <appId>
+drg transfer cancel
 # The new owner can accept the transfer :
-drg admin transfer accept <app>
+drg transfer accept <app>
 ```
-
-
-In no particular order here are the following things that we would like to add to `drg` :
- * Json patch operations
