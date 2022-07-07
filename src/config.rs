@@ -281,6 +281,10 @@ impl Config {
             )))
         }
     }
+
+    pub fn changed(&mut self, changed: bool) {
+        self.changed = changed;
+    }
 }
 
 impl fmt::Display for Config {
