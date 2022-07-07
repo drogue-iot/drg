@@ -1,3 +1,9 @@
+# Version 0.10.1
+
+## Bug fixes
+- Fixed an issue where `drg config default-app` and `default-algo` were not saving the config changes
+
+
 # Version 0.10.0
 
 ## New features

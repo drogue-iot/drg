@@ -1,6 +1,6 @@
 [package]
 name = "drg"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Jean-Baptiste Trystram <jbtrystram@redhat.com>"]
 edition = "2021"
 license = "Apache-2.0"
