@@ -282,6 +282,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         )
         .subcommand(
             Command::new(ResourceType::member.as_ref())
+                .alias("members")
                 .about("Allow a member to access an application")
                 .arg(&app_flag)
                 .arg(&member)
@@ -345,6 +346,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         )
         .subcommand(
             Command::new(ResourceType::member.as_ref())
+                .alias("members")
                 .about("Edit application members")
                 .arg(&app_flag),
         );
@@ -445,6 +447,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         )
         .subcommand(
             Command::new(ResourceType::member.as_ref())
+                .alias("members")
                 .about("Remove a user from the members list for this application")
                 .arg(&app_flag)
                 .arg(&member),
