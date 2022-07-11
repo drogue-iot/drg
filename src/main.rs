@@ -99,7 +99,7 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
         config.write(config_path)?;
         return code;
     } else if command == Action::version.as_ref() {
-        util::print_version(config_result.ok().as_ref()).await;
+        util::print_version(config_result.ok().as_ref(), json_output).await;
         return Ok(0);
     }
 

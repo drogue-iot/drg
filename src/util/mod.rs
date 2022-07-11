@@ -106,31 +106,45 @@ where
     }
 }
 
-pub async fn print_version(config: Option<&Config>) {
-    println!("Drg Version: {}", VERSION);
-
-    match config {
+pub async fn print_version(config: Option<&Config>, json: bool) {
+    let cloud_version = match config {
         Some(cfg) => {
             let context = cfg.get_context(&None);
             match context {
-                Ok(ctx) => match get_drogue_services_version(&ctx.drogue_cloud_url).await {
-                    Ok(cloud_version) => {
-                        println!("Connected drogue-cloud service: v{}", cloud_version);
-                    }
-                    Err(err) => {
-                        log::debug!("Failed to detect server side version: {}", err);
-                    }
-                },
-                Err(e) => {
-                    println!("{}", e);
-                }
+                Ok(ctx) => {
+                    get_drogue_services_version(&ctx.drogue_cloud_url).await.map_err(|e| {
+                        log::debug!("Failed to detect server side version: {}", e);
+                        format!("Error retrieving drogue-cloud version. Compatible with drogue-cloud v{}", COMPATIBLE_DROGUE_VERSION)
+             })},
+             Err(e) => {
+                 log::debug!("Error getting context. {}", e);
+                 Err("Error reading context".to_string())
+             }
             }
         }
-        None => {
-            println!(
-                "No configuration file. Compatible with v{}",
-                COMPATIBLE_DROGUE_VERSION
-            );
+        None => Err(format!(
+            "No configuration file. Compatible with v{}",
+            COMPATIBLE_DROGUE_VERSION
+        )),
+    };
+
+    if json {
+        show_json(&match cloud_version {
+            Ok(cloud) => json!({
+                "drg": VERSION,
+                "compatible_cloud": COMPATIBLE_DROGUE_VERSION,
+                "connected_cloud": cloud
+            }),
+            Err(_) => json!({
+                "drg": VERSION,
+                "compatible_cloud": COMPATIBLE_DROGUE_VERSION
+            }),
+        });
+    } else {
+        println!("Drg Version: {}", VERSION);
+        match cloud_version {
+            Ok(cloud) => println!("Connected drogue-cloud service: v{}", cloud),
+            Err(e) => println!("{}", e),
         }
     }
 }
