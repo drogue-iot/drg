@@ -202,11 +202,11 @@ jobs:
         if: ${{ needs.check.outputs.release }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: v${{ needs.check.outputs.version }}
+          RELEASE: ${{ needs.check.outputs.version }}
         run: |
           # add packages
           for pkg in tar.gz zip; do
-            hub release edit -m "" $(find uploads/ -type f -name "drg-*.${pkg}" -printf "-a %p ") $TAG
+            hub release edit -m "" $(find uploads/ -type f -name "drg-*.${pkg}" -printf "-a %p ") $RELEASE
           done
           # finally, remove the draft status
-          hub release edit -m "" --draft=false $TAG
+          hub release edit -m "" --draft=false $RELEASE
