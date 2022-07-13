@@ -1,8 +1,15 @@
+# Version 0.10.2
+
+## Misc. changes
+- Added missing JSON output for `version`
+
 # Version 0.10.1
 
 ## Bug fixes
 - Fixed an issue where `drg config default-app` and `default-algo` were not saving the config changes
 
+## Misc. changes
+- add plural aliases for member subcommands: 
 
 # Version 0.10.0
 
