@@ -169,6 +169,8 @@ jobs:
           echo "Release? - release = ${{needs.check.outputs.release}}"
           echo "Pre-release? - prerelease = ${{needs.check.outputs.prerelease}}"
 
+      -  uses: actions/checkout@v2
+
       - uses: actions/download-artifact@v2
         with:
           path: downloads
@@ -176,8 +178,8 @@ jobs:
       - name: Prepare upload area
         run: |
           mkdir uploads
-          mv downloads/package-* uploads/
-          mv downloads/installer-* uploads/
+          mv downloads/package-*/drg-* uploads/
+          mv downloads/installer-*/drg-* uploads/
 
       - name: Check staging content
         run: |
@@ -188,5 +190,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           draft: true
+          body_path: ${{ github.workspace }}-CHANGELOG.md
+          fail_on_unmatched_files: true
           files: |
             uploads/drg-*  
