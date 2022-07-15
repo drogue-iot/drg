@@ -169,9 +169,6 @@ jobs:
           echo "Release? - release = ${{needs.check.outputs.release}}"
           echo "Pre-release? - prerelease = ${{needs.check.outputs.prerelease}}"
 
-      # we need the checkout for the "hub" tool later on
-      - uses: actions/checkout@v2
-
       - uses: actions/download-artifact@v2
         with:
           path: downloads
@@ -186,27 +183,10 @@ jobs:
         run: |
           find uploads
 
-      - name: Create Release
-        id: create-release
-        if: ${{ needs.check.outputs.release }}
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
         with:
-          tag_name: v${{ needs.check.outputs.version }}
-          release_name: ${{ needs.check.outputs.version }}
           draft: true
-          prerelease: ${{ needs.check.outputs.prerelease }}
-
-      - name: Upload release assets
-        if: ${{ needs.check.outputs.release }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE: ${{ needs.check.outputs.version }}
-        run: |
-          # add packages
-          for pkg in tar.gz zip; do
-            hub release edit -m "" $(find uploads/ -type f -name "drg-*.${pkg}" -printf "-a %p ") $RELEASE
-          done
-          # finally, remove the draft status
-          hub release edit -m "" --draft=false $RELEASE
+          files: |
+            uploads/drg-*  
