@@ -38,6 +38,13 @@ impl ApplicationOperation {
 
         Ok(ApplicationOperation { name, payload: app })
     }
+
+    pub fn from_application(app: Application) -> Self {
+        ApplicationOperation {
+            name: None,
+            payload: app,
+        }
+    }
 }
 
 //
