@@ -46,4 +46,12 @@ impl DeviceOperation {
             payload: device,
         })
     }
+
+    pub fn from_device(dev: Device) -> Self {
+        DeviceOperation {
+            device: None,
+            app: dev.metadata.application.clone(),
+            payload: dev,
+        }
+    }
 }

@@ -1,5 +1,6 @@
 mod admin;
 mod applications;
+mod apply;
 mod arguments;
 mod command;
 mod config;
@@ -10,6 +11,7 @@ mod util;
 
 use arguments::cli::{Action, Parameters, ResourceId, ResourceType, Transfer};
 use std::io::Write;
+use std::path::PathBuf;
 
 use crate::admin::tokens;
 use crate::applications::ApplicationOperation;
@@ -244,6 +246,17 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
 
             stream::stream_app(context, &app_id, device, count, insecure).await?;
             0
+        }
+
+        Action::apply => {
+            let (_, matches) = matches.subcommand().unwrap();
+            let path: Vec<&PathBuf> = matches
+                .get_many::<PathBuf>(ResourceType::path.as_ref())
+                .unwrap()
+                .collect();
+
+            let res = apply::apply(context, path).await;
+            display_simple(res, json_output)?
         }
 
         Action::label => {

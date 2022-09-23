@@ -1,6 +1,7 @@
 use crate::util;
-use clap::{Arg, ArgGroup, Command};
+use clap::{value_parser, Arg, ArgGroup, Command};
 use std::convert::AsRef;
+use std::path::PathBuf;
 use strum_macros::{AsRefStr, EnumString};
 
 /// Drg CLI follows a "action resourceType resourceId options" pattern.
@@ -9,6 +10,7 @@ use strum_macros::{AsRefStr, EnumString};
 #[derive(AsRefStr, EnumString)]
 #[allow(non_camel_case_types)]
 pub enum Action {
+    apply,
     create,
     delete,
     edit,
@@ -57,6 +59,9 @@ pub enum ResourceType {
 
     // for the login command
     url,
+
+    // for the apply command
+    path,
 }
 
 #[derive(AsRefStr, EnumString)]
@@ -612,6 +617,16 @@ pub fn app_arguments() -> clap::Command<'static> {
                 .arg(&algo_param),
         );
 
+    let json_apply_path = Arg::new(ResourceType::path.as_ref())
+        .required(true)
+        .multiple_values(true)
+        .value_parser(value_parser!(PathBuf))
+        .help("Relative paths to JSON files to apply or to a directory containing the JSON files.");
+
+    let apply = Command::new(Action::apply.as_ref())
+        .about("Apply a configuration to a device or application through a JSON file. This resource will be created if it doesn't exist yet.")
+        .arg(&json_apply_path);
+
     let command = Arg::new(Parameters::command.as_ref())
         .required(true)
         .help("The name of the command to send to the device");
@@ -684,6 +699,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         .arg(&output_format)
         .arg(&interactive)
         .arg_required_else_help(true)
+        .subcommand(apply)
         .subcommand(create)
         .subcommand(delete)
         .subcommand(edit)
