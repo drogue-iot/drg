@@ -254,8 +254,9 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
                 .get_many::<PathBuf>(ResourceType::path.as_ref())
                 .unwrap()
                 .collect();
+            let ignore_version = matches.get_flag(Parameters::ignore_conflict.as_ref());
 
-            let res = apply::apply(context, path).await;
+            let res = apply::apply(context, path, ignore_version).await;
             display_simple(res, json_output)?
         }
 
