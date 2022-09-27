@@ -3,6 +3,7 @@ use crate::{ApplicationOperation, Context, DeviceOperation, DrogueError, Outcome
 use drogue_client::registry::v1::{Application, Device};
 use serde_json::Value;
 use std::fs::{read_dir, File};
+use std::io;
 use std::io::BufReader;
 use std::path::PathBuf;
 
@@ -11,9 +12,22 @@ enum Resource {
     Application(Application),
 }
 
+enum ResourceName {
+    // app, dev
+    Device(String, String),
+    Application(String),
+}
+
+enum ExistenceOutcome {
+    Update,
+    Create,
+    NoApp,
+}
+
 pub async fn apply(
     config: &Context,
-    mut paths: Vec<&PathBuf>,
+    paths: Vec<&PathBuf>,
+    ignore_resource_version: bool,
 ) -> Result<Outcome<String>, DrogueError> {
     let mut resources: Vec<Resource> = Vec::new();
 
@@ -23,61 +37,93 @@ pub async fn apply(
             for file in read_dir(p)? {
                 match load_json(&file.unwrap().path()) {
                     Ok(r) => resources.push(r),
-                    Err(e) => log::warn!("{e}"),
+                    Err(e) => log::error!("{e}"),
                 }
             }
         } else {
-            match load_json(p) {
-                Ok(r) => resources.push(r),
-                Err(e) => log::warn!("{e}"),
+            if p == &PathBuf::from("-") {
+                match std_in() {
+                    Ok(r) => resources.push(r),
+                    Err(e) => log::error!("{e}"),
+                }
+            } else {
+                match load_json(p) {
+                    Ok(r) => resources.push(r),
+                    Err(e) => log::error!("Cannot read file {:?} -> {e}", p),
+                }
             }
         }
     }
 
     for mut r in resources {
-        let version = get_resource_version(config, &r).await;
         match r {
-            Resource::Device(mut dev) => {
-                // The device exists
-                if let Some(version) = version {
-                    dev.metadata.resource_version = version;
-                    match DeviceOperation::from_device(dev.clone()).edit(config).await {
-                        Ok(_) => println!("Success updating device {}", dev.metadata.name.clone()),
-                        Err(e) => println!("Error updating device {}: {e}", dev.metadata.name),
+            Resource::Device(ref mut dev) => {
+                match check_existence(
+                    config,
+                    ResourceName::Device(
+                        dev.metadata.application.clone(),
+                        dev.metadata.name.clone(),
+                    ),
+                )
+                .await?
+                {
+                    ExistenceOutcome::Update => {
+                        if ignore_resource_version {
+                            // an empty string will skip the field serialization
+                            dev.metadata.resource_version = String::default();
+                        }
+                        match DeviceOperation::from_device(dev.clone()).edit(config).await {
+                            Ok(_) => {
+                                println!("Success updating device {}", dev.metadata.name.clone())
+                            }
+                            Err(e) => println!("Error updating device {}: {e}", dev.metadata.name),
+                        }
                     }
-                }
-                // the device do not exist, create it
-                else {
-                    match DeviceOperation::from_device(dev.clone())
-                        .create(config)
-                        .await
-                    {
-                        Ok(_) => println!("Success creating device {}", dev.metadata.name.clone()),
-                        Err(e) => println!("Error creating device {}: {e}", dev.metadata.name),
+                    ExistenceOutcome::Create => {
+                        match DeviceOperation::from_device(dev.clone())
+                            .create(config)
+                            .await
+                        {
+                            Ok(_) => {
+                                println!("Success creating device {}", dev.metadata.name.clone())
+                            }
+                            Err(e) => println!("Error creating device {}: {e}", dev.metadata.name),
+                        }
                     }
+                    ExistenceOutcome::NoApp => log::error!(
+                        "Cannot apply device {} : application {} does not exist",
+                        dev.metadata.name,
+                        dev.metadata.application
+                    ),
                 }
             }
-            Resource::Application(mut app) => {
-                // The app exists
-                if let Some(version) = version {
-                    app.metadata.resource_version = version;
-                    match ApplicationOperation::from_application(app.clone())
-                        .edit(config)
-                        .await
-                    {
-                        Ok(_) => println!("Success updating app {}", app.metadata.name.clone()),
-                        Err(e) => println!("Error updating app {}: {e}", app.metadata.name),
+            Resource::Application(ref mut app) => {
+                match check_existence(config, ResourceName::Application(app.metadata.name.clone()))
+                    .await?
+                {
+                    ExistenceOutcome::Update => {
+                        if ignore_resource_version {
+                            // an empty string will skip the field serialization
+                            app.metadata.resource_version = String::default();
+                        }
+                        match ApplicationOperation::from_application(app.clone())
+                            .edit(config)
+                            .await
+                        {
+                            Ok(_) => println!("Success updating app {}", app.metadata.name.clone()),
+                            Err(e) => println!("Error updating app {}: {e}", app.metadata.name),
+                        }
                     }
-                }
-                // the application do not exist, create it
-                else {
-                    match ApplicationOperation::from_application(app.clone())
-                        .create(config)
-                        .await
-                    {
-                        Ok(_) => println!("Success creating app {}", app.metadata.name.clone()),
-                        Err(e) => println!("Error creating app {}: {e}", app.metadata.name),
+                    ExistenceOutcome::Create => {
+                        match ApplicationOperation::from_application(app.clone())
+                            .create(config)
+                            .await
+                        {
+                            Ok(_) => println!("Success creating app {}", app.metadata.name.clone()),
+                            Err(e) => println!("Error creating app {}: {e}", app.metadata.name),
+                        }
                     }
+                    ExistenceOutcome::NoApp => unreachable!(),
                 }
             }
         }
@@ -87,7 +133,14 @@ pub async fn apply(
     Ok(Outcome::SuccessWithMessage("Finished apply".to_string()))
 }
 
-// fixme if a file cannot be loaded (invalid), simply display a warning and carry on ?
+fn std_in() -> Result<Resource, DrogueError> {
+    let stdin = io::stdin();
+    let reader = BufReader::new(stdin);
+
+    let json: Value = serde_json::from_reader(reader)?;
+    deser(json)
+}
+
 fn load_json(path: &PathBuf) -> Result<Resource, DrogueError> {
     if path.is_dir() {
         log::debug!("path {:?} is a subdirectory, skipping.", path);
@@ -101,43 +154,49 @@ fn load_json(path: &PathBuf) -> Result<Resource, DrogueError> {
         let reader = BufReader::new(f);
 
         let json: Value = serde_json::from_reader(reader)?;
-
-        if json.get("metadata").unwrap().get("application").is_some() {
-            let dev: Device = serde_json::from_value(json)?;
-            Ok(Resource::Device(dev))
-        } else {
-            let app: Application = serde_json::from_value(json)?;
-            Ok(Resource::Application(app))
-        }
+        deser(json)
     }
 }
 
-//TODO, check for app existence before reading the device
-async fn get_resource_version(context: &Context, resource: &Resource) -> Option<String> {
+fn deser(json: Value) -> Result<Resource, DrogueError> {
+    if json.get("metadata").unwrap().get("application").is_some() {
+        let dev: Device = serde_json::from_value(json)?;
+        Ok(Resource::Device(dev))
+    } else {
+        let app: Application = serde_json::from_value(json)?;
+        Ok(Resource::Application(app))
+    }
+}
+
+async fn check_existence(
+    context: &Context,
+    resource: ResourceName,
+) -> Result<ExistenceOutcome, DrogueError> {
     // here the two unwraps are safe because operation::new can only yield an error when trying to read a file
     match resource {
-        Resource::Device(dev) => {
-            let op = DeviceOperation::new(
-                dev.metadata.application.clone(),
-                Some(dev.metadata.name.clone()),
-                None,
-                None,
-            )
-            .unwrap();
-            op.read(context)
-                .await
-                .and_then(|o| o.inner())
-                .map(|d| d.metadata.resource_version)
-                .ok()
+        ResourceName::Device(app, dev) => {
+            let op = DeviceOperation::new(app.clone(), Some(dev), None, None).unwrap();
+            match op.read(context).await {
+                Ok(_) => Ok(ExistenceOutcome::Update),
+                // 404 response, let's try if the app even exist
+                Err(DrogueError::NotFound) => {
+                    ApplicationOperation::new(Some(app), None, None).unwrap();
+                    match op.read(context).await {
+                        Ok(_) => Ok(ExistenceOutcome::Create),
+                        Err(DrogueError::NotFound) => Ok(ExistenceOutcome::NoApp),
+                        Err(e) => Err(e),
+                    }
+                }
+                Err(e) => Err(e),
+            }
         }
-        Resource::Application(app) => {
-            let op =
-                ApplicationOperation::new(Some(app.metadata.name.clone()), None, None).unwrap();
-            op.read(context)
-                .await
-                .and_then(|o| o.inner())
-                .map(|a| a.metadata.resource_version)
-                .ok()
+        ResourceName::Application(app) => {
+            let op = ApplicationOperation::new(Some(app), None, None).unwrap();
+            match op.read(context).await {
+                Ok(_) => Ok(ExistenceOutcome::Update),
+                Err(DrogueError::NotFound) => Ok(ExistenceOutcome::Create),
+                Err(e) => Err(e),
+            }
         }
     }
 }

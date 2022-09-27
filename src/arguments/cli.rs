@@ -119,6 +119,8 @@ pub enum Parameters {
     role,
     username,
     label,
+    #[strum(serialize = "ignore-conflict")]
+    ignore_conflict,
 
     // stream command
     count,
@@ -321,6 +323,11 @@ pub fn app_arguments() -> clap::Command<'static> {
                 .arg(&access_token_description),
         );
 
+    let ignore_conflict = Arg::new(Parameters::ignore_conflict.as_ref())
+        .long(Parameters::ignore_conflict.as_ref())
+        .action(clap::ArgAction::SetTrue)
+        .help("Write the data without checking the resource version field");
+
     // edit subcommand
     let edit = Command::new(Action::edit.as_ref())
         .about("Modify an existing resource.")
@@ -331,6 +338,8 @@ pub fn app_arguments() -> clap::Command<'static> {
                 .arg(&device_id)
                 .arg(&app_flag)
                 .arg(&file)
+                //TODO
+                //.arg(&ignore_conflict)
                 .group(
                     ArgGroup::new("name")
                         .required(true)
@@ -618,13 +627,16 @@ pub fn app_arguments() -> clap::Command<'static> {
         );
 
     let json_apply_path = Arg::new(ResourceType::path.as_ref())
+        .short('f')
         .required(true)
+        .takes_value(true)
         .multiple_values(true)
         .value_parser(value_parser!(PathBuf))
         .help("Relative paths to JSON files to apply or to a directory containing the JSON files.");
 
     let apply = Command::new(Action::apply.as_ref())
         .about("Apply a configuration to a device or application through a JSON file. This resource will be created if it doesn't exist yet.")
+        .arg(&ignore_conflict)
         .arg(&json_apply_path);
 
     let command = Arg::new(Parameters::command.as_ref())

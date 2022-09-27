@@ -6,15 +6,15 @@ pub enum Outcome<T: Serialize> {
     SuccessWithJsonData(T),
 }
 
-impl<T: Serialize> Outcome<T> {
-    pub fn inner(self) -> Result<T, DrogueError> {
-        match self {
-            Outcome::SuccessWithJsonData(t) => Ok(t),
-            // todo add a drogueError variant for this type of stuff ?
-            Outcome::SuccessWithMessage(msg) => Err(DrogueError::InvalidInput(msg)),
-        }
-    }
-}
+// impl<T: Serialize> Outcome<T> {
+//     pub fn inner(self) -> Result<T, DrogueError> {
+//         match self {
+//             Outcome::SuccessWithJsonData(t) => Ok(t),
+//             // todo add a drogueError variant for this type of stuff ?
+//             Outcome::SuccessWithMessage(msg) => Err(DrogueError::InvalidInput(msg)),
+//         }
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JsonOutcome {
