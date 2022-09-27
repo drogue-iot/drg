@@ -175,12 +175,17 @@ async fn check_existence(
     // here the two unwraps are safe because operation::new can only yield an error when trying to read a file
     match resource {
         ResourceName::Device(app, dev) => {
-            let op = DeviceOperation::new(app.clone(), Some(dev), None, None).unwrap();
+            let op = DeviceOperation::new(app.clone(), Some(dev.clone()), None, None).unwrap();
             match op.read(context).await {
                 Ok(_) => Ok(ExistenceOutcome::Update),
                 // 404 response, let's try if the app even exist
                 Err(DrogueError::NotFound) => {
-                    ApplicationOperation::new(Some(app), None, None).unwrap();
+                    log::info!(
+                        "Device {} does not exist, verify if application {} exists.",
+                        &dev,
+                        &app
+                    );
+                    let op = ApplicationOperation::new(Some(app), None, None).unwrap();
                     match op.read(context).await {
                         Ok(_) => Ok(ExistenceOutcome::Create),
                         Err(DrogueError::NotFound) => Ok(ExistenceOutcome::NoApp),
