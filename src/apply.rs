@@ -137,7 +137,7 @@ fn std_in() -> Result<Resource, DrogueError> {
     let stdin = io::stdin();
     let reader = BufReader::new(stdin);
 
-    let json: Value = serde_json::from_reader(reader)?;
+    let json: Value = serde_yaml::from_reader(reader)?;
     deser(json)
 }
 
@@ -153,7 +153,7 @@ fn load_json(path: &PathBuf) -> Result<Resource, DrogueError> {
         let f = File::open(path)?;
         let reader = BufReader::new(f);
 
-        let json: Value = serde_json::from_reader(reader)?;
+        let json: Value = serde_yaml::from_reader(reader)?;
         deser(json)
     }
 }
