@@ -5,11 +5,11 @@ pub mod util;
 pub use macros::*;
 pub use outcome::*;
 
+use assert_cmd::assert::Assert;
 use assert_cmd::Command;
 use dotenv;
 use drogue_client::tokens::v1::AccessToken;
 use std::env;
-use assert_cmd::assert::Assert;
 use uuid::Uuid;
 
 // todo save the context in a file in /tmp
@@ -21,8 +21,7 @@ pub fn setup() -> Assert {
     let cred = load_credentials();
     let url = env::var("DROGUE_SANDBOX_URL").unwrap();
 
-    cmd
-        .arg("login")
+    cmd.arg("login")
         .arg(url)
         .arg("--access-token")
         .arg(cred)
@@ -43,10 +42,7 @@ pub fn setup_no_login() {
 pub fn cleanup_tokens() {
     let dont_delete = env::var("DROGUE_SANDBOX_KEY_PREFIX").unwrap();
 
-    let list = drg!()
-        .arg("get")
-        .arg("token")
-        .assert();
+    let list = drg!().arg("get").arg("token").assert();
 
     let output: Vec<AccessToken> = serde_json::from_slice(&list.get_output().stdout).unwrap();
     list.success();
@@ -57,10 +53,10 @@ pub fn cleanup_tokens() {
                 .arg("delete")
                 .arg("token")
                 .arg(access_token.prefix)
-                .assert().success();
+                .assert()
+                .success();
         }
     }
-
 }
 
 fn load_credentials() -> String {
@@ -71,11 +67,7 @@ fn load_credentials() -> String {
 }
 
 pub fn app_delete(id: String) -> Assert {
-    drg!()
-        .arg("delete")
-        .arg("app")
-        .arg(id)
-        .assert()
+    drg!().arg("delete").arg("app").arg(id).assert()
 }
 
 pub fn app_create() -> String {
@@ -100,7 +92,8 @@ pub fn device_create(app: &String) -> String {
         .arg(id.clone())
         .arg("--app")
         .arg(app)
-        .assert().success();
+        .assert()
+        .success();
 
     id
 }
