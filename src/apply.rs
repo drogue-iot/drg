@@ -40,17 +40,15 @@ pub async fn apply(
                     Err(e) => log::error!("{e}"),
                 }
             }
+        } else if p == &PathBuf::from("-") {
+            match std_in() {
+                Ok(r) => resources.push(r),
+                Err(e) => log::error!("{e}"),
+            }
         } else {
-            if p == &PathBuf::from("-") {
-                match std_in() {
-                    Ok(r) => resources.push(r),
-                    Err(e) => log::error!("{e}"),
-                }
-            } else {
-                match load_json(p) {
-                    Ok(r) => resources.push(r),
-                    Err(e) => log::error!("Cannot read file {:?} -> {e}", p),
-                }
+            match load_json(p) {
+                Ok(r) => resources.push(r),
+                Err(e) => log::error!("Cannot read file {:?} -> {e}", p),
             }
         }
     }
@@ -145,7 +143,7 @@ fn load_json(path: &PathBuf) -> Result<Resource, DrogueError> {
     if path.is_dir() {
         log::debug!("path {:?} is a subdirectory, skipping.", path);
         Err(InvalidInput("Ignored subdirectory".to_string()))
-    } else if path.file_name().unwrap().to_str().unwrap().starts_with(".") {
+    } else if path.file_name().unwrap().to_str().unwrap().starts_with('.') {
         log::debug!("path {:?} is a hidden file, skipping.", path);
         Err(InvalidInput("Ignored hidden file".to_string()))
     } else {

@@ -35,7 +35,7 @@ pub enum Transfer {
     cancel,
 }
 
-#[derive(AsRefStr, EnumString, PartialEq, Debug)]
+#[derive(AsRefStr, EnumString, PartialEq, Eq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum ResourceType {
     device,
