@@ -34,9 +34,11 @@ pub fn subcommand(
 
                 display(c, json, |c| println!("{}", c))
             } else {
-                display(Ok(Outcome::SuccessWithJsonData(config)), json, |c| {
-                    println!("{}", c)
-                })
+                display(
+                    Ok(Outcome::SuccessWithJsonData(config.clone())),
+                    json,
+                    |c| println!("{}", c),
+                )
             }
         }
         "default-context" => {

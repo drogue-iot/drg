@@ -11,7 +11,7 @@ pub struct JsonOutcome {
     pub http_status: Option<u16>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum OutcomeStatus {
     Success,

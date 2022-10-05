@@ -56,7 +56,7 @@ pub async fn accept_transfer(config: &Context, app: &str) -> Result<Outcome<Stri
     )
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct AppTransfer {
     console: Option<Url>,
     app: String,

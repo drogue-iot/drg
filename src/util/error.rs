@@ -53,3 +53,17 @@ impl From<std::io::Error> for DrogueError {
         DrogueError::InvalidInput(format!("Filesystem error: {}", e))
     }
 }
+
+impl Clone for DrogueError {
+    fn clone(&self) -> Self {
+        match self {
+            DrogueError::InvalidInput(msg) => DrogueError::InvalidInput(msg.clone()),
+            DrogueError::NotFound => DrogueError::NotFound,
+            DrogueError::Service(msg, code) => DrogueError::Service(msg.clone(), code.clone()),
+            DrogueError::UnexpectedClient(e) => {
+                DrogueError::UnexpectedClient(anyhow!(e.to_string()))
+            }
+            DrogueError::ConfigIssue(msg) => DrogueError::ConfigIssue(msg.clone()),
+        }
+    }
+}
