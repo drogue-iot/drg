@@ -126,6 +126,7 @@ pub enum Parameters {
     count,
     device,
     insecure,
+    channel,
 
     // login & whoami command
     token,
@@ -554,17 +555,25 @@ pub fn app_arguments() -> clap::Command<'static> {
         .takes_value(false)
         .help("Skip the TLS certificate verification");
 
+    let channel = Arg::new(Parameters::channel.as_ref())
+        .required(false)
+        .long("channel")
+        .takes_value(true)
+        .value_name("channel_name")
+        .help("Apply a filter to show only events from the given channel");
+
     let stream = Command::new(Action::stream.as_ref())
-        .about("Stream all events going through drogue cloud")
+        .about("Stream events going through drogue cloud for an application")
         .arg(&app_flag)
         .arg(&count)
         .arg(&insecure)
+        .arg(&channel)
         .arg(
             Arg::new(Parameters::device.as_ref())
                 .long("device")
                 .takes_value(true)
                 .value_name("deviceId")
-                .help("Filter events comming from this device."),
+                .help("Filter events coming from this device."),
         );
 
     let context_id = Arg::new(ResourceId::contextId.as_ref())

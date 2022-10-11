@@ -19,9 +19,15 @@ pub async fn stream_app(
     device: Option<&str>,
     mut count: usize,
     insecure: bool,
+    channel: Option<&str>,
 ) -> Result<()> {
     let ws_endpoint = util::get_drogue_websocket_endpoint(config).await?;
-    let url = format!("{}{}", ws_endpoint, urlencoding::encode(app));
+
+    let mut url = format!("{}{}", ws_endpoint, urlencoding::encode(app));
+    if let Some(channel) = channel {
+        url.push('/');
+        url.push_str(urlencoding::encode(channel).as_str());
+    }
 
     let mut request: Request<()> = url.into_client_request()?;
     request = request.auth(&config.token);
