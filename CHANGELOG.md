@@ -1,5 +1,9 @@
 # Version 0.10.2
 
+## New features
+- New subcommand : `apply` allows to create or update devices and application from json or yaml. Works like `kubectl apply`.
+- Added support for channel filtering in `drg stream` with `--channel` option. 
+
 ## Misc. changes
 - Added missing JSON output for `version`
 
