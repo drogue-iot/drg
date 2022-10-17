@@ -11,7 +11,7 @@ use tabular::{Row, Table};
 use crate::devices::DeviceOperation;
 use crate::util::{DrogueError, Outcome};
 use drogue_client::registry::v1::Password::Sha512;
-use drogue_client::registry::v1::{Client, Credential, Device};
+use drogue_client::registry::v1::{Client, Credential, Device, PreSharedKey};
 
 impl DeviceOperation {
     pub async fn delete(
@@ -156,6 +156,33 @@ impl DeviceOperation {
         // prepare json data to merge
         let data = json!({"spec": {
         "credentials": {
+            "credentials": [
+              credential
+            ]
+        },
+        "authentication": {
+            "credentials": [
+              credential
+            ]
+        }
+        }});
+
+        self.merge_in(data, config).await
+    }
+
+    pub async fn set_psk(
+        &self,
+        config: &Context,
+        key: Vec<u8>,
+    ) -> Result<Outcome<String>, DrogueError> {
+        let credential = Credential::PreSharedKey(PreSharedKey {
+            key,
+            validity: None,
+        });
+
+        // prepare json data to merge
+        let data = json!({"spec": {
+        "authentication": {
             "credentials": [
               credential
             ]
