@@ -169,6 +169,16 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
                         .to_string();
                     display_simple(op.set_gateway(context, gateway_id).await, json_output)
                 }
+                ResourceType::psk => {
+                    let psk = command
+                        .value_of(Parameters::psk.as_ref())
+                        .unwrap()
+                        .to_string();
+                    display_simple(
+                        op.set_psk(context, psk.as_bytes().to_vec()).await,
+                        json_output,
+                    )
+                }
                 ResourceType::password => {
                     let password = command
                         .value_of(Parameters::password.as_ref())

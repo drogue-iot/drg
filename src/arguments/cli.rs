@@ -51,6 +51,7 @@ pub enum ResourceType {
     // resources for the set command
     gateway,
     password,
+    psk,
     alias,
     #[strum(serialize = "default-app")]
     default_app,
@@ -115,6 +116,7 @@ pub enum Parameters {
     // specific to set command
     alias,
     password,
+    psk,
     payload,
     role,
     username,
@@ -505,6 +507,10 @@ pub fn app_arguments() -> clap::Command<'static> {
         .required(true)
         .help("The credential password value");
 
+    let psk = Arg::new(Parameters::psk.as_ref())
+        .required(true)
+        .help("The pre-shared key");
+
     let set_password_username = Arg::new(Parameters::username.as_ref())
         .short('u')
         .long("username")
@@ -533,6 +539,12 @@ pub fn app_arguments() -> clap::Command<'static> {
                 .arg(device_id.clone().required(true))
                 .arg(&password)
                 .arg(&set_password_username),
+        )
+        .subcommand(
+            Command::new(ResourceType::psk.as_ref())
+                .about("Set a pre-shared key for a device")
+                .arg(device_id.clone().required(true))
+                .arg(&psk),
         )
         .subcommand(
             Command::new(ResourceType::alias.as_ref())
