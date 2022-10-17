@@ -32,6 +32,9 @@ impl From<ClientError> for DrogueError {
             ClientError::Syntax(e) => {
                 DrogueError::UnexpectedClient(anyhow!("JSON parsing error: {}", e))
             }
+            ClientError::UnexpectedResponse(e) => {
+                DrogueError::UnexpectedClient(anyhow!("Unexpected response: {}", e))
+            }
         }
     }
 }

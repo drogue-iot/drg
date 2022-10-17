@@ -323,7 +323,7 @@ impl Context {
             auth_url: dummy_url.clone(),
             token_url: dummy_url.clone(),
             registry_url: dummy_url,
-            token_exp_date: chrono::MAX_DATETIME,
+            token_exp_date: chrono::DateTime::<Utc>::MAX_UTC,
         }
     }
 
