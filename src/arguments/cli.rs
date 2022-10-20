@@ -686,7 +686,7 @@ pub fn app_arguments() -> clap::Command<'static> {
         .takes_value(true)
         .global(true)
         .value_name("FILE")
-        .help("Path to the drgconfig file. If not specified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
+        .help("Path to the drg config file. If not specified, reads $DRGCFG environment variable or defaults to XDG config directory for drg_config.json");
 
     let verbose = Arg::new(Parameters::verbose.as_ref())
         .short('v')
