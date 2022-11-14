@@ -23,7 +23,7 @@ pub fn subcommand(
             json,
         ),
         "list" => display(config.list_contexts(), json, |c| {
-            pretty_list(c, &config.active_context)
+            pretty_list(c, config.active_context.as_ref())
         }),
         "show" => {
             if c.is_present("active") {

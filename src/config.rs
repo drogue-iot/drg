@@ -20,7 +20,7 @@ use url::Url;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub active_context: String,
+    pub active_context: Option<String>,
     pub contexts: Vec<Context>,
     #[serde(skip, default)]
     changed: bool,
@@ -98,7 +98,7 @@ impl RequestBuilderExt for tungstenite::http::Request<()> {
 impl Config {
     pub fn empty() -> Config {
         Config {
-            active_context: String::new(),
+            active_context: None,
             contexts: Vec::new(),
             changed: true,
             //active_ctx_ref: None,
@@ -127,7 +127,7 @@ impl Config {
             self.replace_context(context)?;
         } else {
             if self.contexts.is_empty() {
-                self.active_context = name.clone();
+                self.active_context = Some(name.clone());
             }
             self.contexts.push(context);
         }
@@ -157,18 +157,23 @@ impl Config {
         }
     }
     fn get_active_context(&self) -> Result<&Context> {
-        // match self.active_ctx_ref {
-        //     Some(c) => Ok(c),
-        //     None => {
-        let default_context = &self.active_context;
-        self.get_context_as_ref(default_context)
-        // }
-        // }
+        if let Some(default) = &self.active_context.clone() {
+            self.get_context_as_ref(default)
+        } else {
+            Err(anyhow!(
+                "The config file is empty. Please log in to drogue-cloud first."
+            ))
+        }
     }
     fn get_active_context_mut(&mut self) -> Result<&mut Context> {
         // todo : avoid the clone ?
-        let default_context = &self.active_context.clone();
-        self.get_context_as_mut(default_context)
+        if let Some(default) = &self.active_context.clone() {
+            self.get_context_as_mut(default)
+        } else {
+            Err(anyhow!(
+                "The config file is empty. Please log in to drogue-cloud first."
+            ))
+        }
     }
     fn get_context_as_ref(&self, name: &str) -> Result<&Context> {
         for c in &self.contexts {
@@ -201,7 +206,7 @@ impl Config {
 
     pub fn set_active_context(&mut self, name: String) -> Result<Outcome<String>, DrogueError> {
         if self.contains_context(&name) {
-            self.active_context = name.clone();
+            self.active_context = Some(name.clone());
             self.changed = true;
             Ok(Outcome::SuccessWithMessage(format!(
                 "Switched active context to: {}",
@@ -234,11 +239,11 @@ impl Config {
         if self.contains_context(name) {
             self.contexts.retain(|c| c.name != name);
 
-            if self.active_context == name {
+            if self.active_context == Some(name.to_string()) {
                 if !self.contexts.is_empty() {
-                    self.active_context = self.contexts[0].name.clone();
+                    self.active_context = Some(self.contexts[0].name.clone());
                 } else {
-                    self.active_context = String::new();
+                    self.active_context = None;
                 }
             }
             self.changed = true;
@@ -267,8 +272,8 @@ impl Config {
             let ctx = self.get_context_as_mut(&name)?;
             ctx.rename(new_name.clone());
 
-            if self.active_context == name {
-                self.active_context = new_name.clone();
+            if self.active_context.is_some() && self.active_context.as_ref().unwrap() == &name {
+                self.active_context = Some(new_name.clone());
             }
             self.changed = true;
             Ok(SuccessWithMessage(format!(
@@ -389,7 +394,7 @@ fn eval_config_path(path: Option<&str>) -> String {
     }
 }
 
-pub fn pretty_list(contexts: &Vec<Context>, active: &String) {
+pub fn pretty_list(contexts: &Vec<Context>, active: Option<&String>) {
     let mut table = Table::new("{:<}  {:<}  {:<}");
     table.add_row(
         Row::new()
@@ -399,7 +404,7 @@ pub fn pretty_list(contexts: &Vec<Context>, active: &String) {
     );
 
     for config in contexts {
-        let name = if active == &config.name {
+        let name = if active.is_some() && active.unwrap() == &config.name {
             format!("{} *", config.name)
         } else {
             config.name.clone()
