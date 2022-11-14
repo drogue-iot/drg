@@ -47,8 +47,8 @@ jobs:
           echo "Release? - release = ${{needs.check.outputs.release}}"
           echo "Pre-release? - prerelease = ${{needs.check.outputs.prerelease}}"
 
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -97,8 +97,8 @@ jobs:
           sudo apt-get update; DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install build-essential curl tzdata
           sudo apt install -y libssl-dev pkg-config
 
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -168,7 +168,7 @@ jobs:
           echo "Release? - release = ${{needs.check.outputs.release}}"
           echo "Pre-release? - prerelease = ${{needs.check.outputs.prerelease}}"
 
-      -  uses: actions/checkout@v2
+      -  uses: actions/checkout@v3
 
       - uses: actions/download-artifact@v2
         with:

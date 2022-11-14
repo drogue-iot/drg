@@ -11,7 +11,7 @@ jobs:
     # if: github.event.pull_request.head.repo.full_name == 'drogue-iot/drg'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: cleanup apps
         shell: bash
