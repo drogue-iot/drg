@@ -67,7 +67,7 @@ fn delete_app(app: String) {
         // in some cases, the application can be retrieved if it's not deleted yet.
         Err(err) => {
             let output: Application =
-                serde_json::from_slice(&err.get_assert().get_output().stdout).unwrap();
+                serde_json::from_slice(&err.assert().get_output().stdout).unwrap();
             // we check if it was marked for deletion. If so, it's all good.
             assert!(output.metadata.deletion_timestamp.is_some());
         }

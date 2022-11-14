@@ -63,7 +63,7 @@ tungstenite = { version = "0.17.2", features = ["native-tls"]}
 native-tls = "0.2.10"
 
 [dev-dependencies]
-assert_cmd = "2.0.4"
+assert_cmd = "2.0.6"
 rstest = "0.12.0"
 test-utils = { path = "test-utils" }
 uuid = {version= "1.0", features = ["v4"]}
@@ -71,4 +71,3 @@ uuid = {version= "1.0", features = ["v4"]}
 [patch.crates-io]
 drogue-client = { git = "https://github.com/drogue-iot/drogue-client", rev = "3e0fdb91305803c51946f8a818e4f053ab88c2c3" } # FIXME: awaiting release
 #drogue-client = { path = "../drogue-client" }
-assert_cmd = { git = "https://github.com/jbtrystram/assert_cmd", rev = "7cee4bc51833617bfcc1b55d791cc57c4436b061"} #fixme https://github.com/assert-rs/assert_cmd/pull/144
