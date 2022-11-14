@@ -23,13 +23,12 @@ jobs:
         id: state
         shell: bash
         run: |
-          test -z "${{github.head_ref}}" && echo '::set-output name=do-publish::true'
+          test -z "${{github.head_ref}}" && echo 'echo "do-publish=true" >> $GITHUB_OUTPUT
           if [[ "${{ github.event.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-           echo ::set-output name=release::true
-           echo ::set-output name=release::true
+           echo "release=true" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event.ref }}" =~ ^refs/tags/v.*$ ]]; then
-           echo ::set-output name=release::true
-           echo ::set-output name=prerelease::true
+           echo "release=true" >> $GITHUB_OUTPUT
+           echo "prerelease=true" >> $GITHUB_OUTPUT
           fi
       - name: Set version
         id: version
@@ -39,7 +38,7 @@ jobs:
           [ "$VERSION" == "main" ] && VERSION=latest  # main branch
           [ "$VERSION" == "merge" ] && VERSION=latest # PR
           echo VERSION=$VERSION
-          echo "::set-output name=version::$VERSION"
+          echo "version={$VERSION}" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Dump state
         run: |
