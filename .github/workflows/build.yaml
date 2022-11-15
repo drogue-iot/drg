@@ -129,8 +129,10 @@ jobs:
           dir target\release
           nuget install WiX -version 3.11.2
           set VERSION=%VERSION:latest=0.0.0%
-          D:\a\drg\drg\WiX.3.11.2\tools\candle -v -dVersion=%VERSION%.0 -arch x64 dist\wix\drg.wxs
-          D:\a\drg\drg\WiX.3.11.2\tools\light drg.wixobj -o drg-%VERSION%.0-${{matrix.suffix}}.msi
+          set VERSION=%VERSION%.0
+          echo %VERSION%
+          D:\a\drg\drg\WiX.3.11.2\tools\candle -v -dVersion=%VERSION% -arch x64 dist\wix\drg.wxs
+          D:\a\drg\drg\WiX.3.11.2\tools\light drg.wixobj -o drg-%VERSION%-${{matrix.suffix}}.msi
 
       - uses: actions/upload-artifact@v2
         with:
