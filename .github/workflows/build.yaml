@@ -38,7 +38,7 @@ jobs:
           [ "$VERSION" == "main" ] && VERSION=latest  # main branch
           [ "$VERSION" == "merge" ] && VERSION=latest # PR
           echo VERSION=$VERSION
-          echo "version={$VERSION}" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Dump state
         run: |
@@ -73,7 +73,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-12, windows-2022]
+        os: [ubuntu-22.04, macos-12, windows-2019]
         include:
           - os: ubuntu-22.04
             suffix: "linux-amd64"
@@ -81,7 +81,7 @@ jobs:
           - os: macos-12
             suffix: "macos-amd64"
             pkg: "tar.gz"
-          - os: windows-2022
+          - os: windows-2019
             suffix: "windows-amd64"
             exe: ".exe"
             pkg: "zip"
@@ -118,7 +118,7 @@ jobs:
         run: .github/scripts/package_release.sh "${{matrix.suffix}}" "${{matrix.exe}}" "${{matrix.pkg}}" "${VERSION}"
 
       - name: Build Windows Installer
-        if: ${{ matrix.os == 'windows-2022' }}
+        if: ${{ matrix.os == 'windows-2019' }}
         shell: cmd
         #
         # In the following command we add '.0' to the version, as MSI expects a version in the format 'a.b.c.d'.
@@ -130,7 +130,6 @@ jobs:
           nuget install WiX -version 3.11.2
           set VERSION=%VERSION:latest=0.0.0%
           set VERSION=%VERSION%.0
-          echo %VERSION%
           D:\a\drg\drg\WiX.3.11.2\tools\candle -v -dVersion=%VERSION% -arch x64 dist\wix\drg.wxs
           D:\a\drg\drg\WiX.3.11.2\tools\light drg.wixobj -o drg-%VERSION%-${{matrix.suffix}}.msi
 
@@ -143,7 +142,7 @@ jobs:
             drg-*.zip
 
       - uses: actions/upload-artifact@v2
-        if: ${{ matrix.os == 'windows-2022' }}
+        if: ${{ matrix.os == 'windows-2019' }}
         with:
           name: installer-${{ matrix.os }}
           if-no-files-found: error
