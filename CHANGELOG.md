@@ -1,3 +1,16 @@
+# Version 0.11
+
+## New features
+- Added a `drg apply` subcommand. It's tailored to feel like the `kubectl apply` we are used to.
+- Added support for PSK credentials (see drogue-cloud 0.11 release.
+
+## Misc. changes
+- updated CI runners
+
+## Dependencies
+- Updated to colored_json 3
+- updated to drogue-client 0.11
+
 # Version 0.10.2
 
 ## Misc. changes

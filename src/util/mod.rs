@@ -33,7 +33,7 @@ use tempfile::Builder;
 use url::Url;
 
 pub const VERSION: &str = crate_version!();
-pub const COMPATIBLE_DROGUE_VERSION: &str = "0.10";
+pub const COMPATIBLE_DROGUE_VERSION: &str = "0.11";
 
 pub fn show_json(payload: &Value) {
     write_colored_json(payload, &mut stdout().lock()).ok();
