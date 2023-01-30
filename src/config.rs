@@ -1,6 +1,7 @@
 use crate::util::SignAlgo;
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::{env, fs::create_dir_all, fs::write, fs::File, path::Path, process::exit};
 
@@ -82,7 +83,8 @@ impl RequestBuilderExt for tungstenite::http::Request<()> {
                 self
             }
             Token::AccessToken(auth) => {
-                let encoded = base64::encode(&format!("{}:{}", auth.id, auth.token).as_bytes());
+                let encoded = general_purpose::STANDARD
+                    .encode(&format!("{}:{}", auth.id, auth.token).as_bytes());
                 let basic_header = format!("Basic {}", encoded);
                 let mut basic_header =
                     tungstenite::http::HeaderValue::from_str(&basic_header).unwrap();
