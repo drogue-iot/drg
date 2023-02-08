@@ -1,0 +1,36 @@
+name: Vulnerability scanning
+
+# all the branches is fine. This shouldn't run on external PRs though
+on: 
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: install rust toolchain
+        run: rustup update stable
+      - name: install go toolchain    
+        uses: actions/setup-go@v3      
+      - name: install dependencies
+        run: | 
+          cargo install cargo-cyclonedx
+          go install github.com/google/osv-scanner/cmd/osv-scanner@v1
+        
+      - name: Build SBOM
+        run: cargo cyclonedx -f json --output-prefix bom
+      - name: Check SBOM against vulnerability database
+        id: scan
+        run: |
+          $HOME/go/bin/osv-scanner --sbom=bom.json > scan.txt
+      - name: Display CVEs analysis result as summary
+        if: failure()
+        run: |
+          echo "#OSV search result" >> $GITHUB_STEP_SUMMARY
+          cat scan.txt >> $GITHUB_STEP_SUMMARY
