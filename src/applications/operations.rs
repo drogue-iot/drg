@@ -20,10 +20,12 @@ impl ApplicationOperation {
             config.token.clone(),
         );
 
-        Ok(client
-            .create_app(&self.payload)
-            .await
-            .map(|_| Outcome::SuccessWithMessage("Application created".to_string()))?)
+        Ok(client.create_app(&self.payload).await.map(|_| {
+            Outcome::SuccessWithMessage(format!(
+                "Application {} created",
+                &self.payload.metadata.name
+            ))
+        })?)
     }
 
     pub async fn read(&self, config: &Context) -> Result<Outcome<Application>, DrogueError> {
@@ -48,13 +50,11 @@ impl ApplicationOperation {
             config.token.clone(),
         );
 
-        match (
-            client.delete_app(&self.name.as_ref().unwrap()).await,
-            ignore_missing,
-        ) {
-            (Ok(true), _) => Ok(Outcome::SuccessWithMessage(
-                "Application deleted".to_string(),
-            )),
+        let name = &self.name.as_ref().unwrap();
+        match (client.delete_app(name).await, ignore_missing) {
+            (Ok(true), _) => Ok(Outcome::SuccessWithMessage(format!(
+                "Application {name} deleted"
+            ))),
             (Ok(false), false) => Err(DrogueError::NotFound),
             (Ok(false), true) => Ok(Outcome::SuccessWithMessage(
                 "No application to delete, ignoring.".to_string(),
@@ -70,21 +70,24 @@ impl ApplicationOperation {
             config.token.clone(),
         );
 
-        let op = match &self.name {
-            None => client.update_app(&self.payload).await,
+        let (op, name) = match &self.name {
+            None => (
+                client.update_app(&self.payload).await,
+                &self.payload.metadata.name,
+            ),
             Some(name) => {
                 //read app data
                 match client.get_app(name).await? {
                     Some(app) => {
                         let edited = util::editor(app)?;
-                        client.update_app(&edited).await
+                        (client.update_app(&edited).await, name)
                     }
-                    None => Ok(false),
+                    None => (Ok(false), name),
                 }
             }
         };
 
-        handle_operation!(op, "Application updated")
+        handle_operation!(op, format!("Application {} updated", name))
     }
 
     pub async fn list(

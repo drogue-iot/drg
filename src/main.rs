@@ -17,7 +17,9 @@ use crate::admin::tokens;
 use crate::applications::ApplicationOperation;
 use crate::config::{AccessToken, Config, Context};
 use crate::devices::DeviceOperation;
-use crate::util::{display, display_simple, DrogueError, Outcome};
+use crate::util::{
+    display, display_multiple, display_simple, DrogueError, MultipleOutcomes, Outcome,
+};
 
 use anyhow::{Context as AnyhowContext, Result};
 use clap::ArgMatches;
@@ -268,7 +270,8 @@ async fn process_arguments(matches: ArgMatches) -> Result<i32> {
             let ignore_version = matches.get_flag(Parameters::ignore_conflict.as_ref());
 
             let res = apply::apply(context, path, ignore_version).await;
-            display_simple(res, json_output)?
+            let res = MultipleOutcomes::from(res);
+            display_multiple(res, json_output)?
         }
 
         Action::label => {

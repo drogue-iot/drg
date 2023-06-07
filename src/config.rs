@@ -19,7 +19,7 @@ use oauth2::TokenResponse;
 use tabular::{Row, Table};
 use url::Url;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub active_context: Option<String>,
     pub contexts: Vec<Context>,

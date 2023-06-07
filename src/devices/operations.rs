@@ -25,13 +25,12 @@ impl DeviceOperation {
             config.token.clone(),
         );
 
-        match (
-            client
-                .delete_device(&self.app, &self.device.as_ref().unwrap())
-                .await,
-            ignore_missing,
-        ) {
-            (Ok(true), _) => Ok(Outcome::SuccessWithMessage("Device deleted".to_string())),
+        let name = self.device.as_ref().unwrap();
+        match (client.delete_device(&self.app, name).await, ignore_missing) {
+            (Ok(true), _) => Ok(Outcome::SuccessWithMessage(format!(
+                "Device {} deleted",
+                name
+            ))),
             (Ok(false), false) => Err(DrogueError::NotFound),
             (Ok(false), true) => Ok(Outcome::SuccessWithMessage(
                 "No device to delete, ignoring.".to_string(),
@@ -64,11 +63,9 @@ impl DeviceOperation {
             config.token.clone(),
         );
 
-        Ok(client
-            .create_device(&self.payload)
-            .await
-            .map(|_| Outcome::SuccessWithMessage("Device created".to_string()))?)
-        // .map_err(DrogueError::Service(e))?)
+        Ok(client.create_device(&self.payload).await.map(|_| {
+            Outcome::SuccessWithMessage(format!("Device {} created", &self.payload.metadata.name))
+        })?)
     }
 
     pub async fn edit(&self, config: &Context) -> Result<Outcome<String>, DrogueError> {
@@ -78,23 +75,29 @@ impl DeviceOperation {
             config.token.clone(),
         );
 
-        let op = match &self.device {
-            None => client.update_device(&self.payload).await,
+        let (op, name) = match &self.device {
+            None => (
+                client.update_device(&self.payload).await,
+                self.payload.metadata.name.clone(),
+            ),
             Some(name) => {
                 //read device data
                 let data = client.get_device(&self.app, name).await?;
                 match data {
                     Some(dev) => {
                         let edited = util::editor(dev)?;
-                        client.update_device(&edited).await
+                        (client.update_device(&edited).await, name.clone())
                     }
-                    None => Ok(false),
+                    None => (Ok(false), name.clone()),
                 }
             }
         };
 
         match op {
-            Ok(true) => Ok(Outcome::SuccessWithMessage("Device updated".to_string())),
+            Ok(true) => Ok(Outcome::SuccessWithMessage(format!(
+                "Device {} updated",
+                name
+            ))),
             Ok(false) => Err(DrogueError::NotFound),
             Err(e) => Err(e.into()),
         }
